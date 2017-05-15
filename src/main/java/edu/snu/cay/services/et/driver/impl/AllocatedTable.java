@@ -239,6 +239,14 @@ public final class AllocatedTable {
   }
 
   /**
+   * @param blockId id of the block to resolve its owner
+   * @return the owner's id of the block
+   */
+  String getOwnerId(final int blockId) {
+    return blockManager.getOwnerId(blockId);
+  }
+
+  /**
    * Drops {@link this} table by removing tablets and table metadata from all executors.
    * This method should be called after initialized.
    * After this method, the table is completely removed from the system (e.g., master and executors).

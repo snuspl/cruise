@@ -169,4 +169,23 @@ public final class MessageSenderImpl implements MessageSender {
       throw new RuntimeException("NetworkException while sending MoveInit message", e);
     }
   }
+
+  @Override
+  public void sendTableAccessReqMsg(final String destId, final long opId, final TableAccessReqMsg tableAccessReqMsg)
+      throws NetworkException {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableAccessMsg)
+        .setTableAccessMsg(
+            TableAccessMsg.newBuilder()
+                .setType(TableAccessMsgType.TableAccessReqMsg)
+                .setOperationId(opId)
+                .setTableAccessReqMsg(tableAccessReqMsg)
+                .build()
+        ).build();
+    try {
+      networkConnection.send(destId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
+    }
+  }
 }

@@ -27,6 +27,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.Codec;
@@ -64,6 +65,7 @@ public final class RemoteAccessOpHandlerTest {
   private static final int NUM_TOTAL_BLOCKS = 1024;
   private static final String TARGET_EXECUTOR_ID = "executor-0";
   private static final String ORIG_EXECUTOR_ID = "executor-1";
+  private static final String DRIVER_ID = "Driver";
 
   private RemoteAccessOpHandler remoteAccessOpHandler;
   private Tables tables;
@@ -84,6 +86,7 @@ public final class RemoteAccessOpHandlerTest {
 
     final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ExecutorIdentifier.class, TARGET_EXECUTOR_ID)
+        .bindNamedParameter(DriverIdentifier.class, DRIVER_ID)
         .build();
 
     mockMsgSender = mock(MessageSender.class);
@@ -224,6 +227,47 @@ public final class RemoteAccessOpHandlerTest {
 
     verify(mockMsgSender, times(7))
         .sendTableAccessResMsg(anyString(), anyLong(), anyString(), anyObject(), anyBoolean());
+  }
+
+  @Test
+  public void testFallback() throws TableNotExistException, NetworkException {
+    final long origOpId = 0;
+
+    doAnswer(invocation -> {
+      final Object[] arguments = invocation.getArguments();
+      final String origId = (String) arguments[0];
+      final String destId = (String) arguments[1];
+      final long opId = (long) arguments[2];
+
+      assertEquals("The origin ID should be kept same", origId, ORIG_EXECUTOR_ID);
+      assertEquals("The request should be redirected to the driver", DRIVER_ID, destId);
+      assertEquals("The op ID should be kept same", origOpId, opId);
+      return null;
+    }).when(mockMsgSender).sendTableAccessReqMsg(anyString(), anyString(), anyLong(), anyString(),
+        any(OpType.class), anyBoolean(), any(DataKey.class), anyObject());
+
+    final TableComponents<String, Integer, Integer> tableComponents = tables.getTableComponents(TABLE_ID);
+    final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
+    final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
+    final Codec<Integer> valueCodec = kvuSerializer.getValueCodec();
+
+    // Assume that the table has been unassociated
+    tables.remove(TABLE_ID);
+
+    // Any operation will give the same results; GET is used here for simplicity.
+    final String key = "key";
+    final Integer value = 1;
+    final Pair<DataKey, DataValue> dataPair = getDataPair(key, value, keyCodec, valueCodec);
+
+    final TableAccessReqMsg getMsg = TableAccessReqMsg.newBuilder()
+        .setOrigId(ORIG_EXECUTOR_ID)
+        .setOpType(OpType.GET)
+        .setTableId(TABLE_ID)
+        .setDataKey(dataPair.getKey())
+        .setDataValue(null)
+        .build();
+
+    remoteAccessOpHandler.onTableAccessReqMsg(origOpId, getMsg);
   }
 
   private <K, V> Pair<DataKey, DataValue> getDataPair(final K key, final V value,

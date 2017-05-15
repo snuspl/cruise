@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -61,16 +62,19 @@ final class RemoteAccessOpHandler {
 
   private volatile boolean closeFlag = false;
 
+  private final String driverId;
   private final String executorId;
   private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
 
   @Inject
   private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
+                                @Parameter(DriverIdentifier.class) final String driverId,
                                 @Parameter(ExecutorIdentifier.class) final String executorId,
                                 @Parameter(HandlerQueueSize.class) final int queueSize,
                                 @Parameter(NumRemoteOpsHandlerThreads.class) final int numHandlerThreads,
                                 final InjectionFuture<MessageSender> msgSenderFuture) {
+    this.driverId = driverId;
     this.executorId = executorId;
     this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
@@ -274,10 +278,12 @@ final class RemoteAccessOpHandler {
     final DataKey dataKey = msg.getDataKey();
     final DataValue dataValue = msg.getDataValue();
 
-    registerOp(tableId, opId, origEvalId);
-
     try {
       final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
+      // If getTableComponents() fails, the operation is not registered and handled by the Driver with a fallback logic.
+
+      registerOp(tableId, opId, origEvalId);
+
       final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvuSerializer.getValueCodec();
@@ -305,7 +311,14 @@ final class RemoteAccessOpHandler {
       handlerThreads.get(threadIdx).enqueue(operation);
 
     } catch (final TableNotExistException e) {
-      throw new RuntimeException(e);
+      try {
+        LOG.log(Level.WARNING, "The table access request (Table: {0}, opId: {1}) has failed." +
+            " Will redirect the message to the Driver for fallback.", new Object[] {tableId, opId});
+        msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
+            dataKey, dataValue);
+      } catch (NetworkException e1) {
+        throw new RuntimeException(e1);
+      }
     }
   }
 

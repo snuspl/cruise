@@ -16,8 +16,10 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.common.dataloader.HdfsSplitInfo;
+import edu.snu.cay.services.et.avro.TableAccessReqMsg;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.MessageSender;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
@@ -331,6 +333,12 @@ public final class MigrationManagerTest {
         migrationManager.get().ownershipMoved(opId, blockId);
         migrationManager.get().dataMoved(opId, blockId);
       }
+    }
+
+    @Override
+    public void sendTableAccessReqMsg(final String destId, final long opId, final TableAccessReqMsg tableAccessReqMsg)
+        throws NetworkException {
+
     }
   }
 }

@@ -131,6 +131,14 @@ public final class BlockManager {
   }
 
   /**
+   * @param blockId id of the block to resolve its owner
+   * @return the owner's id of the block
+   */
+  synchronized String getOwnerId(final int blockId) {
+    return blockIdToExecutorId.get(blockId);
+  }
+
+  /**
    * Returns the current locations of Blocks.
    * @return a list of executor ids, whose index is an block id.
    */

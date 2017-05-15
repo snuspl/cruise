@@ -16,9 +16,11 @@
 package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.common.dataloader.HdfsSplitInfo;
+import edu.snu.cay.services.et.avro.TableAccessReqMsg;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
@@ -66,4 +68,9 @@ public interface MessageSender {
    */
   void sendMoveInitMsg(long opId, String tableId, List<Integer> blockIds,
                        String senderId, String receiverId);
+
+  /**
+   * Sends a TableAccessReqMsg, which redirects the failed access request to the up-to-date owner if possible.
+   */
+  void sendTableAccessReqMsg(String destId, long opId, TableAccessReqMsg tableAccessReqMsg) throws NetworkException;
 }

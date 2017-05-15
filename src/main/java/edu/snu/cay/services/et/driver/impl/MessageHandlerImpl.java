@@ -36,6 +36,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<TableControlAgent> tableControlAgentFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
+  private final InjectionFuture<FallbackManager> fallbackManagerFuture;
 
   /**
    * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
@@ -47,10 +48,12 @@ public final class MessageHandlerImpl implements MessageHandler {
   @Inject
   private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableControlAgentFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture,
-                             final InjectionFuture<MetricReceiver> metricReceiver) {
+                             final InjectionFuture<MetricReceiver> metricReceiver,
+                             final InjectionFuture<FallbackManager> fallbackManagerFuture) {
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
+    this.fallbackManagerFuture = fallbackManagerFuture;
   }
 
   @Override
@@ -69,9 +72,17 @@ public final class MessageHandlerImpl implements MessageHandler {
       onMetricMsg(msg.getSrcId().toString(), innerMsg.getMetricMsg());
       break;
 
+    case TableAccessMsg:
+      onTableAccessMsg(msg.getSrcId().toString(), innerMsg.getTableAccessMsg());
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
+  }
+
+  private void onTableAccessMsg(final String srcId, final TableAccessMsg tableAccessMsg) {
+    fallbackManagerFuture.get().onTableAccessReqMessage(srcId, tableAccessMsg);
   }
 
   private void onMetricMsg(final String srcId, final MetricMsg metricMsg) {
