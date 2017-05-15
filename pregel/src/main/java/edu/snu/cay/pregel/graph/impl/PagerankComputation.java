@@ -43,11 +43,17 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
 
   @Override
   public void compute(final Vertex<Double> vertex, final Iterable<Double> messages) {
+
     if (getSuperstep() == 0) {
+
+      // At the first superstep, each vertices doesn't get the incoming messages and
+      // update the value of vertex. Because the incoming messages in the first superstep are none.
+      // Instead, the value of all vertices is initialized to 1.
       vertex.setValue(1d);
       sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());
       return;
     }
+
     final double sum = Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
     vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());

@@ -18,13 +18,14 @@ package edu.snu.cay.pregel.graph.impl;
 import edu.snu.cay.pregel.graph.api.Edge;
 
 /**
- * Created by cmslab on 5/11/17.
+ * The implementation of non-value edge.
+ * It only has target vertex id.
  */
-public class DefaultEdge implements Edge {
+public class NoneValueEdge implements Edge {
 
   private final Integer vertexId;
 
-  public DefaultEdge(final Integer vertexId) {
+  public NoneValueEdge(final Integer vertexId) {
     this.vertexId = vertexId;
   }
 

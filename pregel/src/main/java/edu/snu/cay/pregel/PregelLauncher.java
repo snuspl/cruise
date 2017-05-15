@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.comm;
+package edu.snu.cay.pregel;
 
 
 import org.apache.reef.client.DriverConfiguration;

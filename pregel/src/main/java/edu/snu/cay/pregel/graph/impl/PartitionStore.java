@@ -21,10 +21,13 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 /**
+ * Structure that stores partitions for worker.
  * Assuming partition index is vertexId % the number of partitions.
  */
 public class PartitionStore<V> {
@@ -32,15 +35,18 @@ public class PartitionStore<V> {
 
   private final ConcurrentMap<Integer, Partition<V>> partitions = Maps.newConcurrentMap();
 
+  private final BlockingQueue<Partition<V>> partitionQueue = new LinkedBlockingQueue<>();
+
   public PartitionStore(final GraphPartitioner graphPartitioner,
                         final List<String> input) {
 
+    // initialize the partition store
     input.forEach(line -> {
       final List<String> idStringList = Arrays.asList(line.split(" "));
       final List<Integer> idList = idStringList.stream().map(Integer::parseInt).collect(Collectors.toList());
       final Vertex<V> vertex = new DefaultVertex<>();
       final Integer vertexId = idList.remove(0);
-      final List<Edge> edges = idList.stream().map(DefaultEdge::new).collect(Collectors.toList());
+      final List<Edge> edges = idList.stream().map(NoneValueEdge::new).collect(Collectors.toList());
       vertex.initialize(vertexId, edges);
 
       final int partitionIdx = vertexId % graphPartitioner.getNumPartitions();
@@ -59,5 +65,32 @@ public class PartitionStore<V> {
     }
     return partitions.get(partitionIdx);
   }
+
+  /**
+   * Start the iteration cycle to iterate over partitions.
+   * After an iteration is started, multiple threads can access the partition store
+   * using {@link #getNextPartition()} to iterate over the partitions.
+   */
+  public void startIteration() {
+    if (!partitionQueue.isEmpty()) {
+      throw new RuntimeException("Partition Queue must be empty");
+    }
+
+    for (final Partition<V> partition : partitions.values()) {
+      partitionQueue.add(partition);
+    }
+  }
+
+  /**
+   * Get the next partition in iteration for the current superstep.
+   * The method {@link #startIteration()} must be called before call this.
+   * if partition value is null, each thread breaks the loop and prepare for finishing current superstep.
+   *
+   * @return the next partition to process
+   */
+  public Partition<V> getNextPartition() {
+    return partitionQueue.poll();
+  }
+
 
 }

@@ -33,10 +33,21 @@ public final class GraphPartitioner {
     this.numPartitions = numPartitions;
   }
 
+  /**
+   * Get the number of partitions in this worker.
+   *
+   * @return the number of partitions in this worker
+   */
   public int getNumPartitions() {
     return numPartitions;
   }
 
+  /**
+   * Get the index of partition from a vertex id.
+   *
+   * @param vertexId vertex id to look for
+   * @return partition id from a vertex id
+   */
   public int getPartitionIdx(final Integer vertexId) {
     return vertexId % numPartitions;
   }

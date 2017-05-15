@@ -21,7 +21,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Compute around the vertices in the partition. Every thread will has
+ * Compute around the vertices in the partitionStore. Every thread will has
  * its instance. It is instantiated at the start time of every superstep.
  *
  * @param <V> vertex value
@@ -31,34 +31,44 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ComputationCallable<V, MI, MO> implements Callable<Integer> {
 
   private final Computation<V, MI, MO> computation;
-  private final Partition<V> partition;
+  private final PartitionStore<V> partitionStore;
   private final MessageStore<MI> currMessageStore;
 
   public ComputationCallable(final Computation<V, MI, MO> computation,
-                             final Partition<V> partition,
+                             final PartitionStore<V> partitionStore,
                              final MessageStore<MI> currMessageStore) {
 
     this.computation = computation;
-    this.partition = partition;
+    this.partitionStore = partitionStore;
     this.currMessageStore = currMessageStore;
   }
 
   /**
    * Compute around the vertices in one superstep.
    *
-   * @return the number of active vertices in this partition
+   * @return the number of active vertices in this partitionStore
    */
   @Override
   public Integer call() throws Exception {
 
     final AtomicInteger numActiveVertices = new AtomicInteger(0);
 
-    partition.forEach(vertex -> {
-      computation.compute(vertex, currMessageStore.getVertexMessages(vertex.getId()));
-      if (!vertex.isHalted()) {
-        numActiveVertices.getAndIncrement();
+    while (true) {
+      final Partition<V> currPartition = partitionStore.getNextPartition();
+
+      // if current partition is null, it finishes the processing.
+      if (currPartition == null) {
+        break;
       }
-    });
+
+      currPartition.forEach(vertex -> {
+        computation.compute(vertex, currMessageStore.getVertexMessages(vertex.getId()));
+        if (!vertex.isHalted()) {
+          numActiveVertices.getAndIncrement();
+        }
+      });
+    }
+
     return numActiveVertices.get();
   }
 }

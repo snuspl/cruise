@@ -15,6 +15,6 @@
  */
 
 /**
- * API of graph related objects.
+ * Classes for the {@code pregel} framework.
  */
-package edu.snu.cay.pregel.worker;
+package edu.snu.cay.pregel;

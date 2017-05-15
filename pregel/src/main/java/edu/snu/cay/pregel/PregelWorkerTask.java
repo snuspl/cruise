@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.worker;
+package edu.snu.cay.pregel;
 
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.impl.*;
@@ -38,12 +38,16 @@ public final class PregelWorkerTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(PregelWorkerTask.class.getName());
 
-
   static final List<String> INPUT = Arrays.asList(
       "1 2 3 4",
       "2 3",
       "3 1 2 4",
       "4 2");
+
+  /**
+   * the number of threads worker runs in each superstep.
+   */
+  private static final int NUM_THREADS = 3;
 
   /**
    * Graph partitioner for this worker.
@@ -56,8 +60,8 @@ public final class PregelWorkerTask implements Task {
   private final MessageManager<Double> messageManager;
 
   /**
-   * The number of active vertices in this worker.
-   * This value is set at each end of one superstep.
+   * The number of active vertices in this graph partitions which were allocated to this worker.
+   * This value is set at the end of each superstep.
    * It is used to determine whether task finishes or not by {@link #isAllVerticesHalt()}
    */
   private final AtomicInteger numActiveVertices = new AtomicInteger(INPUT.size());
@@ -75,12 +79,14 @@ public final class PregelWorkerTask implements Task {
     LOG.log(Level.INFO, "Pregel task start");
 
     final PartitionStore<Double> partitionStore = new PartitionStore<>(graphPartitioner, INPUT);
-    final int numThreads = partitionStore.getNumPartitions();
+    final int numThreads = NUM_THREADS;
 
     final AtomicInteger superStepCounter = new AtomicInteger(0);
 
     // run until all vertices halt
     while (true) {
+
+      partitionStore.startIteration();
       final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
       final Computation<Double, Double, Double> computation =
           new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageStore());
@@ -88,7 +94,7 @@ public final class PregelWorkerTask implements Task {
 
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
         final Callable<Integer> computationCallable =
-            new ComputationCallable<>(computation, partitionStore.getPartition(threadIdx),
+            new ComputationCallable<>(computation, partitionStore,
                 messageManager.getCurrentMessageStore());
         futureList.add(executorService.submit(computationCallable));
       }
@@ -114,7 +120,7 @@ public final class PregelWorkerTask implements Task {
 
     for (int partitionIdx = 0; partitionIdx < partitionStore.getNumPartitions(); partitionIdx++) {
       partitionStore.getPartition(partitionIdx).forEach(vertex ->
-          LOG.log(Level.INFO, "Vertex id : {0}, rank : {1}", new Object[]{vertex.getId(), vertex.getValue()})
+          LOG.log(Level.INFO, "Vertex id : {0}, value : {1}", new Object[]{vertex.getId(), vertex.getValue()})
       );
     }
     return null;

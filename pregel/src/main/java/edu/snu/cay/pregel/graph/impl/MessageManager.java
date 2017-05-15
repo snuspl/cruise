@@ -45,6 +45,10 @@ public final class MessageManager<V> {
     nextMessageStore = new MessageStore<>(graphPartitioner);
   }
 
+  /**
+   * To prepare for next superstep, switch {@link #nextMessageStore} to {@link #currMessageStore}.
+   * Then initialize the {@link #nextMessageStore}.
+   */
   public void prepareForNextSuperstep() {
     currMessageStore = nextMessageStore;
     nextMessageStore = new MessageStore<>(graphPartitioner);

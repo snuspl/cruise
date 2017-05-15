@@ -15,6 +15,6 @@
  */
 
 /**
- * API of graph related objects.
+ * Parameters of graph related objects.
  */
 package edu.snu.cay.pregel.graph.parameters;

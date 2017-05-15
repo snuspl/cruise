@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.comm;
+package edu.snu.cay.pregel;
 
 import edu.snu.cay.pregel.graph.parameters.NumPartitions;
-import edu.snu.cay.pregel.worker.PregelWorkerTask;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;

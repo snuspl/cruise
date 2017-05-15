@@ -26,11 +26,17 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 
 /**
- * Created by cmslab on 5/11/17.
+ * Strucure that stores messages sent to vertex.
+ *
+ * @param <MV> message value
  */
 public final class MessageStore<MV> {
 
   private static final Logger LOG = Logger.getLogger(MessageStore.class.getName());
+
+  /**
+   * the map which key is partition id and value is vertex id to messages map.
+   */
   private final ConcurrentMap<Integer, ConcurrentMap<Integer, Set<MV>>> messageMap;
   private final GraphPartitioner graphPartitioner;
 
@@ -39,6 +45,12 @@ public final class MessageStore<MV> {
     this.graphPartitioner = graphPartitioner;
   }
 
+  /**
+   * Get messages for a vertex.
+   *
+   * @param vertexId vertex id for which we want to get messages
+   * @return Iterable of messages for a vertex id
+   */
   public Iterable<MV> getVertexMessages(final Integer vertexId) {
     final int partitionIdx = graphPartitioner.getPartitionIdx(vertexId);
     if (!messageMap.containsKey(partitionIdx) || !messageMap.get(partitionIdx).containsKey(vertexId)) {
@@ -47,6 +59,12 @@ public final class MessageStore<MV> {
     return messageMap.get(partitionIdx).get(vertexId);
   }
 
+  /**
+   * Write a message for a particular vertex.
+   *
+   * @param vertexId vertex id for a target vertex
+   * @param value a message value to be send
+   */
   public void writeMessage(final Integer vertexId, final MV value) {
     final int partitionIdx = graphPartitioner.getPartitionIdx(vertexId);
     messageMap.putIfAbsent(partitionIdx, Maps.newConcurrentMap());
@@ -54,6 +72,11 @@ public final class MessageStore<MV> {
     messageMap.get(partitionIdx).get(vertexId).add(value);
   }
 
+  /**
+   * Get all messages in this message store.
+   *
+   * @return map of vertex id to messages which were sent
+   */
   public Map<Integer, Set<MV>> getAllMessages() {
     final Map<Integer, Set<MV>> map = Maps.newHashMap();
     messageMap.entrySet().forEach(entry -> map.putAll(entry.getValue()));
