@@ -27,14 +27,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Parser class for the GBT application.
- * Input files should be in the following form:
- *
+ * A data parser for sparse vector classification input.
+ * Assumes the following data format.
  * <p>
- *   x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
- *   x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
- *   ... <br>
- *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
+ *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
 final class GBTETDataParser implements DataParser<GBTData> {

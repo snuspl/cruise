@@ -25,6 +25,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -121,9 +122,18 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   private final Random random;
 
+  /**
+   * Executes the trainer threads.
+   */
+  private final ExecutorService executor;
+
+  /**
+   * Number of trainer threads that train concurrently.
+   */
+  private final int numTrainerThreads;
+
   @Inject
-  private GBTTrainer(
-                     final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor,
+  private GBTTrainer(final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
@@ -131,6 +141,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
     this.modelAccessor = modelAccessor;
@@ -152,6 +163,8 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {  // if valueTypeNum != 0, value's type is categorical(FeatureType.CATEGORICAL).
       this.valueType = FeatureType.CATEGORICAL;
     }
+    this.numTrainerThreads = numTrainerThreads;
+    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
   }
 
   @Override
@@ -160,6 +173,7 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   @Override
   public void cleanup() {
+    executor.shutdown();
   }
 
   /**
@@ -174,7 +188,10 @@ final class GBTTrainer implements Trainer<GBTData> {
       preprocessAndBuildTree(CONTINUOUS_FEATURE, instances);
     } else if (valueType == FeatureType.CATEGORICAL) {
       for (int label = 0; label < valueTypeNum; label++) {
+        final long buildTreeStartTime = System.currentTimeMillis();
         preprocessAndBuildTree(label, instances);
+        final double buildTreeElapsedTime = (System.currentTimeMillis() - buildTreeStartTime) / 1000.0D;
+        LOG.log(Level.INFO, "Tree building elapsed time : " + buildTreeElapsedTime);
       }
     } else {
       throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
@@ -667,38 +684,56 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private List<Double> calculateResidual(final List<GBTData> instances, final int label, final List<GBTree> forest) {
     final List<Double> residual = new ArrayList<>(instances.size());
-    final List<Double> predictedValue = new ArrayList<>();
-    boolean isFirstTree = true;
-    for (final GBTree thisTree : forest) {
-      int dataIdx = 0;
-      for (final GBTData instance : instances) {
-        if (isFirstTree) {
-          predictedValue.add(0.0);
-        }
-        final double originalValue = predictedValue.get(dataIdx);
-        predictedValue.set(dataIdx++,  originalValue + stepSize * predictByTree(instance, thisTree));
-      }
-      isFirstTree = false;
+    for (int instanceIdx = 0; instanceIdx < instances.size(); instanceIdx++) {
+      residual.add(0.0);
     }
 
-    int dataIdx = 0;
-    for (final GBTData instance : instances) {
-      final double thisValue = instance.getValue();
-      if (forest.isEmpty()) {
-        residual.add(thisValue);
-        continue;
-      }
-      final double thisPredictedValue = predictedValue.get(dataIdx++);
-      if (valueType == FeatureType.CONTINUOUS) {
-        residual.add(thisValue - thisPredictedValue);
-      } else {
-        if (similarValues(thisValue, label)) {
-          residual.add(1 - thisPredictedValue);
-        } else {
-          residual.add(-thisPredictedValue);
+    final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+    final int threadSize = instances.size() / numTrainerThreads;
+
+    for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+      final int startIdx = threadIdx * threadSize;
+      final int endIdx = threadIdx == numTrainerThreads - 1 ? instances.size() : (threadIdx + 1) * threadSize;
+
+      executor.submit(() -> {
+        // This thread handles instances with index of
+        // [thisThreadIdx * threadSize, (thisThreadIdx + 1) * threadSize).
+        final List<GBTData> threadInstances = instances.subList(startIdx, endIdx);
+        final int threadInstanceSize = threadInstances.size();
+
+        // If forest is empty, fill residual list with instance's real value.
+        if (forest.isEmpty()) {
+          for (int instanceIdx = 0; instanceIdx < threadInstanceSize; instanceIdx++) {
+            residual.set(startIdx + instanceIdx, threadInstances.get(instanceIdx).getValue());
+          }
+          latch.countDown();
+          return;
         }
-      }
+
+        // If forest is not empty, compute residual for each instances and fill the residual list.
+        for (int instanceIdx = 0; instanceIdx < threadInstanceSize; instanceIdx++) {
+          final GBTData instance = threadInstances.get(instanceIdx);
+          final double predictedValue = predictByForest(instance, forest);
+          if (valueType == FeatureType.CONTINUOUS) {
+            residual.set(startIdx + instanceIdx, instance.getValue() - predictedValue);
+          } else {
+            if (similarValues(instance.getValue(), label)) {
+              residual.set(startIdx + instanceIdx, 1 - predictedValue);
+            } else {
+              residual.set(startIdx + instanceIdx, -predictedValue);
+            }
+          }
+        }
+        latch.countDown();
+      });
     }
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception occured.", e);
+      throw new RuntimeException(e);
+    }
+
     return residual;
   }
 
@@ -815,6 +850,16 @@ final class GBTTrainer implements Trainer<GBTData> {
         }
       }
     }
+  }
+
+  /**
+   * Predict the y-value with given {@param forest} for {@param instance}.
+   * @param instance given instance to predict y-value.
+   * @param forest given forest to predict y-value of {@param instance}.
+   * @return predicted y-value.
+   */
+  private double predictByForest(final GBTData instance, final List<GBTree> forest) {
+    return forest.stream().mapToDouble(tree -> stepSize * predictByTree(instance, tree)).sum();
   }
 
   /**
