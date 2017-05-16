@@ -106,4 +106,9 @@ public interface Tablet<K, V, U> {
    * @return an iterator of {@link Entry} of local data key-value pairs
    */
   Iterator<Entry<K, V>> getDataIterator();
+
+  /**
+   * @return the number of local data items existing in the Tablet.
+   */
+  int getNumDataItems();
 }

@@ -33,6 +33,7 @@ import java.util.concurrent.locks.Lock;
 @EvaluatorSide
 @ThreadSafe
 public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
+
   /**
    * Local blocks which this executor owns.
    */
@@ -157,5 +158,24 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
         return entryIterator.next();
       }
     };
+  }
+
+  @Override
+  public int getNumDataItems() {
+    int numTotal = 0;
+
+    // will not care blocks migrated in after this call
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
+
+    for (final Integer blockId : localBlockIds) {
+      try {
+        final Block<K, V, U> block = blockStore.get(blockId);
+        numTotal += block.getNumPairs();
+      } catch (final BlockNotExistsException e) {
+        // This block has moved out to another executor, but it is safe to ignore it in counting the number of items.
+      }
+    }
+
+    return numTotal;
   }
 }
