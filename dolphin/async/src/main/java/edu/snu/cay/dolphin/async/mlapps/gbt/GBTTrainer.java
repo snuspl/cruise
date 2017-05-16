@@ -188,10 +188,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       preprocessAndBuildTree(CONTINUOUS_FEATURE, instances);
     } else if (valueType == FeatureType.CATEGORICAL) {
       for (int label = 0; label < valueTypeNum; label++) {
-        final long buildTreeStartTime = System.currentTimeMillis();
         preprocessAndBuildTree(label, instances);
-        final double buildTreeElapsedTime = (System.currentTimeMillis() - buildTreeStartTime) / 1000.0D;
-        LOG.log(Level.INFO, "Tree building elapsed time : " + buildTreeElapsedTime);
       }
     } else {
       throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
@@ -696,8 +693,6 @@ final class GBTTrainer implements Trainer<GBTData> {
       final int endIdx = threadIdx == numTrainerThreads - 1 ? instances.size() : (threadIdx + 1) * threadSize;
 
       executor.submit(() -> {
-        // This thread handles instances with index of
-        // [thisThreadIdx * threadSize, (thisThreadIdx + 1) * threadSize).
         final List<GBTData> threadInstances = instances.subList(startIdx, endIdx);
         final int threadInstanceSize = threadInstances.size();
 

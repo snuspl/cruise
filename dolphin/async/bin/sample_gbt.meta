@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This data is from http://archive.ics.uci.edu/ml/datasets/Forest+type+mapping
-# If you want more details, go to the website and see the features' meanings.
-
-# Forest classification
-# numFeatures : 27 / numData = 523
-# 
 # Metadata format
 # - idx:val separated by whitespace
 # - idx in [0, numFeatures) for the index of features. if idx == numFeatures, val implies the entry for y-value.

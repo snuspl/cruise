@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# name: sample_mlr
+# name: sample_gbt
 # description: abridged version of the MNIST dataset (http://yann.lecun.com/exdb/mnist/)
 # 600 instances, 784 features, 10 classes (0-indexed)
 # this file is training set, composed of 90% (540 instances) of the dataset
