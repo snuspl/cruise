@@ -24,7 +24,6 @@ import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
@@ -35,6 +34,7 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.FailedTask;
@@ -74,6 +74,7 @@ public final class ETDolphinDriver {
   private static final Logger LOG = Logger.getLogger(ETDolphinDriver.class.getName());
 
   private final ETMaster etMaster;
+  private final edu.snu.cay.services.et.metric.MetricManager metricManager;
   private final WorkerTaskRunner workerTaskRunner;
   private final ProgressTracker progressTracker;
 
@@ -96,6 +97,7 @@ public final class ETDolphinDriver {
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
+                          final edu.snu.cay.services.et.metric.MetricManager metricManager,
                           final ETOptimizationOrchestrator optimizationOrchestrator,
                           final WorkerTaskRunner workerTaskRunner,
                           final ProgressTracker progressTracker,
@@ -113,6 +115,7 @@ public final class ETDolphinDriver {
                           @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
+    this.metricManager = metricManager;
     this.workerTaskRunner = workerTaskRunner;
     this.progressTracker = progressTracker;
     this.numWorkers = numWorkers;
@@ -203,11 +206,6 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getWorkerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
-        .setMetricServiceConf(
-            MetricServiceExecutorConf.newBuilder()
-                .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
-                .build()
-        )
         .setUserContextConf(workerContextConf)
         .setUserServiceConf(workerServiceConf)
         .build();
@@ -216,11 +214,6 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getServerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
-        .setMetricServiceConf(
-            MetricServiceExecutorConf.newBuilder()
-            .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
-            .build()
-        )
         .build();
   }
 
@@ -232,7 +225,16 @@ public final class ETDolphinDriver {
     public void onNext(final StartTime startTime) {
       try {
         final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getServerExecutorConf()).get();
+        servers.forEach(server -> metricManager.startMetricCollection(server.getId(),
+            MetricServiceExecutorConf.newBuilder()
+                .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
+                .build()));
+
         final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getWorkerExecutorConf()).get();
+        workers.forEach(worker -> metricManager.startMetricCollection(worker.getId(),
+            MetricServiceExecutorConf.newBuilder()
+                .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
+                .build()));
 
         Executors.newSingleThreadExecutor().submit(() -> {
           try {
