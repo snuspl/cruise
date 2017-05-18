@@ -58,7 +58,8 @@ public class PagerankComputation implements Computation<Double, Double> {
       // Instead, the value of all vertices is initialized to 1.
       vertex.setValue(1d);
     } else {
-      final double sum = Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
+      final double sum = messages == null ? 0d :
+          Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
       vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
     msgFutureList.addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
@@ -86,14 +87,10 @@ public class PagerankComputation implements Computation<Double, Double> {
   }
 
   @Override
-  public void sync() {
-    msgFutureList.forEach(future -> {
-      try {
-        future.get();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
+  public void sync() throws ExecutionException, InterruptedException {
+    for (final Future<?> msgFuture : msgFutureList) {
+      msgFuture.get();
+    }
     msgFutureList.clear();
   }
 }

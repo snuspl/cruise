@@ -17,7 +17,9 @@ package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.pregel.common.AddDoubleMsgFunction;
+import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
+import edu.snu.cay.pregel.common.VertexCodec;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -124,11 +126,11 @@ public final class PregelDriver {
       Executors.newSingleThreadExecutor().submit(() -> {
         try {
           final AllocatedTable msgTable1 = etMaster.createTable(
-              buildTableConf(MSG_TABLE_1_ID), executors).get();
+              buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
           final AllocatedTable msgTable2 = etMaster.createTable(
-              buildTableConf(MSG_TABLE_2_ID), executors).get();
+              buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
           final AllocatedTable vertexTable = etMaster.createTable(
-              buildTableConf(VERTEX_TABLE_ID), executors).get();
+              buildVertexTableConf(VERTEX_TABLE_ID), executors).get();
           LOG.log(Level.INFO, "vertexTable is created.");
 
           vertexTable.load(executors, tableInputPath).get();
@@ -138,7 +140,7 @@ public final class PregelDriver {
           executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
 
           for (final Future<SubmittedTask> submittedTaskFuture : taskFutureList) {
-            submittedTaskFuture.get();
+            submittedTaskFuture.get().getTaskResult();
           }
           executors.forEach(AllocatedExecutor::close);
 
@@ -156,11 +158,11 @@ public final class PregelDriver {
         .build();
   }
 
-  private TableConfiguration buildTableConf(final String tableId) {
+  private TableConfiguration buildVertexTableConf(final String tableId) {
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
+        .setValueCodecClass(VertexCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddDoubleMsgFunction.class)
         .setIsMutableTable(true)
@@ -169,4 +171,19 @@ public final class PregelDriver {
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
         .build();
   }
+  private TableConfiguration buildMsgTableConf(final String tableId) {
+    return TableConfiguration.newBuilder()
+        .setId(tableId)
+        .setKeyCodecClass(SerializableCodec.class)
+        .setValueCodecClass(DoubleMsgCodec.class)
+        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setUpdateFunctionClass(AddDoubleMsgFunction.class)
+        .setIsMutableTable(true)
+        .setIsOrderedTable(false)
+        .setDataParserClass(NoneEdgeValueGraphParser.class)
+        .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
+        .build();
+  }
+
+
 }

@@ -16,6 +16,7 @@
 package edu.snu.cay.pregel.graph.api;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
@@ -64,6 +65,6 @@ public interface Computation<V, M> {
   /**
    * Sync all non-blocking commands in this superstep.
    */
-  void sync();
+  void sync() throws ExecutionException, InterruptedException;
 }
 

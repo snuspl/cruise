@@ -103,14 +103,13 @@ public final class PregelWorkerTask implements Task {
         futureList.add(executorService.submit(computationCallable));
       }
 
+
       numActiveVertices.set(0);
-      futureList.forEach(future -> {
-        try {
-          numActiveVertices.getAndAdd(future.get());
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      for (final Future<Integer> computeFuture : futureList) {
+        numActiveVertices.getAndAdd(computeFuture.get());
+      }
+
+      computation.sync();
 
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
 

@@ -68,7 +68,6 @@ public class ComputationCallable<V, M> implements Callable<Integer> {
       }
     });
 
-    computation.sync();
     return numActiveVertices.get();
   }
 }
