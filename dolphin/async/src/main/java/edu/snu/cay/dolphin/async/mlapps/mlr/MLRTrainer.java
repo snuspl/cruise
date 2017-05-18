@@ -77,9 +77,9 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final VectorFactory vectorFactory;
 
   /**
-   * Preserves the model parameters that are pulled from server, in order to compute the gradients to push.
+   * Preserves the model parameters that are pulled from server, in order to compute gradients.
    */
-  private final Vector[] oldParams;
+  private final MLRModel model;
 
   /**
    * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
@@ -106,11 +106,6 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private final int numTrainerThreads;
 
-  /**
-   * Allows to access and update the latest model.
-   */
-  private final ModelHolder<MLRModel> modelHolder;
-
   @Inject
   private MLRTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      @Parameter(NumClasses.class) final int numClasses,
@@ -122,7 +117,6 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                     final ModelHolder<MLRModel> modelHolder,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;
@@ -135,7 +129,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.stepSize = initStepSize;
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
-    this.oldParams = new Vector[numClasses];
+    this.model = new MLRModel(new Vector[numClasses]);
 
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
@@ -145,7 +139,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    this.modelHolder = modelHolder;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -233,12 +226,10 @@ final class MLRTrainer implements Trainer<MLRData> {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
-    final MLRModel model = modelHolder.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, model);
-    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, model);
+    final Vector[] params = model.getParams();
+    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, params);
+    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, params);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -263,6 +254,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private void pullModels() {
     final List<Vector> partitions = modelAccessor.pull(classPartitionIndices);
+    final Vector[] params = model.getParams();
 
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
@@ -272,10 +264,8 @@ final class MLRTrainer implements Trainer<MLRData> {
           partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
 
       // concat partitions into one long vector
-      oldParams[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
+      params[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
     }
-
-    modelHolder.resetModel(new MLRModel(oldParams));
   }
 
   /**
@@ -285,10 +275,11 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private void updateGradient(final MLRData instance, final Vector[] threadGradient) {
     final Vector feature = instance.getFeature();
+    final Vector[] params = model.getParams();
     final int label = instance.getLabel();
 
     // compute h(x, w) = softmax(x dot w)
-    final Vector predictions = predict(feature, oldParams);
+    final Vector predictions = predict(feature, params);
 
     // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
     // instead of allocating a new vector for the error,
@@ -299,7 +290,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
         threadGradient[j].axpy(-predictions.get(j) * stepSize, feature);
-        threadGradient[j].axpy(-stepSize * lambda, oldParams[j]);
+        threadGradient[j].axpy(-stepSize * lambda, params[j]);
       }
     } else {
       for (int j = 0; j < numClasses; ++j) {
@@ -346,8 +337,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final MLRModel model) {
-    final Vector[] params = model.getParams();
+  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final Vector[] params) {
 
     double loss = 0;
     int correctPredictions = 0;
