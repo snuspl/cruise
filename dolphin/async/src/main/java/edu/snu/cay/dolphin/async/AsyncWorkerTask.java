@@ -29,6 +29,9 @@ import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,6 +41,7 @@ import java.util.logging.Logger;
  */
 final class AsyncWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
+  private static final long EPOCH_METRIC_SENDING_TIMEOUT = 100000;
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
@@ -59,6 +63,8 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final WorkerClock workerClock;
   private final boolean addedEval;
   private final String hostname;
+
+  private final ExecutorService executor;
 
   /**
    * A boolean flag shared among all trainer threads.
@@ -94,6 +100,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
     this.hostname = HostnameResolver.resolve();
+    this.executor = Executors.newSingleThreadExecutor();
   }
 
   @Override
@@ -160,15 +167,20 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, epochIdx);
-      final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+      final int numMiniBatchForEpoch = miniBatchIdx;
+      final int thisEpochIdx = epochIdx;
+      executor.submit(() -> {
+        final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, thisEpochIdx);
+        final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
-      buildAndSendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochTrainingData.size(), numEMBlocks, epochElapsedTime);
-
+        buildAndSendEpochMetrics(epochResult, thisEpochIdx, numMiniBatchForEpoch,
+            epochTrainingData.size(), numEMBlocks, epochElapsedTime);
+      });
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();
     }
+    executor.shutdown();
+    executor.awaitTermination(EPOCH_METRIC_SENDING_TIMEOUT, TimeUnit.MILLISECONDS);
 
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
@@ -220,7 +232,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   }
 
   private void buildAndSendEpochMetrics(final EpochResult epochResult,
-                                        final int epochIdx, final int miniBatchIdx,
+                                        final int epochIdx, final int numMiniBatchForEpoch,
                                         final int processedDataItemCount,
                                         final int numDataBlocks,
                                         final double epochElapsedTime) {
@@ -228,7 +240,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setMetrics(Metrics.newBuilder().setData(epochResult.getAppMetrics()).build())
         .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(miniBatchIdx)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setProcessedDataItemCount(processedDataItemCount)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(epochElapsedTime)

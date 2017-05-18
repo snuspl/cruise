@@ -56,6 +56,9 @@
     // total elapsed time for this epoch (seconds)
     {"name": "totalTime", "type": ["null", "double"], "default": null},
 
+    // elapsed time to summarize epoch
+    {"name": "totalTime", "type": ["null", "double"], "default": null},
+
     // total computation time for this epoch (seconds), only used for mini-batch metrics
     // required for optimization cost model
     {"name": "totalCompTime", "type": ["null", "double"], "default": null},

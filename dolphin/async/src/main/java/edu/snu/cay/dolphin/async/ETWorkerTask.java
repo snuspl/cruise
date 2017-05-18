@@ -24,6 +24,9 @@ import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +36,7 @@ import java.util.logging.Logger;
  */
 final class ETWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
+  private static final long EPOCH_METRIC_SENDING_TIMEOUT = 100000;
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
   private final String taskId;
@@ -46,6 +50,8 @@ final class ETWorkerTask<K, V> implements Task {
   private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
   private final MetricCollector metricCollector;
+
+  private final ExecutorService executor;
 
   /**
    * A boolean flag that becomes true when {@link #close()} is called,
@@ -74,6 +80,7 @@ final class ETWorkerTask<K, V> implements Task {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
+    this.executor = Executors.newSingleThreadExecutor();
   }
 
   @Override
@@ -126,12 +133,20 @@ final class ETWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-      final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+      final int numMiniBatchForEpoch = miniBatchIdx;
+      final int thisEpochIdx = epochIdx;
+      executor.submit(() -> {
+        final long epochSummaryStartTime = System.currentTimeMillis();
+        final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, thisEpochIdx);
+        final double epochSummaryElapsedTime = (System.currentTimeMillis() - epochSummaryStartTime) / 1000.0D;
+        final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochData.size(), epochElapsedTime, perOpTimeInEpoch);
+        sendEpochMetrics(epochResult, thisEpochIdx, numMiniBatchForEpoch,
+            epochData.size(), epochElapsedTime, epochSummaryElapsedTime, perOpTimeInEpoch);
+      });
     }
+    executor.shutdown();
+    executor.awaitTermination(EPOCH_METRIC_SENDING_TIMEOUT, TimeUnit.MILLISECONDS);
 
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
@@ -196,6 +211,7 @@ final class ETWorkerTask<K, V> implements Task {
                                 final int epochIdx, final int miniBatchIdx,
                                 final int processedDataItemCount,
                                 final double epochElapsedTime,
+                                final double epochSummaryElapsedTime,
                                 final PerOpTimeInEpoch perOpTimeInEpoch) {
     // Build App-specific metrics (e.g., Loss, log-likelihood)
     final Metrics appMetrics = Metrics.newBuilder()
@@ -210,6 +226,7 @@ final class ETWorkerTask<K, V> implements Task {
         .setEpochPullTimeSec(perOpTimeInEpoch.getTotalPullTime())
         .setEpochPushTimeSec(perOpTimeInEpoch.getTotalPushTime())
         .setEpochTimeSec(epochElapsedTime)
+        .setEpochSummaryTimeSec(epochSummaryElapsedTime)
         .setNumBatchesForEpoch(miniBatchIdx)
         .setNumEpochDataInstances(processedDataItemCount)
         .build();
