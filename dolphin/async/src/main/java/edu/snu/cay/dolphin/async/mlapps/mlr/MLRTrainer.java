@@ -264,7 +264,6 @@ final class MLRTrainer implements Trainer<MLRData> {
   private void pullModels() {
     final List<Vector> partitions = modelAccessor.pull(classPartitionIndices);
 
-    final Vector[] newParams = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
@@ -274,10 +273,9 @@ final class MLRTrainer implements Trainer<MLRData> {
 
       // concat partitions into one long vector
       oldParams[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
-      newParams[classIndex] = oldParams[classIndex].copy();
     }
 
-    modelHolder.resetModel(new MLRModel(newParams));
+    modelHolder.resetModel(new MLRModel(oldParams));
   }
 
   /**
