@@ -15,71 +15,112 @@
  */
 package edu.snu.cay.pregel;
 
-import edu.snu.cay.pregel.graph.parameters.NumPartitions;
-import org.apache.reef.driver.evaluator.AllocatedEvaluator;
-import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Unit;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver code for Pregel applications.
+ * A executor sync manager that communicates with executors using CentComm services.
+ * It Provides a way to synchronize all tasks by checking all executors have sent the messages.
+ * When all messages from the tasks arrive, it sends response messages to all tasks.
  */
-@Unit
-public final class PregelMaster {
-
+@DriverSide
+final class PregelMaster implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(PregelMaster.class.getName());
 
-  /**
-   * Total number of partitions for each workers.
-   */
-  private static final int NUM_PARTITIONS = 4;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
+  private final AtomicInteger activeVerticesCounter = new AtomicInteger(0);
+  private CountDownLatch msgCountDown;
+  private Set<String> evaluatorIds;
 
-  private final EvaluatorRequestor evaluatorRequestor;
+  private boolean isAllVerticesHalt;
 
   @Inject
-  private PregelMaster(final EvaluatorRequestor evaluatorRequestor) {
-    this.evaluatorRequestor = evaluatorRequestor;
+  private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
+    this.msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
+    this.evaluatorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
+    initThread();
+    isAllVerticesHalt = false;
   }
 
-  public final class StartHandler implements EventHandler<StartTime> {
+  private void initThread() {
+    LOG.log(Level.INFO, "Start synchronization of executors...");
+    final Thread msgManagerThread = new Thread(new MasterMsgManagerThread());
+    msgManagerThread.start();
+  }
 
-    @Override
-    public void onNext(final StartTime startTime) {
-      evaluatorRequestor.newRequest()
-          .setNumber(1)
-          .setMemory(64)
-          .setNumberOfCores(1)
-          .submit();
+  /**
+   * CentComm message handling logic.
+   * @param message received CentComm message
+   * @throws RuntimeException if the received message is incorrect
+   */
+  @Override
+  public void onNext(final CentCommMsg message) {
 
-      LOG.log(Level.INFO, "Requested Evaluator");
+    final String sourceId = message.getSourceId().toString();
+
+    LOG.log(Level.INFO, "Received CentComm message {0} from {1}",
+        new Object[]{message, sourceId});
+
+    if (!evaluatorIds.contains(sourceId)) {
+      evaluatorIds.add(sourceId);
     }
+
+    final WorkerMsg workerMsg = AvroUtils.fromBytes(message.getData().array(), WorkerMsg.class);
+
+    synchronized (this) {
+      isAllVerticesHalt = isAllVerticesHalt || workerMsg.getIsAllVerticesHalt();
+    }
+    msgCountDown.countDown();
   }
 
-  public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  private class MasterMsgManagerThread implements Runnable {
+
     @Override
-    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      LOG.log(Level.INFO, "Submitting Pregel task to AllocatedEvaluator: {0}", allocatedEvaluator);
-      final Configuration taskConfiguration = TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, "PregelWorkerTask")
-          .set(TaskConfiguration.TASK, PregelWorkerTask.class)
-          .build();
+    public void run() {
+      while (true) {
+        try {
+          msgCountDown.await();
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Unexpected exception", e);
+        }
 
-      final Configuration partitionNumberConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(NumPartitions.class, String.valueOf(NUM_PARTITIONS))
-          .build();
-      allocatedEvaluator.submitTask(Configurations.merge(taskConfiguration, partitionNumberConf));
+        final MasterMsgType masterMsgType = isAllVerticesHalt ? MasterMsgType.Stop : MasterMsgType.Start;
+        final MasterMsg masterMsg = MasterMsg.newBuilder()
+            .setType(masterMsgType)
+            .build();
 
+        evaluatorIds.forEach(evaluatorId -> {
+          try {
+            masterSideCentCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, evaluatorId,
+                AvroUtils.toBytes(masterMsg, MasterMsg.class));
+          } catch (NetworkException e) {
+            throw new RuntimeException(e);
+          }
+        });
 
-      LOG.log(Level.INFO, "Submitted Pregel task");
+        if (masterMsgType.equals(MasterMsgType.Stop)) {
+          break;
+        }
+
+        activeVerticesCounter.set(0);
+        isAllVerticesHalt = false;
+        msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
+      }
+
     }
   }
 }

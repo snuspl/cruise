@@ -13,17 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.api;
+[
+/**
+ * Type of message which is sent to workers.
+ */
+{
+  "namespace": "edu.snu.cay.pregel",
+  "type": "record",
+  "name": "MasterMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "MasterMsgType",
+      "symbols": ["Start", "Stop"]}}
+  ]
+},
 
 /**
- * Interface for edge which has target vertex id.
+ * Type of message which is sent to  master.
  */
-public interface Edge {
-
-  /**
-   * Get the target vertex index of this edge.
-   *
-   * @return target vertex index of this edge
-   */
-  Long getTargetVertexId();
+{
+  "namespace": "edu.snu.cay.pregel",
+  "type": "record",
+  "name": "WorkerMsg",
+  "fields":
+  [
+    {"name": "isAllVerticesHalt", "type": "boolean"}
+  ]
 }
+]

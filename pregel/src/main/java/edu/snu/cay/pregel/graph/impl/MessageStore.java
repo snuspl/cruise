@@ -37,7 +37,7 @@ public final class MessageStore<MV> {
   /**
    * the map which key is partition id and value is vertex id to messages map.
    */
-  private final ConcurrentMap<Integer, ConcurrentMap<Integer, Set<MV>>> messageMap;
+  private final ConcurrentMap<Integer, ConcurrentMap<Long, Set<MV>>> messageMap;
   private final GraphPartitioner graphPartitioner;
 
   public MessageStore(final GraphPartitioner graphPartitioner) {
@@ -51,7 +51,7 @@ public final class MessageStore<MV> {
    * @param vertexId vertex id for which we want to get messages
    * @return Iterable of messages for a vertex id
    */
-  public Iterable<MV> getVertexMessages(final Integer vertexId) {
+  public Iterable<MV> getVertexMessages(final Long vertexId) {
     final int partitionIdx = graphPartitioner.getPartitionIdx(vertexId);
     if (!messageMap.containsKey(partitionIdx) || !messageMap.get(partitionIdx).containsKey(vertexId)) {
       return Collections.emptySet();
@@ -65,7 +65,7 @@ public final class MessageStore<MV> {
    * @param vertexId vertex id for a target vertex
    * @param value a message value to be send
    */
-  public void writeMessage(final Integer vertexId, final MV value) {
+  public void writeMessage(final Long vertexId, final MV value) {
     final int partitionIdx = graphPartitioner.getPartitionIdx(vertexId);
     messageMap.putIfAbsent(partitionIdx, Maps.newConcurrentMap());
     messageMap.get(partitionIdx).putIfAbsent(vertexId, new HashSet<>());
@@ -77,8 +77,8 @@ public final class MessageStore<MV> {
    *
    * @return map of vertex id to messages which were sent
    */
-  public Map<Integer, Set<MV>> getAllMessages() {
-    final Map<Integer, Set<MV>> map = Maps.newHashMap();
+  public Map<Long, Set<MV>> getAllMessages() {
+    final Map<Long, Set<MV>> map = Maps.newHashMap();
     messageMap.entrySet().forEach(entry -> map.putAll(entry.getValue()));
     return map;
   }

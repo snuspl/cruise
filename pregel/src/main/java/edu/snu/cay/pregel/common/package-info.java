@@ -13,17 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.api;
 
 /**
- * Interface for edge which has target vertex id.
+ * APIs and their implementations available to both driver-side and evaluator-side.
  */
-public interface Edge {
-
-  /**
-   * Get the target vertex index of this edge.
-   *
-   * @return target vertex index of this edge
-   */
-  Long getTargetVertexId();
-}
+package edu.snu.cay.pregel.common;

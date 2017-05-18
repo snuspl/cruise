@@ -48,7 +48,7 @@ public final class GraphPartitioner {
    * @param vertexId vertex id to look for
    * @return partition id from a vertex id
    */
-  public int getPartitionIdx(final Integer vertexId) {
-    return vertexId % numPartitions;
+  public int getPartitionIdx(final Long vertexId) {
+    return (int)(long)vertexId % numPartitions;
   }
 }

@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.pregel.graph.api;
 
+import java.util.List;
+import java.util.concurrent.Future;
+
 /**
  * Interface for an application for computation.
  *
@@ -24,10 +27,8 @@ package edu.snu.cay.pregel.graph.api;
  * Objects of this interface only live for a single superstep.
  *
  * @param <V> vertex value.
- * @param <MI> incoming message type
- * @param <MO> outgoing message type
  */
-public interface Computation<V, MI, MO> {
+public interface Computation<V, M> {
 
   /**
    * Must be defined by user to do computation on a single vertex.
@@ -35,7 +36,7 @@ public interface Computation<V, MI, MO> {
    * @param vertex vertex
    * @param messages messages that were sent to this vertex in the previous superstep.
    */
-  void compute(Vertex<V> vertex, Iterable<MI> messages);
+  void compute(Vertex<V> vertex, Iterable<M> messages);
 
   /**
    * Retrieves the current superstep.
@@ -50,7 +51,7 @@ public interface Computation<V, MI, MO> {
    * @param id vertex id to send the message to
    * @param message message data to send
    */
-  void sendMessage(Integer id, MO message);
+  Future<?> sendMessage(Long id, M message);
 
   /**
    * Send a messages to all adjacent vertices.
@@ -58,7 +59,11 @@ public interface Computation<V, MI, MO> {
    * @param vertex vertex
    * @param message message data to send
    */
-  void sendMessagesToAdjacents(Vertex<V> vertex, MO message);
+  List<Future<?>> sendMessagesToAdjacents(Vertex<V> vertex, M message);
 
+  /**
+   * Sync all non-blocking commands in this superstep.
+   */
+  void sync();
 }
 

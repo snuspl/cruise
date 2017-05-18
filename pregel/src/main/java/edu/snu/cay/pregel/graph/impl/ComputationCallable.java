@@ -16,59 +16,59 @@
 package edu.snu.cay.pregel.graph.impl;
 
 import edu.snu.cay.pregel.graph.api.Computation;
+import edu.snu.cay.pregel.graph.api.Vertex;
+import edu.snu.cay.services.et.evaluator.api.Table;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Compute around the vertices in the partitionStore. Every thread will has
+ * Compute around the verticesPartition in the partitionStore. Every thread will has
  * its instance. It is instantiated at the start time of every superstep.
  *
  * @param <V> vertex value
- * @param <MI> incoming message value
- * @param <MO> outgoing message value
  */
-public class ComputationCallable<V, MI, MO> implements Callable<Integer> {
+public class ComputationCallable<V, M> implements Callable<Integer> {
 
-  private final Computation<V, MI, MO> computation;
-  private final PartitionStore<V> partitionStore;
-  private final MessageStore<MI> currMessageStore;
+  private final Computation<V, M> computation;
+  private final Iterable<Vertex<V>> verticesPartition;
+  private final Table<Long, List<M>, M> currMessageTable;
 
-  public ComputationCallable(final Computation<V, MI, MO> computation,
-                             final PartitionStore<V> partitionStore,
-                             final MessageStore<MI> currMessageStore) {
+  public ComputationCallable(final Computation<V, M> computation,
+                             final Iterable<Vertex<V>> verticesPartition,
+                             final Table<Long, List<M>, M> currMessageTable) {
 
     this.computation = computation;
-    this.partitionStore = partitionStore;
-    this.currMessageStore = currMessageStore;
+    this.verticesPartition = verticesPartition;
+    this.currMessageTable = currMessageTable;
   }
 
   /**
-   * Compute around the vertices in one superstep.
+   * Compute around the verticesPartition in one superstep.
    *
-   * @return the number of active vertices in this partitionStore
+   * @return the number of active verticesPartition in this partitionStore
    */
   @Override
   public Integer call() throws Exception {
 
     final AtomicInteger numActiveVertices = new AtomicInteger(0);
 
-    while (true) {
-      final Partition<V> currPartition = partitionStore.getNextPartition();
-
-      // if current partition is null, it finishes the processing.
-      if (currPartition == null) {
-        break;
+    verticesPartition.forEach(vertex -> {
+      try {
+        computation.compute(vertex, currMessageTable.get(vertex.getId()).get());
+        currMessageTable.put(vertex.getId(), new ArrayList<>()).get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
       }
+      if (!vertex.isHalted()) {
+        numActiveVertices.getAndIncrement();
+      }
+    });
 
-      currPartition.forEach(vertex -> {
-        computation.compute(vertex, currMessageStore.getVertexMessages(vertex.getId()));
-        if (!vertex.isHalted()) {
-          numActiveVertices.getAndIncrement();
-        }
-      });
-    }
-
+    computation.sync();
     return numActiveVertices.get();
   }
 }

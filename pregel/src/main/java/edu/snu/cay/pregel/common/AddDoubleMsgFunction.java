@@ -13,24 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
+package edu.snu.cay.pregel.common;
 
-import edu.snu.cay.pregel.graph.api.Edge;
+import com.google.common.collect.Lists;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+
+import javax.inject.Inject;
+import java.util.List;
 
 /**
- * The implementation of non-value edge.
- * It only has target vertex id.
+ * A simple UpdateFunction that accumulates Doubles.
  */
-public class NoneValueEdge implements Edge {
+public final class AddDoubleMsgFunction implements UpdateFunction<Object, List<Double>, Double> {
 
-  private final Long vertexId;
+  @Inject
+  private AddDoubleMsgFunction() {
 
-  public NoneValueEdge(final Long vertexId) {
-    this.vertexId = vertexId;
   }
 
   @Override
-  public Long getTargetVertexId() {
-    return vertexId;
+  public List<Double> initValue(final Object key) {
+    return Lists.newArrayList();
+  }
+
+  @Override
+  public List<Double> updateValue(final Object key, final List<Double> list, final Double msgValue) {
+    list.add(msgValue);
+    return list;
   }
 }

@@ -16,14 +16,27 @@
 package edu.snu.cay.pregel;
 
 
+import edu.snu.cay.common.centcomm.CentCommConf;
+import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.ConfigurationBuilder;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,7 +50,7 @@ public final class PregelLauncher {
   private static final Logger LOG = Logger.getLogger(PregelLauncher.class.getName());
 
   private static final int JOB_TIMEOUT = 300000;
-  private static final int MAX_NUMBER_OF_EVALUATORS = 2;
+  private static final int MAX_NUMBER_OF_EVALUATORS = 5;
   private static final String DRIVER_IDENTIFIER = "Pregel";
 
   private PregelLauncher() {
@@ -45,23 +58,74 @@ public final class PregelLauncher {
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
-    final LauncherStatus status = launch();
+    final Configuration clConf = parseCommandLine(args);
+    final String tableInputPath = Tang.Factory.getTang().newInjector(clConf)
+        .getNamedInstance(TableInputPath.class);
+
+    final LauncherStatus status = launch(tableInputPath);
     LOG.log(Level.INFO, "Pregel job completed: {0}", status);
   }
 
-  public static LauncherStatus launch() throws InjectionException {
+  private static Configuration parseCommandLine(final String[] args) throws IOException {
+    final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(cb);
+    cl.registerShortNameOfClass(TableInputPath.class).processCommandLine(args);
+    return cb.build();
+  }
+
+
+  private static String processInputDir(final String inputDir) throws InjectionException {
+    final File inputFile = new File(inputDir);
+    return "file:///" + inputFile.getAbsolutePath();
+  }
+
+  public static LauncherStatus launch(final String tableInputPath) throws InjectionException {
+
     final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
         .build();
 
     final Configuration driverConfiguration = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelMaster.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_IDENTIFIER)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, PregelMaster.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, PregelMaster.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, PregelDriver.StartHandler.class)
         .build();
 
-    return DriverLauncher.getLauncher(runtimeConfiguration).run(driverConfiguration, JOB_TIMEOUT);
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
+    final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
+    final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
+    final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
+
+    final String processedTableInput = tableInputPath.equals(TableInputPath.EMPTY) ?
+        tableInputPath : processInputDir(tableInputPath);
+
+    final Configuration inputPathConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(TableInputPath.class, processedTableInput)
+        .build();
+
+    final Configuration centCommConfiguration = CentCommConf.newBuilder()
+        .addCentCommClient(PregelDriver.CENTCOMM_CLIENT_ID,
+            PregelMaster.class,
+            WorkerMsgManager.class)
+        .build()
+        .getDriverConfiguration();
+
+    return DriverLauncher.getLauncher(runtimeConfiguration)
+        .run(Configurations.merge(driverConfiguration, centCommConfiguration, inputPathConfiguration,
+            idFactoryConf, nameClientConfiguration, nameServerConfiguration, etMasterConfiguration), JOB_TIMEOUT);
+  }
+
+  @NamedParameter(doc = "Path of a input file to load on a table",
+      short_name = "table_input", default_value = TableInputPath.EMPTY)
+  public final class TableInputPath implements Name<String> {
+    public static final String EMPTY = "";
+
+    // should not be instantiated
+    private TableInputPath() {
+
+    }
   }
 
 }

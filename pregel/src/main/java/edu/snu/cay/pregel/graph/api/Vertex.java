@@ -33,7 +33,7 @@ public interface Vertex<V> {
    * @param id vertex id
    * @param value vertex value
    */
-  void initialize(Integer id, V value);
+  void initialize(Long id, V value);
 
   /**
    * Initialize id, outgoing edges.
@@ -43,7 +43,7 @@ public interface Vertex<V> {
    * @param id vertex id
    * @param edges outgoing edges
    */
-  void initialize(Integer id, Iterable<Edge> edges);
+  void initialize(Long id, Iterable<Edge> edges);
 
   /**
    * Initialize id, value and outgoing edges.
@@ -53,14 +53,14 @@ public interface Vertex<V> {
    * @param value vertex value
    * @param edges outgoing edges
    */
-  void initialize(Integer id, V value, Iterable<Edge> edges);
+  void initialize(Long id, V value, Iterable<Edge> edges);
 
   /**
    * Get the vertex id.
    *
    * @return vertex id
    */
-  int getId();
+  Long getId();
 
   /**
    * Get the vertex value.

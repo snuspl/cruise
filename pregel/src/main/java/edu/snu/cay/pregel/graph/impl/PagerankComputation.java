@@ -18,13 +18,18 @@ package edu.snu.cay.pregel.graph.impl;
 import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
+import edu.snu.cay.services.et.evaluator.api.Table;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public class PagerankComputation implements Computation<Double, Double, Double> {
+public class PagerankComputation implements Computation<Double, Double> {
 
   private static final Logger LOG = Logger.getLogger(PagerankComputation.class.getName());
   private static final double DAMPING_FACTOR = 0.85f;
@@ -32,13 +37,15 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
 
   private final Integer superstep;
 
-  private final MessageStore<Double> messageStore;
+  private final Table<Long, List<Double>, Double> messageTable;
+
+  private final List<Future<?>> msgFutureList = Lists.newArrayList();
 
   public PagerankComputation(final Integer superstep,
-                             final MessageStore<Double> messageStore) {
+                             final Table<Long, List<Double>, Double> messageTable) {
 
     this.superstep = superstep;
-    this.messageStore = messageStore;
+    this.messageTable = messageTable;
   }
 
   @Override
@@ -50,13 +57,11 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
       // update the value of vertex. Because the incoming messages in the first superstep are none.
       // Instead, the value of all vertices is initialized to 1.
       vertex.setValue(1d);
-      sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());
-      return;
+    } else {
+      final double sum = Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
+      vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
-
-    final double sum = Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
-    vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
-    sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());
+    msgFutureList.addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
 
     if (getSuperstep() >= NUM_TOTAL_SUPERSTEP) {
       vertex.voteToHalt();
@@ -69,12 +74,26 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
   }
 
   @Override
-  public void sendMessage(final Integer id, final Double message) {
-    messageStore.writeMessage(id, message);
+  public Future<?> sendMessage(final Long id, final Double message) {
+    return messageTable.update(id, message);
   }
 
   @Override
-  public void sendMessagesToAdjacents(final Vertex<Double> vertex, final Double message) {
-    vertex.getEdges().forEach(edge -> messageStore.writeMessage(edge.getTargetVertexId(), message));
+  public List<Future<?>> sendMessagesToAdjacents(final Vertex<Double> vertex, final Double message) {
+    final List<Future<?>> futureList = new ArrayList<>();
+    vertex.getEdges().forEach(edge -> futureList.add(messageTable.update(edge.getTargetVertexId(), message)));
+    return futureList;
+  }
+
+  @Override
+  public void sync() {
+    msgFutureList.forEach(future -> {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    });
+    msgFutureList.clear();
   }
 }

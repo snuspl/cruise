@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class Partition<V> implements Iterable<Vertex<V>> {
 
-  private final ConcurrentMap<Integer, Vertex<V>> vertexMap = Maps.newConcurrentMap();
+  private final ConcurrentMap<Long, Vertex<V>> vertexMap = Maps.newConcurrentMap();
 
   public Partition() {
 

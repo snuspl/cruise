@@ -163,7 +163,6 @@ public final class ETDolphinDriver {
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(false)
         .setIsOrderedTable(true)
-        .setFilePath(inputPath)
         .setDataParserClass(dataParser.getClass())
         .setUserParamConf(userParamConf)
         .build();

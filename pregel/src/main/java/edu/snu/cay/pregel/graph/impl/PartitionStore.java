@@ -43,13 +43,13 @@ public class PartitionStore<V> {
     // initialize the partition store
     input.forEach(line -> {
       final List<String> idStringList = Arrays.asList(line.split(" "));
-      final List<Integer> idList = idStringList.stream().map(Integer::parseInt).collect(Collectors.toList());
+      final List<Long> idList = idStringList.stream().map(Long::parseLong).collect(Collectors.toList());
       final Vertex<V> vertex = new DefaultVertex<>();
-      final Integer vertexId = idList.remove(0);
+      final Long vertexId = idList.remove(0);
       final List<Edge> edges = idList.stream().map(NoneValueEdge::new).collect(Collectors.toList());
       vertex.initialize(vertexId, edges);
 
-      final int partitionIdx = vertexId % graphPartitioner.getNumPartitions();
+      final int partitionIdx = (int)(long)vertexId % graphPartitioner.getNumPartitions();
       partitions.putIfAbsent(partitionIdx, new Partition<>());
       partitions.get(partitionIdx).putVertex(vertex);
     });

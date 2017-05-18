@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class DefaultVertex<V> implements Vertex<V> {
 
-  private Integer id;
+  private Long id;
 
   private V value;
 
@@ -37,7 +37,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   private boolean isHalt;
 
   @Override
-  public void initialize(final Integer vertexId, final V vertexValue) {
+  public void initialize(final Long vertexId, final V vertexValue) {
     this.id = vertexId;
     this.value = vertexValue;
     this.edges = Lists.newArrayList();
@@ -45,7 +45,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public void initialize(final Integer vertexId, final Iterable<Edge> adjacentEdges) {
+  public void initialize(final Long vertexId, final Iterable<Edge> adjacentEdges) {
     this.id = vertexId;
     this.edges = Lists.newArrayList();
     this.edges.addAll(Lists.newArrayList(adjacentEdges));
@@ -53,7 +53,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public void initialize(final Integer vertexId, final V vertexValue, final Iterable<Edge> adjacentEdges) {
+  public void initialize(final Long vertexId, final V vertexValue, final Iterable<Edge> adjacentEdges) {
     this.id = vertexId;
     this.value = vertexValue;
     this.edges = Lists.newArrayList();
@@ -62,7 +62,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public int getId() {
+  public Long getId() {
     return id;
   }
 

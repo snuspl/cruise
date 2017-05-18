@@ -15,59 +15,49 @@
  */
 package edu.snu.cay.pregel.graph.impl;
 
+import edu.snu.cay.pregel.PregelDriver;
+import edu.snu.cay.services.et.evaluator.api.Table;
+import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
+
 import javax.inject.Inject;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
  * Manage message stores which are used to computation in one superstep.
  * Determine the incoming message store depending on the state of a worker.
+ *
+ * @param <Long> identifier of the vertex
+ * @param <M> message type of the vertex
  */
-public final class MessageManager<V> {
+public final class MessageManager<Long, M> {
 
   private static final Logger LOG = Logger.getLogger(MessageManager.class.getName());
 
-  private final GraphPartitioner graphPartitioner;
+  private Table<Long, List<M>, M> messageTable1;
 
-  /**
-   * At current superstep, computation will use this to get messages sent.
-   */
-  private MessageStore<V> currMessageStore;
+  private Table<Long, List<M>, M> messageTable2;
 
-  /**
-   * Message store which contains the message sent.
-   */
-  private MessageStore<V> nextMessageStore;
+  private boolean tableFlag;
 
   @Inject
-  private MessageManager(final GraphPartitioner graphPartitioner) {
-    this.graphPartitioner = graphPartitioner;
-    currMessageStore = new MessageStore<>(graphPartitioner);
-    nextMessageStore = new MessageStore<>(graphPartitioner);
+  private MessageManager(final TableAccessor tableAccessor) throws TableNotExistException {
+    messageTable1 = tableAccessor.getTable(PregelDriver.MSG_TABLE_1_ID);
+    messageTable2 = tableAccessor.getTable(PregelDriver.MSG_TABLE_2_ID);
+    tableFlag = true;
   }
 
-  /**
-   * To prepare for next superstep, switch {@link #nextMessageStore} to {@link #currMessageStore}.
-   * Then initialize the {@link #nextMessageStore}.
-   */
   public void prepareForNextSuperstep() {
-    currMessageStore = nextMessageStore;
-    nextMessageStore = new MessageStore<>(graphPartitioner);
+    tableFlag = !tableFlag;
   }
 
-  public MessageStore<V> getCurrentMessageStore() {
-    return currMessageStore;
+  public Table<Long, List<M>, M> getCurrentMessageTable() {
+    return tableFlag ? messageTable1 : messageTable2;
   }
 
-  public MessageStore<V> getNextMessageStore() {
-    return nextMessageStore;
+  public Table<Long, List<M>, M> getNextMessageTable() {
+    return tableFlag ? messageTable2 : messageTable1;
   }
 }
-
-
-
-
-
-
-
-
 
