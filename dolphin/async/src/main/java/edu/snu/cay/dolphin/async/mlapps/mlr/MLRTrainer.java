@@ -177,7 +177,6 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final int miniBatchTrainingDataSize = miniBatchTrainingData.size();
     final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
     instances.addAll(miniBatchTrainingData);
 
@@ -203,7 +202,7 @@ final class MLRTrainer implements Trainer<MLRData> {
               break;
             }
             
-            drainedInstances.forEach(instance -> updateGradient(instance, threadGradient, miniBatchTrainingDataSize));
+            drainedInstances.forEach(instance -> updateGradient(instance, threadGradient));
             drainedInstances.clear();
             count += numDrained;
           }
@@ -285,10 +284,8 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Processes one training data instance and update the intermediate model.
    * @param instance training data instance
    * @param threadGradient update for each instance
-   * @param miniBatchTrainingDataSize number of mini-batch training data
    */
-  private void updateGradient(final MLRData instance, final Vector[] threadGradient,
-                              final int miniBatchTrainingDataSize) {
+  private void updateGradient(final MLRData instance, final Vector[] threadGradient) {
     final Vector feature = instance.getFeature();
     final int label = instance.getLabel();
 
@@ -303,12 +300,12 @@ final class MLRTrainer implements Trainer<MLRData> {
     // gradient_j = -stepSize * error_j * x
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
-        threadGradient[j].axpy(-predictions.get(j) * stepSize / miniBatchTrainingDataSize, feature);
-        threadGradient[j].axpy(-stepSize * lambda / miniBatchTrainingDataSize, oldParams[j]);
+        threadGradient[j].axpy(-predictions.get(j) * stepSize, feature);
+        threadGradient[j].axpy(-stepSize * lambda, oldParams[j]);
       }
     } else {
       for (int j = 0; j < numClasses; ++j) {
-        threadGradient[j].axpy(-predictions.get(j) * stepSize / miniBatchTrainingDataSize, feature);
+        threadGradient[j].axpy(-predictions.get(j) * stepSize, feature);
       }
     }
   }
