@@ -203,7 +203,7 @@
  * Parameter worker metrics are collected and sent in worker's mini-batch unit.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.cay.services.ps.metric.avro",
   "type": "record",
   "name": "ParameterWorkerMetrics",
   "fields":

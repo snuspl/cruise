@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConnector;
-import edu.snu.cay.dolphin.async.optimizer.ServerEvaluatorParameters;
-import edu.snu.cay.dolphin.async.optimizer.WorkerEvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.impl.ServerEvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.impl.WorkerEvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;

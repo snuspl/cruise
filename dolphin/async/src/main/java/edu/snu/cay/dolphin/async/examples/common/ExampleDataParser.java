@@ -15,11 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.examples.common;
 
-import edu.snu.cay.dolphin.async.DataParser;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
@@ -37,7 +38,7 @@ public final class ExampleDataParser implements DataParser<Integer> {
   }
 
   @Override
-  public List<Integer> parse() {
+  public List<Integer> parse(final Collection<String> rawData) {
     final List<Integer> list = new ArrayList<>(numTrainingDataInstance);
     for (int i = 0; i < numTrainingDataInstance; i++) {
       list.add(RAND.nextInt());

@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.optimizer.ETOptimizationOrchestrator;
+import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
