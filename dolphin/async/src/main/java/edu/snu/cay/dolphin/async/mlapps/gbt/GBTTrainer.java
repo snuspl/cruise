@@ -686,28 +686,28 @@ final class GBTTrainer implements Trainer<GBTData> {
     }
 
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
-    final int threadSize = instances.size() / numTrainerThreads;
+    final int perThreadNumInstances = instances.size() / numTrainerThreads;
 
     for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-      final int startIdx = threadIdx * threadSize;
-      final int endIdx = threadIdx == numTrainerThreads - 1 ? instances.size() : (threadIdx + 1) * threadSize;
+      final int startIdx = threadIdx * perThreadNumInstances;
+      final int endIdx = Math.min(startIdx + perThreadNumInstances, instances.size());
 
       executor.submit(() -> {
-        final List<GBTData> threadInstances = instances.subList(startIdx, endIdx);
-        final int threadInstanceSize = threadInstances.size();
+        final List<GBTData> perThreadInstances = instances.subList(startIdx, endIdx);
+        final int numInstancesToProcess = perThreadInstances.size();
 
         // If forest is empty, fill residual list with instance's real value.
         if (forest.isEmpty()) {
-          for (int instanceIdx = 0; instanceIdx < threadInstanceSize; instanceIdx++) {
-            residual.set(startIdx + instanceIdx, threadInstances.get(instanceIdx).getValue());
+          for (int instanceIdx = 0; instanceIdx < numInstancesToProcess; instanceIdx++) {
+            residual.set(startIdx + instanceIdx, perThreadInstances.get(instanceIdx).getValue());
           }
           latch.countDown();
           return;
         }
 
         // If forest is not empty, compute residual for each instances and fill the residual list.
-        for (int instanceIdx = 0; instanceIdx < threadInstanceSize; instanceIdx++) {
-          final GBTData instance = threadInstances.get(instanceIdx);
+        for (int instanceIdx = 0; instanceIdx < numInstancesToProcess; instanceIdx++) {
+          final GBTData instance = perThreadInstances.get(instanceIdx);
           final double predictedValue = predictByForest(instance, forest);
           if (valueType == FeatureType.CONTINUOUS) {
             residual.set(startIdx + instanceIdx, instance.getValue() - predictedValue);
@@ -725,7 +725,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     try {
       latch.await();
     } catch (final InterruptedException e) {
-      LOG.log(Level.SEVERE, "Exception occured.", e);
+      LOG.log(Level.SEVERE, "An Interrupt occurred.", e);
       throw new RuntimeException(e);
     }
 
