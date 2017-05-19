@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.dashboard;
 
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardHostAddress;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpPost;

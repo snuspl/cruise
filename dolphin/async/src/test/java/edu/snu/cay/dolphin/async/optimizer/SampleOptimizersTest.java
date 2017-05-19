@@ -15,14 +15,15 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.dolphin.async.optimizer.impl.EvaluatorParametersImpl;
+import edu.snu.cay.dolphin.async.optimizer.impl.SampleOptimizers;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.api.Optimizer;
-import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers.*;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.TransferStep;
+import edu.snu.cay.dolphin.async.optimizer.impl.SampleOptimizers.*;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

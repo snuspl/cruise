@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.api;
 
-import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
+import edu.snu.cay.services.ps.metric.avro.ParameterWorkerMetrics;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import java.util.List;
