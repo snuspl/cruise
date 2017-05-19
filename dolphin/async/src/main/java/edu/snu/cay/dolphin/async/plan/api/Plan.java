@@ -18,16 +18,7 @@ package edu.snu.cay.dolphin.async.plan.api;
 import java.util.Collection;
 
 /**
- * A plan to be executed by {@link PlanExecutor}.
- * It also embeds the dependency information between detailed steps, {@link PlanOperation )s.
- * {@link PlanExecutor} can execute the plan by following steps.
- *   1. At first, call {@link #getInitialOps()} to obtain operations to execute.
- *   2. When the operation is completed, call {@link #onComplete(PlanOperation)} to mark it as completed
- *    and obtain a set of operations enabled by the completion of the operation.
- *   2-1. Start executing the obtained operations.
- *   2-2. If step 2 returns an empty set, check whether the whole plan is completed,
- *    using {@link #getPlanSize()}.
- *   3. Wait the completion of operations. Goto step 2 again.
+ * A plan to change the system configuration.
  */
 public interface Plan {
 
