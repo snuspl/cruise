@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.plan;
+package edu.snu.cay.dolphin.async.plan.impl;
 
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
@@ -23,8 +23,6 @@ import java.util.Collections;
 
 /**
  * An empty plan.
- * It implies that no reconfiguration is executed when a {@link edu.snu.cay.services.em.plan.api.PlanExecutor}
- * is submitted an instance of this class.
  */
 public final class EmptyPlan implements Plan {
 

@@ -15,6 +15,5 @@
  */
 /**
  * Optimizer class implementations.
- * Includes a (trivial) Random Optimizer that can be used for end-to-end testing.
  */
 package edu.snu.cay.dolphin.async.optimizer.impl;

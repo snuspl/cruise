@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 
 import java.util.ArrayList;
 import java.util.List;

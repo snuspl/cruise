@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
-import edu.snu.cay.dolphin.async.plan.ETPlanExecutorClass;
+import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;

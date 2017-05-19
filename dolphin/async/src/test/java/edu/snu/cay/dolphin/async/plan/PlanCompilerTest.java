@@ -20,6 +20,8 @@ import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.impl.PlanCompiler;
+import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.impl.ETPlan;

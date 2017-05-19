@@ -15,6 +15,6 @@
  */
 /**
  * An optimizer that takes the current state of evaluators (as parameters) and available resources
- * (as the number of available evaluators), and generates a plan {@link edu.snu.cay.services.em.plan.api}.
+ * (as the number of available evaluators), and generates a plan {@link edu.snu.cay.dolphin.async.plan.api.Plan}.
  */
 package edu.snu.cay.dolphin.async.optimizer.api;

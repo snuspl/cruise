@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.dolphin.async.examples.addvector.AddVectorET;
-import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
+import edu.snu.cay.dolphin.async.optimizer.impl.SampleOptimizers;
 import edu.snu.cay.utils.test.IntegrationTest;
 import org.apache.reef.client.LauncherStatus;
 import org.junit.Test;

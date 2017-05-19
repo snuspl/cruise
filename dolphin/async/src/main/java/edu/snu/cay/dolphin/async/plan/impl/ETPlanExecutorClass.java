@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Implementations of Dolphin-specific plan for optimization.
- */
-package edu.snu.cay.dolphin.async.plan;
+package edu.snu.cay.dolphin.async.plan.impl;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Implementation of ET's PlanExecutor",
+                short_name = "et_plan_executor",
+                default_value = "edu.snu.cay.services.et.plan.impl.PlanExecutorImpl")
+public final class ETPlanExecutorClass implements Name<String> {
+}

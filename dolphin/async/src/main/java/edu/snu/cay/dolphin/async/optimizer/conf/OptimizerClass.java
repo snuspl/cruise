@@ -20,6 +20,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Fully qualified class of the optimizer",
                 short_name = "optimizer",
-                default_value = "edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer")
+                default_value = "edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer")
 public final class OptimizerClass implements Name<String> {
 }

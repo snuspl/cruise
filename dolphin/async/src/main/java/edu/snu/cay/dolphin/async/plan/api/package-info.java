@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * An API for EM plans. A plan is executed to modify the EM state.
+ * An interface for plans.
  */
 package edu.snu.cay.dolphin.async.plan.api;

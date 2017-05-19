@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters;
@@ -22,10 +22,9 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
-import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.dolphin.async.plan.EmptyPlan;
-import edu.snu.cay.dolphin.async.plan.PlanImpl;
+import edu.snu.cay.dolphin.async.plan.impl.EmptyPlan;
+import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
 import org.apache.reef.io.network.util.Pair;

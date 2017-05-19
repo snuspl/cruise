@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.dolphin.async.ETModelAccessor;
 import edu.snu.cay.dolphin.async.ETTrainingDataProvider;
@@ -24,7 +24,7 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
-import edu.snu.cay.dolphin.async.plan.PlanCompiler;
+import edu.snu.cay.dolphin.async.plan.impl.PlanCompiler;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;

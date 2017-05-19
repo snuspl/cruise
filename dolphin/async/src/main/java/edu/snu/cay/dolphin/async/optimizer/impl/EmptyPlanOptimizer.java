@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
-import edu.snu.cay.dolphin.async.plan.PlanImpl;
+import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 
 import javax.inject.Inject;

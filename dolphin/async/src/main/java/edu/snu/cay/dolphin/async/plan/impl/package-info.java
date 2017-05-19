@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Implementations of EM plans and plan executors.
+ * Implementations of plan.
  */
 package edu.snu.cay.dolphin.async.plan.impl;

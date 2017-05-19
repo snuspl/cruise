@@ -13,30 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.optimizer.impl;
 
-import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 
 /**
- * An implementation of EvaluatorParameters for servers.
- * A separate class for servers is needed in order to send {@link ServerMetrics}
+ * An implementation of EvaluatorParameters for workers.
+ * A separate class for workers is needed in order to send {@link WorkerMetrics}
  */
-public final class ServerEvaluatorParameters implements EvaluatorParameters<ServerMetrics> {
+public final class WorkerEvaluatorParameters implements EvaluatorParameters<WorkerMetrics> {
   private final String id;
   private final DataInfo dataInfo;
-  private final ServerMetrics metrics;
+  private final WorkerMetrics metrics;
 
   /**
-   * Constructs a server evaluator's current status.
+   * Constructs a worker evaluator's current status.
    * @param id the evaluator ID
    * @param dataInfo {@link DataInfo} representing the number of blocks allocated
-   * @param metrics {@link ServerMetrics} representing the server's execution metrics
+   * @param metrics {@link WorkerMetrics} representing the worker's execution metrics
    */
-  public ServerEvaluatorParameters(final String id,
+  public WorkerEvaluatorParameters(final String id,
                                    final DataInfo dataInfo,
-                                   final ServerMetrics metrics) {
+                                   final WorkerMetrics metrics) {
     this.id = id;
     this.dataInfo = dataInfo;
     this.metrics = metrics;
@@ -53,13 +53,13 @@ public final class ServerEvaluatorParameters implements EvaluatorParameters<Serv
   }
 
   @Override
-  public ServerMetrics getMetrics() {
+  public WorkerMetrics getMetrics() {
     return metrics;
   }
 
   @Override
   public String toString() {
-    return "ServerEvaluatorParameters{" +
+    return "WorkerEvaluatorParameters{" +
         "id='" + id + '\'' +
         ", dataInfo=" + dataInfo +
         ", metrics=" + metrics +
