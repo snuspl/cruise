@@ -15,7 +15,7 @@
 
 # EXAMPLE USAGE
 # Classification
-# ./run_gbt.sh -split 2 -max_num_epochs 50 -mini_batch_size 1000 -features 784 -max_num_eval_local 3 -input sample_gbt -local true -eval_size 1024 -timeout 200000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000 -init_step_size 0.1 -lambda 0 -gamma 0 -max_depth_of_tree 5 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt.meta -num_keys 5 -num_trainer_threads 2
+# ./run_gbt.sh -num_workers 2 -number_servers 1 -local true -input sample_gbt -max_num_eval_local 3 -test_data_path file://$(PWD)/sample_gbt_test -max_num_epochs 50 -mini_batch_size 1000 -init_step_size 0.1 -features 784  -lambda 0 -gamma 0 -max_depth_of_tree 5 -leaf_min_size 3 -num_keys 5 -timeout 200000 -num_trainer_threads 2 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -metadata_path file://$(PWD)/sample_gbt.meta -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
