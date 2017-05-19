@@ -54,7 +54,7 @@ final class GBTETDataParser implements DataParser<GBTData> {
         // comments and empty lines
         continue;
       }
-  
+      
       final String[] split = line.split("\\s+|:");
       final double yValue = Integer.parseInt(split[0]);
   
@@ -65,7 +65,7 @@ final class GBTETDataParser implements DataParser<GBTData> {
         data[index] = Double.parseDouble(split[2 * index + 2]);
       }
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-
+      
       retList.add(new GBTData(feature, yValue));
     }
 
