@@ -15,64 +15,28 @@
  */
 [
 /**
- * A message containing worker-side metrics and other Task-specific information.
- * Mini-batch metrics are used for optimization and all fields are required unless noted otherwise.
+ * A message containing metrics and other server-specific information.
+ * Since Server does not have epoch as workers, metrics are collected and
+ * sent in a fixed time unit, which is called window.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
-  "name": "WorkerMetrics",
+  "name": "ServerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    // "metrics" should contain app-specific metrics. (ex. loss, DvT)
-    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
-
-    // Parameter worker metrics containing pull/push request time split into multiple components (ex. encode time).
-    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
-     "default":null},
-
-    // number of data processed in unit time
-    {"name": "dataProcessingRate", "type": ["null", "double"], "default": null},
-
-    // epoch index
-    {"name": "epochIdx", "type": "int", "default": 0},
-
-    // mini-batch index, only used for mini-batch metrics
-    {"name": "miniBatchIdx", "type": ["null", "int"], "default": null},
-
-    // number of data blocks used for MemoryStore, only used for epoch metrics
-    {"name": "numDataBlocks", "type": ["null", "int"], "default": null},
-
-    // number of data items (mapped to a key in MemoryStore) processed
-    {"name": "processedDataItemCount", "type": "int", "default": 0},
-
-    // number of training data instances processed per mini-batch
-    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
-
-    // number of mini-batches for this epoch, only used for epoch metrics
-    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
-
-    // total elapsed time for this epoch (seconds)
-    {"name": "totalTime", "type": ["null", "double"], "default": null},
-
-    // total computation time for this epoch (seconds), only used for mini-batch metrics
-    // required for optimization cost model
-    {"name": "totalCompTime", "type": ["null", "double"], "default": null},
-
-    // total push time for this epoch (seconds), only used for mini-batch metrics
-    {"name": "totalPushTime", "type": ["null", "double"], "default": null},
-
-    // total pull time for this epoch (seconds), only used for mini-batch metrics
-    {"name": "totalPullTime", "type": ["null", "double"], "default": null},
-
-    // average push time per trace/element for this epoch (seconds), only used for mini-batch metrics
-    {"name": "avgPushTime", "type": ["null", "double"], "default": null},
-
-    // average pull time per trace/element for this epoch (seconds), only used for mini-batch metrics
-    {"name": "avgPullTime", "type": ["null", "double"], "default": null},
-
-    // hostname
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
+    {"name": "windowIndex", "type": "int", "default":0},
+    {"name": "numModelBlocks", "type": "int", "default":0},
+    {"name": "metricWindowMs", "type": "long", "default":0},
+    {"name": "totalPullProcessed", "type": "int", "default":0},
+    {"name": "totalPushProcessed", "type": "int", "default":0},
+    {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0},
     {"name": "hostname", "type": "string", "default": ""}
   ]
 },
@@ -135,28 +99,64 @@
 },
 
 /**
- * A message containing metrics and other server-specific information.
- * Since Server does not have epoch as workers, metrics are collected and
- * sent in a fixed time unit, which is called window.
+ * A message containing worker-side metrics and other Task-specific information.
+ * Mini-batch metrics are used for optimization and all fields are required unless noted otherwise.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
-  "name": "ServerMetrics",
+  "name": "WorkerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
-    {"name": "windowIndex", "type": "int", "default":0},
-    {"name": "numModelBlocks", "type": "int", "default":0},
-    {"name": "metricWindowMs", "type": "long", "default":0},
-    {"name": "totalPullProcessed", "type": "int", "default":0},
-    {"name": "totalPushProcessed", "type": "int", "default":0},
-    {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0},
+    // "metrics" should contain app-specific metrics. (ex. loss, DvT)
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
+
+    // Parameter worker metrics containing pull/push request time split into multiple components (ex. encode time).
+    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
+     "default":null},
+
+    // number of data processed in unit time
+    {"name": "dataProcessingRate", "type": ["null", "double"], "default": null},
+
+    // epoch index
+    {"name": "epochIdx", "type": "int", "default": 0},
+
+    // mini-batch index, only used for mini-batch metrics
+    {"name": "miniBatchIdx", "type": ["null", "int"], "default": null},
+
+    // number of data blocks used for MemoryStore, only used for epoch metrics
+    {"name": "numDataBlocks", "type": ["null", "int"], "default": null},
+
+    // number of data items (mapped to a key in MemoryStore) processed
+    {"name": "processedDataItemCount", "type": "int", "default": 0},
+
+    // number of training data instances processed per mini-batch
+    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
+
+    // number of mini-batches for this epoch, only used for epoch metrics
+    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
+
+    // total elapsed time for this epoch (seconds)
+    {"name": "totalTime", "type": ["null", "double"], "default": null},
+
+    // total computation time for this epoch (seconds), only used for mini-batch metrics
+    // required for optimization cost model
+    {"name": "totalCompTime", "type": ["null", "double"], "default": null},
+
+    // total push time for this epoch (seconds), only used for mini-batch metrics
+    {"name": "totalPushTime", "type": ["null", "double"], "default": null},
+
+    // total pull time for this epoch (seconds), only used for mini-batch metrics
+    {"name": "totalPullTime", "type": ["null", "double"], "default": null},
+
+    // average push time per trace/element for this epoch (seconds), only used for mini-batch metrics
+    {"name": "avgPushTime", "type": ["null", "double"], "default": null},
+
+    // average pull time per trace/element for this epoch (seconds), only used for mini-batch metrics
+    {"name": "avgPullTime", "type": ["null", "double"], "default": null},
+
+    // hostname
     {"name": "hostname", "type": "string", "default": ""}
   ]
 }
