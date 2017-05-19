@@ -31,11 +31,7 @@ import java.util.Collection;
  * Implementations should also have at least one constructor that is marked with the {@link javax.inject.Inject}
  * annotation, so that the framework can successfully instantiate the class via dependency injection.
  *
- * To interact with the parameter server, declare a {@link edu.snu.cay.services.ps.worker.api.ParameterWorker} as
- * a constructor parameter of an {@link javax.inject.Inject}-annotated constructor, and store it in a field for later
- * use at {@code run} or the other methods.
- *
- * Other parameters specified with {@link AsyncDolphinConfiguration.Builder#addParameterClass(Class)}
+ * Other parameters specified with {@link ETDolphinConfiguration.Builder#addParameterClass(Class)}
  * can also be received as constructor parameters, given that the parameter itself is tagged with
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
  *
@@ -46,8 +42,7 @@ public interface Trainer<D> {
 
   /**
    * Pre-run method that initializes the global settings (e.g., model parameters).
-   * This method is executed exactly once before {@code run}, if the job's state is
-   * in {@link SynchronizationManager.State#INIT}. Note that this method is skipped in other states.
+   * This method is executed exactly once before {@code run}.
    */
   void initGlobalSettings();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,63 +14,6 @@
  * limitations under the License.
  */
 [
-/**
- * A message containing parameter worker metrics.
- * Parameter worker metrics are collected and sent in worker's mini-batch unit.
- */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "ParameterWorkerMetrics",
-  "fields":
-  [
-    // number of threads used for push/pull requests
-    {"name": "numThreads", "type": "int", "default": 0},
-
-    // total push time for this mini-batch (seconds) : time between a push request's dequeue and network send
-    {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
-
-    // total pull time for this mini-batch (seconds) : time between a pull request's dequeue and client notify
-    {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
-
-    // total pull waiting time for this mini-batch (seconds) : time spent in queue for a pull request
-    {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
-
-    // total push waiting time for this mini-batch (seconds) : time spent in queue for a push request
-    {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
-
-    // total network time for this mini-batch (seconds) : time spent in the network for a pull request/reply transmission
-    {"name": "totalNetworkTimeSec", "type": "double", "default": 0.0},
-
-    // number of push requests processed
-    {"name": "totalPushCount", "type": "int", "default": 0},
-
-    // number of pull requests processed
-    {"name": "totalPullCount", "type": "int", "default": 0},
-
-    // number of pull requests waited/put in queue
-    {"name": "totalPullWaitStatCount", "type": "int", "default": 0},
-
-    // number of push requests waited/put in queue
-    {"name": "totalPushWaitStatCount", "type": "int", "default": 0},
-
-    // number of pull request/reply pairs processed
-    {"name": "totalNetworkStatCount", "type": "int", "default": 0},
-
-    // number of events of sending bytes by push
-    {"name": "totalSentBytesStatCount", "type": "int", "default": 0},
-
-    // number of data in bytes sent by push
-    {"name": "totalSentBytes", "type": "long", "default": 0},
-
-    // number of events of receiving bytes by pull
-    {"name": "totalReceivedBytesStatCount", "type": "int", "default": 0},
-
-    // number of data in bytes received by pull
-    {"name": "totalReceivedBytes", "type": "long", "default": 0}
-  ]
-},
-
 /**
  * A message containing worker-side metrics and other Task-specific information.
  * Mini-batch metrics are used for optimization and all fields are required unless noted otherwise.
@@ -130,6 +73,90 @@
     {"name": "avgPullTime", "type": ["null", "double"], "default": null},
 
     // hostname
+    {"name": "hostname", "type": "string", "default": ""}
+  ]
+},
+
+/**
+ * A message containing parameter worker metrics.
+ * Parameter worker metrics are collected and sent in worker's mini-batch unit.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "type": "record",
+  "name": "ParameterWorkerMetrics",
+  "fields":
+  [
+    // number of threads used for push/pull requests
+    {"name": "numThreads", "type": "int", "default": 0},
+
+    // total push time for this mini-batch (seconds) : time between a push request's dequeue and network send
+    {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
+
+    // total pull time for this mini-batch (seconds) : time between a pull request's dequeue and client notify
+    {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
+
+    // total pull waiting time for this mini-batch (seconds) : time spent in queue for a pull request
+    {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
+
+    // total push waiting time for this mini-batch (seconds) : time spent in queue for a push request
+    {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
+
+    // total network time for this mini-batch (seconds) : time spent in the network for a pull request/reply transmission
+    {"name": "totalNetworkTimeSec", "type": "double", "default": 0.0},
+
+    // number of push requests processed
+    {"name": "totalPushCount", "type": "int", "default": 0},
+
+    // number of pull requests processed
+    {"name": "totalPullCount", "type": "int", "default": 0},
+
+    // number of pull requests waited/put in queue
+    {"name": "totalPullWaitStatCount", "type": "int", "default": 0},
+
+    // number of push requests waited/put in queue
+    {"name": "totalPushWaitStatCount", "type": "int", "default": 0},
+
+    // number of pull request/reply pairs processed
+    {"name": "totalNetworkStatCount", "type": "int", "default": 0},
+
+    // number of events of sending bytes by push
+    {"name": "totalSentBytesStatCount", "type": "int", "default": 0},
+
+    // number of data in bytes sent by push
+    {"name": "totalSentBytes", "type": "long", "default": 0},
+
+    // number of events of receiving bytes by pull
+    {"name": "totalReceivedBytesStatCount", "type": "int", "default": 0},
+
+    // number of data in bytes received by pull
+    {"name": "totalReceivedBytes", "type": "long", "default": 0}
+  ]
+},
+
+/**
+ * A message containing metrics and other server-specific information.
+ * Since Server does not have epoch as workers, metrics are collected and
+ * sent in a fixed time unit, which is called window.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "type": "record",
+  "name": "ServerMetrics",
+  "fields":
+  [
+    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
+    {"name": "windowIndex", "type": "int", "default":0},
+    {"name": "numModelBlocks", "type": "int", "default":0},
+    {"name": "metricWindowMs", "type": "long", "default":0},
+    {"name": "totalPullProcessed", "type": "int", "default":0},
+    {"name": "totalPushProcessed", "type": "int", "default":0},
+    {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0},
     {"name": "hostname", "type": "string", "default": ""}
   ]
 }
