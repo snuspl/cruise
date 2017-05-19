@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.ETDolphinDriver;
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.TransferStep;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
@@ -65,6 +65,12 @@ public final class PlanCompiler {
     namespaceToEvalsToDel.put(NAMESPACE_SERVER, dolphinPlan.getEvaluatorsToDelete(NAMESPACE_SERVER));
 
     final Map<String, Collection<String>> namespaceToEvalsToSwitch = Collections.emptyMap();
+
+    final Collection<String> serversToDel = dolphinPlan.getEvaluatorsToDelete(NAMESPACE_SERVER);
+    final Collection<String> workersToAdd = dolphinPlan.getEvaluatorsToAdd(NAMESPACE_WORKER);
+
+    final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
+
 
     final Map<String, Collection<TransferStep>> namespaceToTransferSteps = new HashMap<>();
     namespaceToTransferSteps.put(NAMESPACE_WORKER, dolphinPlan.getTransferSteps(NAMESPACE_WORKER));

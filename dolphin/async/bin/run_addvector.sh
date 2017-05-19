@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_addvector.sh -split 3 -num_workers 3 -num_servers 2 -num_partitions 4 -max_num_epochs 10 -mini_batch_size 10 -delta 4 -num_keys 100 -num_training_data 50 -num_test_data 5 -compute_time_ms 30 -vector_size 5 -max_num_eval_local 5 -input run_addvector.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# ./run_addvector.sh -num_workers 3 -number_workers 3 -number_servers 2 -max_num_epochs 10 -mini_batch_size 10 -delta 4 -num_keys 100 -num_training_data 50 -num_test_data 5 -compute_time_ms 30 -vector_size 5 -max_num_eval_local 5 -input run_addvector.sh -optimizer edu.snu.cay.dolphin.async.optimizer.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.examples.addvector.AddVectorREEF
+ALG=edu.snu.cay.dolphin.async.examples.addvector.AddVectorET
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

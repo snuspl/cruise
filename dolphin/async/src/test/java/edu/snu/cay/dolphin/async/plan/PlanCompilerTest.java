@@ -16,11 +16,11 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.ETDolphinDriver;
+import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
 import org.apache.reef.tang.Injector;

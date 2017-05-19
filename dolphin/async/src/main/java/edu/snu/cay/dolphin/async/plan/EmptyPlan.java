@@ -15,13 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.plan;
 
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.PlanOperation;
-import edu.snu.cay.services.em.plan.api.TransferStep;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
 
 /**
  * An empty plan.
@@ -34,21 +32,6 @@ public final class EmptyPlan implements Plan {
    * Constructs an empty plan involving no operation.
    */
   public EmptyPlan() {
-  }
-
-  @Override
-  public int getPlanSize() {
-    return 0;
-  }
-
-  @Override
-  public synchronized Set<PlanOperation> getInitialOps() {
-    return Collections.emptySet();
-  }
-
-  @Override
-  public synchronized Set<PlanOperation> onComplete(final PlanOperation operation) {
-    return Collections.emptySet();
   }
 
   @Override

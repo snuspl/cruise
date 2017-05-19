@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 
 import java.util.ArrayList;

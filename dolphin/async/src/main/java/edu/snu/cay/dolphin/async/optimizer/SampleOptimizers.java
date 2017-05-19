@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.PlanImpl;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.api.Optimizer;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.TransferStep;
-import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.api.TransferStep;
+import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.*;

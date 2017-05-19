@@ -17,11 +17,11 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.plan.api.Plan;
+import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.tang.Injector;

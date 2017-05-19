@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
+import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 
 /**
  * An implementation of EvaluatorParameters for workers.
