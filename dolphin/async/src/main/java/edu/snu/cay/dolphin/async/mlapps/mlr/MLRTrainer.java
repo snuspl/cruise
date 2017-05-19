@@ -45,7 +45,12 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Number of possible classes for a data instance.
    */
   private final int numClasses;
-
+  
+  /**
+   * Number of features for a data instance.
+   */
+  private final int numFeatures;
+  
   /**
    * Number of features of each model partition.
    */
@@ -72,9 +77,9 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final VectorFactory vectorFactory;
 
   /**
-   * Preserves the model parameters that are pulled from server, in order to compute the gradients to push.
+   * Preserves the model parameters that are pulled from server, in order to compute gradients.
    */
-  private final Vector[] oldParams;
+  private final MLRModel model;
 
   /**
    * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
@@ -101,11 +106,6 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private final int numTrainerThreads;
 
-  /**
-   * Allows to access and update the latest model.
-   */
-  private final ModelHolder<MLRModel> modelHolder;
-
   @Inject
   private MLRTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      @Parameter(NumClasses.class) final int numClasses,
@@ -117,10 +117,10 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                     final ModelHolder<MLRModel> modelHolder,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;
+    this.numFeatures = numFeatures;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     if (numFeatures % numFeaturesPerPartition != 0) {
       throw new RuntimeException("Uneven model partitions");
@@ -129,7 +129,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.stepSize = initStepSize;
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
-    this.oldParams = new Vector[numClasses];
+    this.model = new MLRModel(new Vector[numClasses]);
 
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
@@ -139,7 +139,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    this.modelHolder = modelHolder;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -175,33 +174,35 @@ final class MLRTrainer implements Trainer<MLRData> {
     instances.addAll(miniBatchTrainingData);
 
     // collects the results (new models here) computed by multiple threads
-    final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
+    final List<Future<Vector[]>> futures = new ArrayList<>(numTrainerThreads);
     try {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
       // This way we can mitigate the slowdown from straggler threads.
       final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
 
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-        final Future<MLRModel> future = executor.submit(() -> {
+        final Future<Vector[]> future = executor.submit(() -> {
           final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
-          final MLRModel model = modelHolder.getModel()
-              .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
+          final Vector[] threadGradient = new Vector[numClasses];
+          for (int classIdx = 0; classIdx < numClasses; classIdx++) {
+            threadGradient[classIdx] = vectorFactory.createDenseZeros(numFeatures);
+          }
+          
           int count = 0;
           while (true) {
             final int numDrained = instances.drainTo(drainedInstances, drainSize);
             if (numDrained == 0) {
               break;
             }
-
-            drainedInstances.forEach(instance -> updateModel(instance, model));
+            
+            drainedInstances.forEach(instance -> updateGradient(instance, threadGradient));
             drainedInstances.clear();
             count += numDrained;
           }
           latch.countDown();
           LOG.log(Level.INFO, "{0} has computed {1} instances",
               new Object[] {Thread.currentThread().getName(), count});
-          return model;
+          return threadGradient;
         });
         futures.add(future);
       }
@@ -211,8 +212,8 @@ final class MLRTrainer implements Trainer<MLRData> {
       throw new RuntimeException(e);
     }
 
-    final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
-    final Vector[] gradients = aggregateGradient(newModels);
+    final List<Vector[]> threadGradients = ThreadUtils.retrieveResults(futures);
+    final Vector[] gradients = aggregateGradient(threadGradients);
 
     // push gradients
     pushAndResetGradients(gradients);
@@ -225,12 +226,10 @@ final class MLRTrainer implements Trainer<MLRData> {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
-    final MLRModel model = modelHolder.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, model);
-    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, model);
+    final Vector[] params = model.getParams();
+    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, params);
+    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, params);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -255,8 +254,8 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private void pullModels() {
     final List<Vector> partitions = modelAccessor.pull(classPartitionIndices);
+    final Vector[] params = model.getParams();
 
-    final Vector[] newParams = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
@@ -265,19 +264,16 @@ final class MLRTrainer implements Trainer<MLRData> {
           partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
 
       // concat partitions into one long vector
-      oldParams[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
-      newParams[classIndex] = oldParams[classIndex].copy();
+      params[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
     }
-
-    modelHolder.resetModel(new MLRModel(newParams));
   }
 
   /**
    * Processes one training data instance and update the intermediate model.
    * @param instance training data instance
-   * @param model up-to-date model
+   * @param threadGradient update for each instance
    */
-  private void updateModel(final MLRData instance, final MLRModel model) {
+  private void updateGradient(final MLRData instance, final Vector[] threadGradient) {
     final Vector feature = instance.getFeature();
     final Vector[] params = model.getParams();
     final int label = instance.getLabel();
@@ -293,36 +289,28 @@ final class MLRTrainer implements Trainer<MLRData> {
     // gradient_j = -stepSize * error_j * x
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
-        params[j].axpy(-predictions.get(j) * stepSize, feature);
-        params[j].axpy(-stepSize * lambda, params[j]);
+        threadGradient[j].axpy(-predictions.get(j) * stepSize, feature);
+        threadGradient[j].axpy(-stepSize * lambda, params[j]);
       }
     } else {
       for (int j = 0; j < numClasses; ++j) {
-        params[j].axpy(-predictions.get(j) * stepSize, feature);
+        threadGradient[j].axpy(-predictions.get(j) * stepSize, feature);
       }
     }
   }
 
   /**
-   * Aggregate the model computed by multiple threads, to get the gradients to push.
-   * gradient[j] = sum(param_t[j] - param_0[j]) = sum(param_t[j]) - t * param_0[j],
-   * where j is the class index, t is the thread index and param_0 is the parameters pulled at the beginning.
-   * @param results list of results (model parameters) computed by trainer threads
+   * Add all the gradients computed by different threads.
+   * @param threadGradients list of gradients computed by trainer threads
    * @return an array of vectors each of which is gradient in a class.
    */
-  private Vector[] aggregateGradient(final List<MLRModel> results) {
+  private Vector[] aggregateGradient(final List<Vector[]> threadGradients) {
     final Vector[] gradients = new Vector[numClasses];
-
-    // Multiply the number of threads (t) to weight the old model parameters when getting difference.
+    
     for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-      gradients[classIdx] = oldParams[classIdx].scale(-numTrainerThreads);
-    }
-
-    // Compute the sum of the model parameters computed by training threads
-    for (final MLRModel model : results) {
-      final Vector[] params = model.getParams();
-      for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-        gradients[classIdx].addi(params[classIdx]);
+      gradients[classIdx] = vectorFactory.createDenseZeros(numFeatures);
+      for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+        gradients[classIdx].addi(threadGradients.get(threadIdx)[classIdx]);
       }
     }
     return gradients;
@@ -349,8 +337,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final MLRModel model) {
-    final Vector[] params = model.getParams();
+  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final Vector[] params) {
 
     double loss = 0;
     int correctPredictions = 0;
