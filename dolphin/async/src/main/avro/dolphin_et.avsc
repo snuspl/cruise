@@ -88,6 +88,9 @@
     // total elapsed time for this epoch
     {"name": "epochTimeSec", "type": "double"},
 
+    // elapsed time for summarizing epoch (seconds)
+    {"name": "epochSummaryTimeSec", "type": ["null", "double"], "default": null},
+
     // total computation time for this epoch
     // required for optimization cost model
     {"name": "epochCompTimeSec", "type": "double"},

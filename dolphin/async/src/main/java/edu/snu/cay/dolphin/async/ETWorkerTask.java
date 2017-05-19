@@ -138,11 +138,11 @@ final class ETWorkerTask<K, V> implements Task {
       executor.submit(() -> {
         final long epochSummaryStartTime = System.currentTimeMillis();
         final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, thisEpochIdx);
-        final double epochSummaryElapsedTime = (System.currentTimeMillis() - epochSummaryStartTime) / 1000.0D;
+        final double epochSummaryTime = (System.currentTimeMillis() - epochSummaryStartTime) / 1000.0D;
         final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
         sendEpochMetrics(epochResult, thisEpochIdx, numMiniBatchForEpoch,
-            epochData.size(), epochElapsedTime, epochSummaryElapsedTime, perOpTimeInEpoch);
+            epochData.size(), epochElapsedTime, epochSummaryTime, perOpTimeInEpoch);
       });
     }
     executor.shutdown();
@@ -211,7 +211,7 @@ final class ETWorkerTask<K, V> implements Task {
                                 final int epochIdx, final int miniBatchIdx,
                                 final int processedDataItemCount,
                                 final double epochElapsedTime,
-                                final double epochSummaryElapsedTime,
+                                final double epochSummaryTime,
                                 final PerOpTimeInEpoch perOpTimeInEpoch) {
     // Build App-specific metrics (e.g., Loss, log-likelihood)
     final Metrics appMetrics = Metrics.newBuilder()
@@ -226,7 +226,7 @@ final class ETWorkerTask<K, V> implements Task {
         .setEpochPullTimeSec(perOpTimeInEpoch.getTotalPullTime())
         .setEpochPushTimeSec(perOpTimeInEpoch.getTotalPushTime())
         .setEpochTimeSec(epochElapsedTime)
-        .setEpochSummaryTimeSec(epochSummaryElapsedTime)
+        .setEpochSummaryTimeSec(epochSummaryTime)
         .setNumBatchesForEpoch(miniBatchIdx)
         .setNumEpochDataInstances(processedDataItemCount)
         .build();

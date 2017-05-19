@@ -170,11 +170,13 @@ final class AsyncWorkerTask<K, V> implements Task {
       final int numMiniBatchForEpoch = miniBatchIdx;
       final int thisEpochIdx = epochIdx;
       executor.submit(() -> {
+        final long epochSummaryStartTime = System.currentTimeMillis();
         final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, thisEpochIdx);
+        final double epochSummaryTime = (System.currentTimeMillis() - epochSummaryStartTime) / 1000.0D;
         final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
         buildAndSendEpochMetrics(epochResult, thisEpochIdx, numMiniBatchForEpoch,
-            epochTrainingData.size(), numEMBlocks, epochElapsedTime);
+            epochTrainingData.size(), numEMBlocks, epochElapsedTime, epochSummaryTime);
       });
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();
@@ -235,7 +237,8 @@ final class AsyncWorkerTask<K, V> implements Task {
                                         final int epochIdx, final int numMiniBatchForEpoch,
                                         final int processedDataItemCount,
                                         final int numDataBlocks,
-                                        final double epochElapsedTime) {
+                                        final double epochElapsedTime,
+                                        final double epochSummaryTime) {
     final WorkerMetrics epochMetric = WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder().setData(epochResult.getAppMetrics()).build())
         .setEpochIdx(epochIdx)
@@ -244,6 +247,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setProcessedDataItemCount(processedDataItemCount)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(epochElapsedTime)
+        .setEpochSummaryTime(epochSummaryTime)
         .setHostname(hostname)
         .build();
 
