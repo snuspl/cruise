@@ -13,27 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.serialization;
+package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.services.em.serialize.Serializer;
-import org.apache.reef.io.serialization.Codec;
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Provides the DenseVectorCodec that (de-)serializes
- * DenseVector backed by breeze.
+ * Codec for server-side Metrics Message.
+ * Simply uses AvroUtils to encode and decode messages.
  */
-public final class DenseVectorSerializer implements Serializer {
-  private final DenseVectorCodec denseVectorCodec;
+public final class ServerMetricsMsgCodec implements Codec<ServerMetrics> {
 
   @Inject
-  private DenseVectorSerializer(final DenseVectorCodec denseVectorCodec) {
-    this.denseVectorCodec = denseVectorCodec;
+  private ServerMetricsMsgCodec() {
   }
 
   @Override
-  public Codec getCodec() {
-    return denseVectorCodec;
+  public byte[] encode(final ServerMetrics msg) {
+    return AvroUtils.toBytes(msg, ServerMetrics.class);
+  }
+
+  @Override
+  public ServerMetrics decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, ServerMetrics.class);
   }
 }

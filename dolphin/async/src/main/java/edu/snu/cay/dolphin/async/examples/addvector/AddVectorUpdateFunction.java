@@ -18,13 +18,12 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
-import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
 /**
- * {@link ParameterUpdater} for the AddIntegerREEF application.
+ * {@link UpdateFunction} for the AddIntegerREEF application.
  * Simply adds all incoming integer values to all elements of the vector
  * (see {@link AddVectorUpdateFunction#update(Vector, Vector)}).
  * The initial element in vector of every distinct key is set to be 0

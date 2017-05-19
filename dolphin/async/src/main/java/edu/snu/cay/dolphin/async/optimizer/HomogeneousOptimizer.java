@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
@@ -27,7 +28,6 @@ import edu.snu.cay.dolphin.async.plan.EmptyPlan;
 import edu.snu.cay.dolphin.async.plan.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
  * / Network bandwidth * Estimated number of mini-batches per worker
  */
 public final class HomogeneousOptimizer implements Optimizer {
-  private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
+  private static final Logger LOG = Logger.getLogger(HomogeneousOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 

@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 
 /**
  * An implementation of EvaluatorParameters for servers.
