@@ -75,7 +75,7 @@ public final class PregelWorkerTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
 
-    LOG.log(Level.INFO, "Pregel task start");
+    LOG.log(Level.INFO, "Pregel task starts.");
 
     final int numThreads = NUM_THREADS;
 
@@ -92,8 +92,8 @@ public final class PregelWorkerTask implements Task {
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       final Map<Long, Vertex<Double>> localVertexMap = vertexTable.getLocalTablet().getDataMap();
-      final List<Vertex<Double>> localVertcesList = Lists.newArrayList(localVertexMap.values());
-      final List<List<Vertex<Double>>> vertexMapPartitions = Lists.partition(localVertcesList,
+      final List<Vertex<Double>> localVertexList = Lists.newArrayList(localVertexMap.values());
+      final List<List<Vertex<Double>>> vertexMapPartitions = Lists.partition(localVertexList,
           localVertexMap.size() / numThreads);
 
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {

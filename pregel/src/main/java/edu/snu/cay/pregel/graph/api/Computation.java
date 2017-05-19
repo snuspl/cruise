@@ -63,7 +63,7 @@ public interface Computation<V, M> {
   List<Future<?>> sendMessagesToAdjacents(Vertex<V> vertex, M message);
 
   /**
-   * Sync all non-blocking commands in this superstep.
+   * Sync all non-blocking commands in a single superstep.
    */
   void sync() throws ExecutionException, InterruptedException;
 }

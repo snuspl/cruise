@@ -27,33 +27,32 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A executor sync manager that communicates with executors using CentComm services.
- * It Provides a way to synchronize all tasks by checking all executors have sent the messages.
- * When all messages from the tasks arrive, it sends response messages to all tasks.
+ * A Pregel master that communicates with workers using CentComm services.
+ * It synchronize all workers in a single superstep by checking messages that all workers have sent.
  */
 @DriverSide
 final class PregelMaster implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(PregelMaster.class.getName());
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
-  private final AtomicInteger activeVerticesCounter = new AtomicInteger(0);
-  private CountDownLatch msgCountDown;
-  private Set<String> evaluatorIds;
+
+  private final Set<String> evaluatorIds;
 
   private boolean isAllVerticesHalt;
+
+  private CountDownLatch msgCountDown;
 
   @Inject
   private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.evaluatorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
-    initThread();
     isAllVerticesHalt = false;
+    initThread();
   }
 
   private void initThread() {
@@ -116,7 +115,6 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
           break;
         }
 
-        activeVerticesCounter.set(0);
         isAllVerticesHalt = false;
         msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }

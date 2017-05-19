@@ -21,6 +21,7 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -32,20 +33,36 @@ import java.util.logging.Logger;
 public class PagerankComputation implements Computation<Double, Double> {
 
   private static final Logger LOG = Logger.getLogger(PagerankComputation.class.getName());
+
+  /**
+   * Damping factor of the pagerank algorithm.
+   */
   private static final double DAMPING_FACTOR = 0.85f;
+
+  /**
+   * If current superstep is same this value, all vertices vote to halt.
+   */
   private static final int NUM_TOTAL_SUPERSTEP = 10;
 
   private final Integer superstep;
 
-  private final Table<Long, List<Double>, Double> messageTable;
+  /**
+   * All messages are passed to this table during computation in a single superstep.
+   */
+  private final Table<Long, List<Double>, Double> nextMessageTable;
 
-  private final List<Future<?>> msgFutureList = Lists.newArrayList();
+  /**
+   * All table commands are added the list for sync the non-blocking methods.
+   * At the finish of a single superstep, worker task calls {@link #sync()} and gets all futures in it.
+   * Then clear it.
+   */
+  private final List<Future<?>> msgFutureList = Collections.synchronizedList(Lists.newArrayList());
 
   public PagerankComputation(final Integer superstep,
-                             final Table<Long, List<Double>, Double> messageTable) {
+                             final Table<Long, List<Double>, Double> nextMessageTable) {
 
     this.superstep = superstep;
-    this.messageTable = messageTable;
+    this.nextMessageTable = nextMessageTable;
   }
 
   @Override
@@ -58,13 +75,16 @@ public class PagerankComputation implements Computation<Double, Double> {
       // Instead, the value of all vertices is initialized to 1.
       vertex.setValue(1d);
     } else {
+
+      // If incoming messages are not null, reduce it before update the value of this vertex.
       final double sum = messages == null ? 0d :
           Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
       vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
+
     msgFutureList.addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
 
-    if (getSuperstep() >= NUM_TOTAL_SUPERSTEP) {
+    if (getSuperstep() == NUM_TOTAL_SUPERSTEP) {
       vertex.voteToHalt();
     }
   }
@@ -76,13 +96,13 @@ public class PagerankComputation implements Computation<Double, Double> {
 
   @Override
   public Future<?> sendMessage(final Long id, final Double message) {
-    return messageTable.update(id, message);
+    return nextMessageTable.update(id, message);
   }
 
   @Override
   public List<Future<?>> sendMessagesToAdjacents(final Vertex<Double> vertex, final Double message) {
     final List<Future<?>> futureList = new ArrayList<>();
-    vertex.getEdges().forEach(edge -> futureList.add(messageTable.update(edge.getTargetVertexId(), message)));
+    vertex.getEdges().forEach(edge -> futureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
     return futureList;
   }
 

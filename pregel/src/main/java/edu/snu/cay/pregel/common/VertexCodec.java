@@ -28,7 +28,12 @@ import java.io.*;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class VertexCodec implements Codec<Vertex> {
+/**
+ * Codec for vertex.
+ * Note that it assumes that vertex can be encoded
+ * until the value of vertex is initialized.
+ */
+public final class VertexCodec<V> implements Codec<Vertex<V>> {
 
   private static final Logger LOG = Logger.getLogger(VertexCodec.class.getName());
 
@@ -37,7 +42,7 @@ public final class VertexCodec implements Codec<Vertex> {
   }
 
   @Override
-  public byte[] encode(final Vertex vertex) {
+  public byte[] encode(final Vertex<V> vertex) {
     final Iterable<Edge> edges = vertex.getEdges();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(edges));
     final DataOutputStream daos = new DataOutputStream(baos);
@@ -55,10 +60,10 @@ public final class VertexCodec implements Codec<Vertex> {
   }
 
   @Override
-  public Vertex decode(final byte[] bytes) {
+  public Vertex<V> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     final DataInputStream dais = new DataInputStream(bais);
-    final Vertex<?> decodedVertex = new DefaultVertex<>();
+    final Vertex<V> decodedVertex = new DefaultVertex<>();
 
     try {
       final Long vertexId = dais.readLong();
@@ -74,7 +79,7 @@ public final class VertexCodec implements Codec<Vertex> {
     return decodedVertex;
   }
 
-  public int getNumBytes(final Iterable<Edge> edges) {
+  private int getNumBytes(final Iterable<Edge> edges) {
     final int size = Iterables.size(edges);
     return Long.BYTES + Integer.BYTES + Long.BYTES * size;
   }

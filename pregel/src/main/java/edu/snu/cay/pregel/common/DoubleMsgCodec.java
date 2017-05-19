@@ -24,13 +24,12 @@ import java.io.*;
 import java.util.List;
 
 /**
- * Created by cmslab on 5/18/17.
+ * Codec for message list which element type is double.
  */
 public final class DoubleMsgCodec implements Codec<Iterable<Double>> {
 
   @Inject
   private DoubleMsgCodec() {
-
   }
 
   @Override
@@ -41,8 +40,8 @@ public final class DoubleMsgCodec implements Codec<Iterable<Double>> {
     final int msgsSize = msgList.size();
     try {
       daos.writeInt(msgsSize);
-      for (int index = 0; index < msgsSize; index++) {
-        daos.writeDouble(msgList.get(index));
+      for (final Double msg : msgList) {
+        daos.writeDouble(msg);
       }
 
     } catch (IOException e) {
@@ -55,16 +54,18 @@ public final class DoubleMsgCodec implements Codec<Iterable<Double>> {
   public Iterable<Double> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     final DataInputStream dais = new DataInputStream(bais);
-    final List<Double> msgs = Lists.newArrayList();
+    final List<Double> msgList = Lists.newArrayList();
     try {
+
       final int size = dais.readInt();
       for (int index = 0; index < size; index++) {
-        msgs.add(dais.readDouble());
+        msgList.add(dais.readDouble());
       }
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return msgs;
+    return msgList;
   }
 
   private int getNumBytes(final Iterable<Double> doubles) {

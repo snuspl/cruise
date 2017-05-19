@@ -35,7 +35,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(WorkerMsgManager.class.getName());
 
   private final SlaveSideCentCommMsgSender centCommMsgSender;
-  private boolean goNextsuperstep = true;
+  private boolean goNextSuperstep = true;
   private CountDownLatch latch;
 
   @Inject
@@ -49,20 +49,20 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
     LOG.log(Level.INFO, "Received CentComm message {0}", message);
     final MasterMsg masterMsg = AvroUtils.fromBytes(message.getData().array(), MasterMsg.class);
     onMsgMasterMsg(masterMsg);
-    latch.countDown();
   }
 
   private void onMsgMasterMsg(final MasterMsg msg) {
     switch (msg.getType()) {
     case Start:
-      goNextsuperstep = true;
+      goNextSuperstep = true;
       break;
     case Stop:
-      goNextsuperstep = false;
+      goNextSuperstep = false;
       break;
     default:
       break;
     }
+    latch.countDown();
   }
   /**
    * Synchronize with other executors.
@@ -87,6 +87,6 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
 
     // reset for next waitForTryNextSuperstepMsg
     latch = new CountDownLatch(1);
-    return goNextsuperstep;
+    return goNextSuperstep;
   }
 }
