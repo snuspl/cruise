@@ -36,7 +36,7 @@ import java.util.logging.Logger;
  */
 final class ETWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
-  private static final long EPOCH_METRIC_SENDING_TIMEOUT = 100000;
+  private static final long EPOCH_METRIC_SENDING_TIMEOUT_MS = 100000;
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
   private final String taskId;
@@ -51,6 +51,9 @@ final class ETWorkerTask<K, V> implements Task {
   private final Trainer<V> trainer;
   private final MetricCollector metricCollector;
 
+  /**
+   * An executor for running a thread in order to summarize an epoch (e.g., computing loss).
+   */
   private final ExecutorService executor;
 
   /**
@@ -133,20 +136,20 @@ final class ETWorkerTask<K, V> implements Task {
         }
       }
 
+      final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
       final int numMiniBatchForEpoch = miniBatchIdx;
       final int thisEpochIdx = epochIdx;
       executor.submit(() -> {
-        final long epochSummaryStartTime = System.currentTimeMillis();
+        final long epochSummaryStartTimeMs = System.currentTimeMillis();
         final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, thisEpochIdx);
-        final double epochSummaryTime = (System.currentTimeMillis() - epochSummaryStartTime) / 1000.0D;
-        final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+        final double epochSummaryTimeSec = (System.currentTimeMillis() - epochSummaryStartTimeMs) / 1000.0D;
 
         sendEpochMetrics(epochResult, thisEpochIdx, numMiniBatchForEpoch,
-            epochData.size(), epochElapsedTime, epochSummaryTime, perOpTimeInEpoch);
+            epochData.size(), epochElapsedTimeSec, epochSummaryTimeSec, perOpTimeInEpoch);
       });
     }
     executor.shutdown();
-    executor.awaitTermination(EPOCH_METRIC_SENDING_TIMEOUT, TimeUnit.MILLISECONDS);
+    executor.awaitTermination(EPOCH_METRIC_SENDING_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
