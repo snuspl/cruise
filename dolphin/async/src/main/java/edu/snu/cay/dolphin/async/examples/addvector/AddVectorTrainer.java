@@ -73,7 +73,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
-                           @Parameter(DolphinParameters.NumWorkers.class) final int numberOfWorkers,
+                           @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
     this.modelAccessor = modelAccessor;
@@ -86,7 +86,6 @@ final class AddVectorTrainer implements Trainer {
     this.computeTime = computeTime;
     final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
-    // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, miniBatchSize:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, miniBatchSize});

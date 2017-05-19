@@ -21,7 +21,6 @@ import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.avro.MetricMsgType;
 import edu.snu.cay.services.et.avro.MetricReportMsg;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

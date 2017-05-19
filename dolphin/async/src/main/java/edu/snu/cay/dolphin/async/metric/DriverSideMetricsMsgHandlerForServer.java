@@ -16,8 +16,7 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 
