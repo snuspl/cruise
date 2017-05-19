@@ -21,7 +21,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A codec for (de-)serializing data used in LDA application.
@@ -67,9 +69,15 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       for (int wordIdx = 0; wordIdx < words.size(); wordIdx++) {
         daos.writeInt(document.getAssignment(wordIdx));
       }
-      for (int topicIdx = 0; topicIdx < numTopics; topicIdx++) {
-        daos.writeInt(document.getTopicCount(topicIdx));
-      }
+      final Map<Integer, Integer> topicCounts = document.getTopicCounts();
+      daos.writeInt(topicCounts.size());
+      topicCounts.forEach((key, value) -> {
+        try {
+          daos.writeInt(key);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
@@ -81,7 +89,7 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       final int numWords = dais.readInt();
       final int[] words = new int[numWords];
       final int[] assignments = new int[numWords];
-      final int[] topicCounts = new int[numTopics];
+      final Map<Integer, Integer> topicCounts = new HashMap<>(numWords);
 
       for (int wordIdx = 0; wordIdx < numWords; wordIdx++) {
         words[wordIdx] = dais.readInt();
@@ -89,8 +97,12 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       for (int wordIdx = 0; wordIdx < numWords; wordIdx++) {
         assignments[wordIdx] = dais.readInt();
       }
-      for (int topicIdx = 0; topicIdx < numTopics; topicIdx++) {
-        topicCounts[topicIdx] = dais.readInt();
+
+      final int numEntries = dais.readInt();
+      for (int i = 0; i < numEntries; i++) {
+        final int topicIdx = dais.readInt();
+        final int topicCount = dais.readInt();
+        topicCounts.put(topicIdx, topicCount);
       }
 
       return new Document(words, assignments, topicCounts, numTopics);
