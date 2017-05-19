@@ -48,8 +48,8 @@ final class GBTETDataParser implements DataParser<GBTData> {
   @Override
   public List<GBTData> parse(final Collection<String> rawData) {
     final List<GBTData> retList = new LinkedList<>();
-    for (final String value : rawData) {
-      final String line = value.trim();
+    for (final String datum : rawData) {
+      final String line = datum.trim();
       if (line.startsWith("#") || line.length() == 0) {
         // comments and empty lines
         continue;
@@ -57,7 +57,7 @@ final class GBTETDataParser implements DataParser<GBTData> {
   
       final String[] split = line.split("\\s+|:");
       final double yValue = Integer.parseInt(split[0]);
-      
+  
       final int[] indices = new int[split.length / 2];
       final double[] data = new double[split.length / 2];
       for (int index = 0; index < split.length / 2; ++index) {
@@ -65,6 +65,7 @@ final class GBTETDataParser implements DataParser<GBTData> {
         data[index] = Double.parseDouble(split[2 * index + 2]);
       }
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
+
       retList.add(new GBTData(feature, yValue));
     }
 
