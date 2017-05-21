@@ -72,6 +72,9 @@ public final class WorkerTaskRunner {
     workers.forEach(worker -> workerExecutors.put(worker.getId(), worker));
     servers.forEach(server -> serverExecutors.put(server.getId(), server));
 
+    // submit dummy tasks to servers
+    servers.forEach(server -> server.submitTask(etDolphinDriverFuture.get().getServerTaskConf()));
+
     final Map<String, Future<SubmittedTask>> executorIdToTaskFuture = new HashMap<>(workers.size());
     workers.forEach(worker -> executorIdToTaskFuture.put(worker.getId(),
         worker.submitTask(etDolphinDriverFuture.get().getWorkerTaskConf())));

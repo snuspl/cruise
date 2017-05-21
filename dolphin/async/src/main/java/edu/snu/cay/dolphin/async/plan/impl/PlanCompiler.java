@@ -64,6 +64,7 @@ public final class PlanCompiler {
     namespaceToEvalsToDel.put(NAMESPACE_WORKER, dolphinPlan.getEvaluatorsToDelete(NAMESPACE_WORKER));
     namespaceToEvalsToDel.put(NAMESPACE_SERVER, dolphinPlan.getEvaluatorsToDelete(NAMESPACE_SERVER));
 
+    // TODO #1115: enable switch
     final Map<String, Collection<String>> namespaceToEvalsToSwitch = Collections.emptyMap();
 
     final Collection<String> serversToDel = dolphinPlan.getEvaluatorsToDelete(NAMESPACE_SERVER);
@@ -148,6 +149,7 @@ public final class PlanCompiler {
     }
   }
 
+  // TODO #1115: enable switch
   private void handleSwitch(final Map<String, Collection<String>> dstNamespaceToEvalsToSwitch,
                             final DAG<Op> dag) {
     // only workers need Start and Stop ops
@@ -158,13 +160,25 @@ public final class PlanCompiler {
       // server -> worker
       if (dstNamespace.equals(NAMESPACE_WORKER)) {
         for (final String executor : executors) {
-          dag.addVertex(new StartOp(executor, etDolphinDriverFuture.get().getWorkerTaskConf()));
+          final StopOp serverStopOp = new StopOp(executor);
+          final StartOp workerStartOp = new StartOp(executor, etDolphinDriverFuture.get().getWorkerTaskConf(),
+              etDolphinDriverFuture.get().getWorkerMetricConf());
+
+          dag.addVertex(serverStopOp);
+          dag.addVertex(workerStartOp);
+          dag.addEdge(serverStopOp, workerStartOp);
         }
 
       // worker -> server
       } else {
         for (final String executor : executors) {
-          dag.addVertex(new StopOp(executor));
+          final StopOp workerStopOp = new StopOp(executor);
+          final StartOp serverStartOp = new StartOp(executor, etDolphinDriverFuture.get().getServerTaskConf(),
+              etDolphinDriverFuture.get().getServerMetricConf());
+
+          dag.addVertex(workerStopOp);
+          dag.addVertex(serverStartOp);
+          dag.addEdge(workerStopOp, serverStartOp);
         }
       }
     }
@@ -202,6 +216,12 @@ public final class PlanCompiler {
           dag.addVertex(unsubscribeOp);
           dag.addEdge(stopOp, unsubscribeOp);
           dag.addEdge(unsubscribeOp, deallocateOp);
+        } else {
+          final StopOp stopOp = new StopOp(evalToDel);
+          stopOps.put(evalToDel, stopOp);
+
+          dag.addVertex(stopOp);
+          dag.addEdge(stopOp, deallocateOp);
         }
       }
     }
@@ -232,7 +252,9 @@ public final class PlanCompiler {
         dag.addEdge(allocateOp, associateOp);
 
         if (namespace.equals(NAMESPACE_WORKER)) {
-          final StartOp startOp = new StartOp(evalToAdd, etDolphinDriverFuture.get().getWorkerTaskConf());
+          final StartOp startOp = new StartOp(evalToAdd,
+              etDolphinDriverFuture.get().getWorkerTaskConf(),
+              etDolphinDriverFuture.get().getWorkerMetricConf());
           startOps.put(evalToAdd, startOp);
           final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, MODEL_TABLE_ID);
           subscribeOps.put(evalToAdd, subscribeOp);
@@ -241,6 +263,14 @@ public final class PlanCompiler {
           dag.addVertex(subscribeOp);
           dag.addEdge(allocateOp, subscribeOp);
           dag.addEdge(subscribeOp, startOp);
+        } else {
+          final StartOp startOp = new StartOp(evalToAdd,
+              etDolphinDriverFuture.get().getServerTaskConf(),
+              etDolphinDriverFuture.get().getServerMetricConf());
+          startOps.put(evalToAdd, startOp);
+
+          dag.addVertex(startOp);
+          dag.addEdge(allocateOp, startOp);
         }
       }
     }
