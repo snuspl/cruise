@@ -14,13 +14,8 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# Regression (both real-number features and categorical features)
-# ./run_gbt.sh -num_workers 2 -number_servers 1 -max_num_epochs 300 -mini_batch_size 5000 -features 30 -max_num_eval_local 3 -input sample_gbt_student_score -local true -timeout 200000 -init_step_size 0.05 -lambda 0.5 -gamma 0.5 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_student_score.meta -num_keys 5 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
-# Classification (only real-number features)
-# ./run_gbt.sh -num_workers 2 -number_servers 1 -max_num_epochs 50 -mini_batch_size 5000 -features 27 -max_num_eval_local 3 -input sample_gbt_forest -local true -timeout 200000 -init_step_size 0.1 -lambda 0.5 -gamma 0.5 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_forest.meta -num_keys 5 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
-# Classification (only categorical features)
-# ./run_gbt.sh -num_workers 4 -number_servers 1 -max_num_epochs 50 -mini_batch_size 5000 -features 19 -max_num_eval_local 5 -input sample_gbt_mushroom -local true -timeout 200000 -init_step_size 0.1 -lambda 0.1 -gamma 0.1 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_mushroom.meta -num_keys 5 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
-
+# Classification
+# ./run_gbt.sh -num_workers 2 -number_servers 1 -local true -input sample_gbt -max_num_eval_local 3 -test_data_path file://$(PWD)/sample_gbt_test -max_num_epochs 50 -mini_batch_size 1000 -init_step_size 0.1 -features 784  -lambda 0 -gamma 0 -max_depth_of_tree 5 -leaf_min_size 3 -num_keys 5 -timeout 200000 -num_trainer_threads 2 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -metadata_path file://$(PWD)/sample_gbt.meta -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
