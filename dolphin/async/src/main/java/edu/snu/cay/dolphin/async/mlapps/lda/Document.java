@@ -104,8 +104,8 @@ final class Document {
   void removeWordAtIndex(final int index) {
     final int oldTopic = assignments[index];
     topicCounts.compute(oldTopic, (key, oldValue) -> {
-      if (oldValue == null) {
-        return 0;
+      if (oldValue == null || oldValue == 0) {
+        throw new RuntimeException(String.format("The TopicCounts for %d-th word is %d", index, oldValue));
       } else {
         return oldValue - 1;
       }

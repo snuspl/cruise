@@ -71,9 +71,10 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       }
       final Map<Integer, Integer> topicCounts = document.getTopicCounts();
       daos.writeInt(topicCounts.size());
-      topicCounts.forEach((key, value) -> {
+      topicCounts.forEach((topicIdx, topicCount) -> {
         try {
-          daos.writeInt(key);
+          daos.writeInt(topicIdx);
+          daos.writeInt(topicCount);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
