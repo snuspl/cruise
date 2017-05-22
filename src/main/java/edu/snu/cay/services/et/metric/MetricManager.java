@@ -51,7 +51,7 @@ public final class MetricManager {
   /**
    * Stop collecting metrics from Executor whose id is {@code executorId}.
    */
-  public void stopMetricCollecdtion(final String executorId) {
+  public void stopMetricCollection(final String executorId) {
     msgSender.sendMetricStopMsg(executorId);
   }
 }

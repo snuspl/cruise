@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 
 import java.util.Map;
@@ -40,7 +41,8 @@ public final class UnsubscribeOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final MetricManager metricManager,
+                                            final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
     final AllocatedTable table;
     try {

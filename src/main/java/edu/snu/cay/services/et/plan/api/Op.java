@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.plan.api;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 
@@ -65,6 +66,7 @@ public interface Op {
    * @return a {@link ListenableFuture} that completes when execution is finished
    * @throws PlanOpExecutionException when exception happens while executing a plan
    */
-  ListenableFuture<OpResult> execute(ETMaster etMaster, Map<String, String> virtualIdToActualId)
+  ListenableFuture<OpResult> execute(ETMaster etMaster, MetricManager metricManager,
+                                     Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException;
 }

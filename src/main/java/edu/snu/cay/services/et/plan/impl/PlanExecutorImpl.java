@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.reef.wake.EventHandler;
@@ -40,6 +41,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(PlanExecutorImpl.class.getName());
 
   private final ETMaster etMaster;
+  private final MetricManager metricManager;
 
   /**
    * A collection of listeners for the completion of operations.
@@ -60,8 +62,10 @@ public final class PlanExecutorImpl implements PlanExecutor {
   private final AtomicReference<ExecutingPlan> executingPlan = new AtomicReference<>();
 
   @Inject
-  private PlanExecutorImpl(final ETMaster etMaster) {
+  private PlanExecutorImpl(final ETMaster etMaster,
+                           final MetricManager metricManager) {
     this.etMaster = etMaster;
+    this.metricManager = metricManager;
   }
 
   @Override
@@ -119,7 +123,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
             try {
               LOG.log(Level.INFO, "Start executing op: {0}", op);
               final long opStartTime = System.currentTimeMillis();
-              op.execute(etMaster, virtualIdToActualId)
+              op.execute(etMaster, metricManager, virtualIdToActualId)
                   .addListener(opResult -> {
                     LOG.log(Level.INFO, "Op elapsed time (ms): {0}, OpId: {1}, OpType: {2}",
                         new Object[]{System.currentTimeMillis() - opStartTime, op.getOpId(), op.getOpType()});
