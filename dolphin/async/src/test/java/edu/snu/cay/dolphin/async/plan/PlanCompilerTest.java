@@ -35,6 +35,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.mockito.Mockito.mock;
 import static org.junit.Assert.*;
@@ -45,6 +47,7 @@ import static org.junit.Assert.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ETDolphinDriver.class})
 public class PlanCompilerTest {
+  private static final Logger LOG = Logger.getLogger(PlanCompilerTest.class.getName());
   private static final String EVAL_ID_PREFIX = "EVAL-";
   private static final DataInfo DUMMY_DATA_INFO = new DataInfoImpl();
 
@@ -283,85 +286,77 @@ public class PlanCompilerTest {
   }
 
   @Test
-  public void testDelServerAndAddWorkerPlan() {
+  public void testSwitchOneServerToWorkerPlan() {
     final String serverId = EVAL_ID_PREFIX + 0;
     final String workerId = EVAL_ID_PREFIX + 1;
     final Plan plan = PlanImpl.newBuilder()
-        .addEvaluatorsToDelete(Constants.NAMESPACE_SERVER, Collections.singletonList(serverId))
+        .addEvaluatorToDelete(Constants.NAMESPACE_SERVER, serverId)
         .addTransferStep(Constants.NAMESPACE_SERVER,
             new TransferStepImpl(serverId, EVAL_ID_PREFIX + 2, DUMMY_DATA_INFO))
-        .addEvaluatorsToAdd(Constants.NAMESPACE_WORKER, Collections.singletonList(workerId))
+        .addEvaluatorToAdd(Constants.NAMESPACE_WORKER, workerId)
         .addTransferStep(Constants.NAMESPACE_WORKER,
             new TransferStepImpl(EVAL_ID_PREFIX + 2, workerId, DUMMY_DATA_INFO))
         .build();
 
-    final int numAvailableEvals = 0; // by setting is as zero, allocate should be done after deallocate
+    final int numAvailableEvals = 0; // no meaning because this plan requires no more resources
     final ETPlan etPlan = compiler.compile(plan, numAvailableEvals);
+
+    LOG.log(Level.INFO, "Plan: {0}", etPlan);
 
     // Deleting one server involves: move, unassociate, deallocate, stop
     // Adding one worker involves: allocate, associate, move, subscribe, start
-    assertEquals(9, etPlan.getNumTotalOps());
+    assertEquals(7, etPlan.getNumTotalOps());
 
     // check dependency
-    // first stage: stop
+    // first stage: stop, associateOp
     final Set<Op> initialOps = etPlan.getInitialOps();
-    assertEquals(1, initialOps.size());
-    final Op initialOp = initialOps.iterator().next();
-    assertEquals(Op.OpType.STOP, initialOp.getOpType());
-
-    // second stage: move
-    final Set<Op> secondOps = etPlan.onComplete(initialOp);
-    assertEquals(1, secondOps.size());
-    final Op secondOp = secondOps.iterator().next();
-    assertEquals(Op.OpType.MOVE, secondOp.getOpType());
-
-    // third stage: unassociate
-    final Set<Op> thirdOps = etPlan.onComplete(secondOp);
-    assertEquals(1, thirdOps.size());
-    final Op thirdOp = thirdOps.iterator().next();
-    assertEquals(Op.OpType.UNASSOCIATE, thirdOp.getOpType());
-
-    // fourth stage: deallocate
-    final Set<Op> fourthOps = etPlan.onComplete(thirdOp);
-    assertEquals(1, fourthOps.size());
-    final Op fourthOp = fourthOps.iterator().next();
-    assertEquals(Op.OpType.DEALLOCATE, fourthOp.getOpType());
-
-    // fifth stage: allocate
-    final Set<Op> fifthOps = etPlan.onComplete(fourthOp);
-    assertEquals(1, fifthOps.size());
-    final Op fifthOp = fifthOps.iterator().next();
-    assertEquals(Op.OpType.ALLOCATE, fifthOp.getOpType());
-
-    // sixth stage: subscribe and associate
-    final Set<Op> sixthOps = etPlan.onComplete(fifthOp);
-    assertEquals(2, sixthOps.size());
-    final Iterator<Op> iter = sixthOps.iterator();
-    final Op sixthOp0 = iter.next();
-    final Op sixthOp1 = iter.next();
+    assertEquals(2, initialOps.size());
+    final Iterator<Op> iter = initialOps.iterator();
+    final Op initialOp0 = iter.next();
+    final Op initialOp1 = iter.next();
 
     // one operation should be SUBSCRIBE and the other should be ASSOCIATE
-    assertTrue(sixthOp0.getOpType().equals(Op.OpType.SUBSCRIBE) || sixthOp0.getOpType().equals(Op.OpType.ASSOCIATE));
-    assertTrue(sixthOp1.getOpType().equals(Op.OpType.SUBSCRIBE) || sixthOp1.getOpType().equals(Op.OpType.ASSOCIATE));
-    assertNotEquals(sixthOp0.getOpType(), sixthOp1.getOpType());
+    assertTrue(initialOp0.getOpType().equals(Op.OpType.STOP) || initialOp0.getOpType().equals(Op.OpType.ASSOCIATE));
+    assertTrue(initialOp1.getOpType().equals(Op.OpType.STOP) || initialOp1.getOpType().equals(Op.OpType.ASSOCIATE));
+    assertNotEquals(initialOp0.getOpType(), initialOp1.getOpType());
 
-    final Op subscribeOp = sixthOp0.getOpType().equals(Op.OpType.SUBSCRIBE) ? sixthOp0 : sixthOp1;
-    final Op associateOp = sixthOp0.getOpType().equals(Op.OpType.ASSOCIATE) ? sixthOp0 : sixthOp1;
+    final Op stopOp = initialOp0.getOpType().equals(Op.OpType.SUBSCRIBE) ? initialOp0 : initialOp1;
+    final Op associateOp = initialOp0.getOpType().equals(Op.OpType.ASSOCIATE) ? initialOp0 : initialOp1;
 
-    // seventh stage: move
-    final Set<Op> seventhOps = etPlan.onComplete(associateOp);
-    assertEquals(1, seventhOps.size());
-    final Op seventhOp = seventhOps.iterator().next();
-    assertEquals(Op.OpType.MOVE, seventhOp.getOpType());
+    // 1. start with stopOp and its following ops that are for removing server from this executor
+    // second stage: move
+    final Set<Op> secondOps0 = etPlan.onComplete(stopOp);
+    assertEquals(1, secondOps0.size());
+    final Op secondOp0 = secondOps0.iterator().next();
+    assertEquals(Op.OpType.MOVE, secondOp0.getOpType());
 
-    assertTrue(etPlan.onComplete(seventhOp).isEmpty());
+    // third stage: unassociate
+    final Set<Op> thirdOps0 = etPlan.onComplete(secondOp0);
+    assertEquals(1, thirdOps0.size());
+    final Op thirdOp0 = thirdOps0.iterator().next();
+    assertEquals(Op.OpType.UNASSOCIATE, thirdOp0.getOpType());
 
-    // last stage: start
-    final Set<Op> finalOps = etPlan.onComplete(subscribeOp);
-    assertEquals(1, finalOps.size());
-    final Op finalOp = finalOps.iterator().next();
-    assertEquals(Op.OpType.START, finalOp.getOpType());
+    // fourth stage: subscribe
+    final Set<Op> fourthOps0 = etPlan.onComplete(thirdOp0);
+    assertEquals(1, fourthOps0.size());
+    final Op fourthOp0 = fourthOps0.iterator().next();
+    assertEquals(Op.OpType.SUBSCRIBE, fourthOp0.getOpType());
 
-    assertTrue(etPlan.onComplete(finalOp).isEmpty());
+    assertTrue(etPlan.onComplete(fourthOp0).isEmpty());
+
+    // 2. continue with associateOp and its following ops that are for installing worker to this executor
+    // second stage: move
+    final Set<Op> secondOps1 = etPlan.onComplete(associateOp);
+    assertEquals(1, secondOps1.size());
+    final Op secondOp1 = secondOps1.iterator().next();
+    assertEquals(Op.OpType.MOVE, secondOp1.getOpType());
+
+    // third stage: start
+    final Set<Op> thirdOps1 = etPlan.onComplete(secondOp1);
+    assertEquals(1, thirdOps1.size());
+    final Op thirdOp1 = thirdOps1.iterator().next();
+    assertEquals(Op.OpType.START, thirdOp1.getOpType());
+
+    assertTrue(etPlan.onComplete(thirdOp1).isEmpty());
   }
 }
