@@ -49,10 +49,11 @@ public final class StartOp extends AbstractOp {
   public ListenableFuture<OpResult> execute(final ETMaster etMaster, final MetricManager metricManager,
                                             final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
+    final String actualId = virtualIdToActualId.containsKey(executorId) ?
+        virtualIdToActualId.get(executorId) : executorId;
+
     final AllocatedExecutor executor;
     try {
-      final String actualId = virtualIdToActualId.containsKey(executorId) ?
-          virtualIdToActualId.get(executorId) : executorId;
       executor = etMaster.getExecutor(actualId);
     } catch (ExecutorNotExistException e) {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
@@ -61,7 +62,7 @@ public final class StartOp extends AbstractOp {
     final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
 
     // TODO #96: add a listener to sync
-    metricManager.startMetricCollection(executorId, metricConf);
+    metricManager.startMetricCollection(actualId, metricConf);
     executor.submitTask(taskConf)
         .addListener(task -> resultFuture.onCompleted(new OpResult.StartOpResult(StartOp.this, task)));
 
