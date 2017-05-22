@@ -23,11 +23,11 @@ import javax.inject.Inject;
 /**
  * Handles the event to stop the task.
  */
-public final class ETTaskCloseHandler implements EventHandler<CloseEvent> {
-  private final ETWorkerTask task;
+public final class ServerTaskCloseHandler implements EventHandler<CloseEvent> {
+  private final ETServerTask task;
 
   @Inject
-  private ETTaskCloseHandler(final ETWorkerTask task) {
+  private ServerTaskCloseHandler(final ETServerTask task) {
     this.task = task;
   }
 
