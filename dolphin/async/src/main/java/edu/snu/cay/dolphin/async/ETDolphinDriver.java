@@ -62,7 +62,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETServerTask.SERVER_DUMMY_TASK_ID_PREFIX;
+import static edu.snu.cay.dolphin.async.ETServerTask.SERVER_TASK_ID_PREFIX;
 import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
@@ -207,7 +207,7 @@ public final class ETDolphinDriver {
 
   public Configuration getServerTaskConf() {
     return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, SERVER_DUMMY_TASK_ID_PREFIX + serverTaskIdCount.getAndIncrement())
+        .set(TaskConfiguration.IDENTIFIER, SERVER_TASK_ID_PREFIX + serverTaskIdCount.getAndIncrement())
         .set(TaskConfiguration.TASK, ETServerTask.class)
         .set(TaskConfiguration.ON_CLOSE, ServerTaskCloseHandler.class)
         .build();

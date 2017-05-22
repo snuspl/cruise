@@ -23,11 +23,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A dummy task for server-side.
+ * Server-side task implementation that does nothing.
  */
 final class ETServerTask implements Task {
   private static final Logger LOG = Logger.getLogger(ETServerTask.class.getName());
-  static final String SERVER_DUMMY_TASK_ID_PREFIX = "ServerTask-";
+  static final String SERVER_TASK_ID_PREFIX = "ServerTask-";
 
   /**
    * A latch that will be released upon {@link #close()}.
