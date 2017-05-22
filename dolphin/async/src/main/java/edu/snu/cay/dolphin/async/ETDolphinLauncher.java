@@ -184,7 +184,11 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // generic params
         NumServers.class, ServerMemSize.class, NumServerCores.class,
+        NumServerHandlerThreads.class, NumServerSenderThreads.class,
+        ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
+        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
