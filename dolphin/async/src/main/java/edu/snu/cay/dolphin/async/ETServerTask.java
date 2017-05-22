@@ -25,8 +25,8 @@ import java.util.logging.Logger;
 /**
  * A dummy task for server-side.
  */
-final class DummyServerTask implements Task {
-  private static final Logger LOG = Logger.getLogger(DummyServerTask.class.getName());
+final class ETServerTask implements Task {
+  private static final Logger LOG = Logger.getLogger(ETServerTask.class.getName());
   static final String SERVER_DUMMY_TASK_ID_PREFIX = "ServerTask-";
 
   /**
@@ -36,7 +36,7 @@ final class DummyServerTask implements Task {
   private final CountDownLatch closeLatch = new CountDownLatch(1);
 
   @Inject
-  private DummyServerTask() {
+  private ETServerTask() {
   }
 
   @Override

@@ -24,10 +24,10 @@ import javax.inject.Inject;
  * Handles the event to stop the task.
  */
 public final class ServerTaskCloseHandler implements EventHandler<CloseEvent> {
-  private final DummyServerTask task;
+  private final ETServerTask task;
 
   @Inject
-  private ServerTaskCloseHandler(final DummyServerTask task) {
+  private ServerTaskCloseHandler(final ETServerTask task) {
     this.task = task;
   }
 

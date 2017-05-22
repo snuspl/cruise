@@ -62,7 +62,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.DummyServerTask.SERVER_DUMMY_TASK_ID_PREFIX;
+import static edu.snu.cay.dolphin.async.ETServerTask.SERVER_DUMMY_TASK_ID_PREFIX;
 import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
@@ -76,7 +76,7 @@ public final class ETDolphinDriver {
 
   private final ETMaster etMaster;
   private final edu.snu.cay.services.et.metric.MetricManager metricManager;
-  private final WorkerTaskRunner workerTaskRunner;
+  private final ETTaskRunner taskRunner;
   private final ProgressTracker progressTracker;
 
   private final int numWorkers;
@@ -101,7 +101,7 @@ public final class ETDolphinDriver {
   private ETDolphinDriver(final ETMaster etMaster,
                           final edu.snu.cay.services.et.metric.MetricManager metricManager,
                           final ETOptimizationOrchestrator optimizationOrchestrator,
-                          final WorkerTaskRunner workerTaskRunner,
+                          final ETTaskRunner taskRunner,
                           final ProgressTracker progressTracker,
                           final ConfigurationSerializer confSerializer,
                           final CentCommConfProvider centCommConfProvider,
@@ -118,7 +118,7 @@ public final class ETDolphinDriver {
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.metricManager = metricManager;
-    this.workerTaskRunner = workerTaskRunner;
+    this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
     this.numWorkers = numWorkers;
     this.numServers = numServers;
@@ -208,7 +208,7 @@ public final class ETDolphinDriver {
   public Configuration getServerTaskConf() {
     return TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, SERVER_DUMMY_TASK_ID_PREFIX + serverTaskIdCount.getAndIncrement())
-        .set(TaskConfiguration.TASK, DummyServerTask.class)
+        .set(TaskConfiguration.TASK, ETServerTask.class)
         .set(TaskConfiguration.ON_CLOSE, ServerTaskCloseHandler.class)
         .build();
   }
@@ -229,13 +229,13 @@ public final class ETDolphinDriver {
 
   public MetricServiceExecutorConf getWorkerMetricConf() {
     return MetricServiceExecutorConf.newBuilder()
-        .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
+        .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
         .build();
   }
 
   public MetricServiceExecutorConf getServerMetricConf() {
     return MetricServiceExecutorConf.newBuilder()
-        .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
+        .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
         .build();
   }
 
@@ -260,7 +260,7 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<TaskResult> taskResults = workerTaskRunner.run(workers, servers);
+            final List<TaskResult> taskResults = taskRunner.run(workers, servers);
             checkTaskResults(taskResults);
 
             workers.forEach(AllocatedExecutor::close);

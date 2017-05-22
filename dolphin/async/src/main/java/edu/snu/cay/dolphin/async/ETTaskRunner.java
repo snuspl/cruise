@@ -33,11 +33,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class for running worker tasks.
+ * A class for running tasks in server and worker executors.
+ * It responds to the change of the entry of worker/server executors.
+ * It also tracks active worker tasks for {@link #waitAndGetTaskResult()}.
  */
 @DriverSide
-public final class WorkerTaskRunner {
-  private static final Logger LOG = Logger.getLogger(WorkerTaskRunner.class.getName());
+public final class ETTaskRunner {
+  private static final Logger LOG = Logger.getLogger(ETTaskRunner.class.getName());
 
   private final ETMaster etMaster;
 
@@ -51,10 +53,10 @@ public final class WorkerTaskRunner {
   private final Map<String, SubmittedTask> executorIdToTask = new ConcurrentHashMap<>();
 
   @Inject
-  private WorkerTaskRunner(final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture,
-                           final ETMaster etMaster,
-                           final WorkerStateManager workerStateManager,
-                           @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+  private ETTaskRunner(final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture,
+                       final ETMaster etMaster,
+                       final WorkerStateManager workerStateManager,
+                       @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.etMaster = etMaster;
     this.etDolphinDriverFuture = etDolphinDriverFuture;
     this.workerStateManager = workerStateManager;
