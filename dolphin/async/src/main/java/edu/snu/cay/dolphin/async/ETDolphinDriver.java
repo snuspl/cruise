@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
+import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
@@ -87,6 +88,9 @@ public final class ETDolphinDriver {
   private final ResourceConfiguration workerResourceConf;
   private final ResourceConfiguration serverResourceConf;
 
+  private final RemoteAccessConfiguration workerRemoteAccessConf;
+  private final RemoteAccessConfiguration serverRemoteAccessConf;
+
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
 
@@ -109,6 +113,14 @@ public final class ETDolphinDriver {
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(WorkerMemSize.class) final int workerMemSize,
                           @Parameter(NumWorkerCores.class) final int numWorkerCores,
+                          @Parameter(NumServerSenderThreads.class) final int numServerSenderThreads,
+                          @Parameter(NumServerHandlerThreads.class) final int numServerHandlerThreads,
+                          @Parameter(ServerSenderQueueSize.class) final int serverSenderQueueSize,
+                          @Parameter(ServerHandlerQueueSize.class) final int serverHandlerQueueSize,
+                          @Parameter(NumWorkerSenderThreads.class) final int numWorkerSenderThreads,
+                          @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
+                          @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
+                          @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
                           @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                           @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
@@ -129,12 +141,16 @@ public final class ETDolphinDriver {
     final Configuration serverConf = confSerializer.fromString(serializedServerConf);
     final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
     this.serverResourceConf = buildResourceConf(numServerCores, serverMemSize);
+    this.serverRemoteAccessConf = buildRemoteAccessConf(numServerSenderThreads, serverSenderQueueSize,
+        numServerHandlerThreads, serverHandlerQueueSize);
     this.serverTableConf = buildServerTableConf(serverInjector, userParamConf);
 
     // initialize worker-side configurations
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
     final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
     this.workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
+    this.workerRemoteAccessConf = buildRemoteAccessConf(numWorkerSenderThreads, workerSenderQueueSize,
+        numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
     // user configuration for worker executors
@@ -148,6 +164,18 @@ public final class ETDolphinDriver {
     return ResourceConfiguration.newBuilder()
         .setNumCores(numCores)
         .setMemSizeInMB(memSize)
+        .build();
+  }
+
+  private static RemoteAccessConfiguration buildRemoteAccessConf(final int numSenderThreads,
+                                                                 final int senderQueueSize,
+                                                                 final int numHandlerThreads,
+                                                                 final int handlerQueueSize) {
+    return RemoteAccessConfiguration.newBuilder()
+        .setNumSenderThreads(numSenderThreads)
+        .setSenderQueueSize(senderQueueSize)
+        .setNumHandlerThreads(numHandlerThreads)
+        .setHandlerQueueSize(handlerQueueSize)
         .build();
   }
 
@@ -206,6 +234,7 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getWorkerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
+        .setRemoteAccessConf(workerRemoteAccessConf)
         .setUserContextConf(workerContextConf)
         .setUserServiceConf(workerServiceConf)
         .build();
@@ -214,6 +243,7 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getServerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
+        .setRemoteAccessConf(serverRemoteAccessConf)
         .build();
   }
 
