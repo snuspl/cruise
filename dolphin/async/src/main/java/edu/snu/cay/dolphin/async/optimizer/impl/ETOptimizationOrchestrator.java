@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.optimizer.impl;
 import edu.snu.cay.dolphin.async.ETModelAccessor;
 import edu.snu.cay.dolphin.async.ETTrainingDataProvider;
 import edu.snu.cay.dolphin.async.WorkerStateManager;
-import edu.snu.cay.dolphin.async.WorkerTaskRunner;
+import edu.snu.cay.dolphin.async.ETTaskRunner;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
@@ -60,7 +60,7 @@ public final class ETOptimizationOrchestrator {
 
   private final WorkerStateManager workerStateManager;
 
-  private final WorkerTaskRunner workerTaskRunner;
+  private final ETTaskRunner taskRunner;
 
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
@@ -81,7 +81,7 @@ public final class ETOptimizationOrchestrator {
                                      final PlanExecutor planExecutor,
                                      final MetricManager metricManager,
                                      final PlanCompiler planCompiler,
-                                     final WorkerTaskRunner workerTaskRunner,
+                                     final ETTaskRunner taskRunner,
                                      final WorkerStateManager workerStateManager,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
@@ -93,7 +93,7 @@ public final class ETOptimizationOrchestrator {
     this.planCompiler = planCompiler;
     this.metricManager = metricManager;
     this.etMaster = etMaster;
-    this.workerTaskRunner = workerTaskRunner;
+    this.taskRunner = taskRunner;
     this.workerStateManager = workerStateManager;
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
@@ -148,8 +148,8 @@ public final class ETOptimizationOrchestrator {
           final Pair<Set<String>, Set<String>> changesInWorkers =
               namespaceToexecutorChange.get(Constants.NAMESPACE_WORKER);
 
-          // should notify workerTaskRunner first
-          workerTaskRunner.updateExecutorEntry(changesInWorkers.getLeft(), changesInWorkers.getRight(),
+          // should notify taskRunner first
+          taskRunner.updateExecutorEntry(changesInWorkers.getLeft(), changesInWorkers.getRight(),
               changesInServers.getLeft(), changesInServers.getRight());
           workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
 
