@@ -55,42 +55,26 @@ import java.util.logging.Logger;
 public final class PregelDriver {
 
   private static final Logger LOG = Logger.getLogger(PregelDriver.class.getName());
+  private static final String WORKER_PREFIX = "Worker-";
 
   public static final String VERTEX_TABLE_ID = "Vertex_table";
   public static final String MSG_TABLE_1_ID = "Msg_table_1";
   public static final String MSG_TABLE_2_ID = "Msg_table_2";
 
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
-  static final String WORKER_PREFIX = "Worker-";
-
   static final int NUM_EXECUTORS = 3;
 
-  /**
-   * Total number of partitions for each workers.
-   */
-  private static final int NUM_PARTITIONS = 4;
-
-
-  private final EvaluatorRequestor evaluatorRequestor;
   private final ETMaster etMaster;
-  private final CentCommConfProvider centCommConfProvider;
-  private final PregelMaster pregelMaster;
   private final ExecutorConfiguration executorConf;
   private final String tableInputPath;
   private final AtomicInteger workerCounter = new AtomicInteger(0);
 
-
-
   @Inject
-  private PregelDriver(final EvaluatorRequestor evaluatorRequestor,
-                       final ETMaster etMaster,
+  private PregelDriver(final ETMaster etMaster,
                        final CentCommConfProvider centCommConfProvider,
                        final PregelMaster pregelMaster,
                        @Parameter(PregelLauncher.TableInputPath.class) final String tableInputPath) {
-    this.evaluatorRequestor = evaluatorRequestor;
     this.etMaster = etMaster;
-    this.centCommConfProvider = centCommConfProvider;
-    this.pregelMaster = pregelMaster;
     this.tableInputPath = tableInputPath;
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
@@ -121,8 +105,6 @@ public final class PregelDriver {
         throw new RuntimeException(e);
       }
 
-      LOG.log(Level.INFO, "executors are allocated.");
-
       Executors.newSingleThreadExecutor().submit(() -> {
         try {
           final AllocatedTable msgTable1 = etMaster.createTable(
@@ -131,10 +113,8 @@ public final class PregelDriver {
               buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
           final AllocatedTable vertexTable = etMaster.createTable(
               buildVertexTableConf(VERTEX_TABLE_ID), executors).get();
-          LOG.log(Level.INFO, "vertexTable is created.");
 
           vertexTable.load(executors, tableInputPath).get();
-          LOG.log(Level.INFO, "vertexTable is loaded.");
 
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>();
           executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
@@ -153,7 +133,7 @@ public final class PregelDriver {
 
   private Configuration buildTaskConf() {
     return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, "PregelWorkerTask" + workerCounter.getAndIncrement())
+        .set(TaskConfiguration.IDENTIFIER, WORKER_PREFIX + workerCounter.getAndIncrement())
         .set(TaskConfiguration.TASK, PregelWorkerTask.class)
         .build();
   }
@@ -184,6 +164,4 @@ public final class PregelDriver {
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
         .build();
   }
-
-
 }

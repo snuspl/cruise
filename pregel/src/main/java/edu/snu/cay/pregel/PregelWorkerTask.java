@@ -103,7 +103,6 @@ public final class PregelWorkerTask implements Task {
         futureList.add(executorService.submit(computationCallable));
       }
 
-
       numActiveVertices.set(0);
       for (final Future<Integer> computeFuture : futureList) {
         numActiveVertices.getAndAdd(computeFuture.get());
