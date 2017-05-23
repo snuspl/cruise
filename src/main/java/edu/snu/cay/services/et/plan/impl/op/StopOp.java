@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.et.plan.impl.op;
 
-import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
@@ -55,10 +55,22 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
-    // TODO #96: add a listener to sync
-    metricManager.stopMetricCollection(executorId);
-    task.get().stop();
-    return new CompletedFuture<>(new OpResult.StopOpResult(StopOp.this));
+    final SubmittedTask submittedTask = task.get();
+
+    submittedTask.stop();
+
+    final ResultFuture<OpResult> opResultFuture = new ResultFuture<>();
+
+    submittedTask.getTaskResultFuture()
+        .addListener(taskResult -> {
+          // TODO #181: add a listener to sync
+          // need to complete this op after metric service is stopped at executor
+          metricManager.stopMetricCollection(executorId);
+          opResultFuture.onCompleted(
+              new OpResult.StopOpResult(StopOp.this));
+        });
+
+    return opResultFuture;
   }
 
   @Override

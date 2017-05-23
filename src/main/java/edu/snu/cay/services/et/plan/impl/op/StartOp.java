@@ -61,8 +61,10 @@ public final class StartOp extends AbstractOp {
 
     final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
 
-    // TODO #96: add a listener to sync
+    // TODO #181: add a listener to sync
+    // need to submit task after metric service is started at executor
     metricManager.startMetricCollection(actualId, metricConf);
+
     executor.submitTask(taskConf)
         .addListener(task -> resultFuture.onCompleted(new OpResult.StartOpResult(StartOp.this, task)));
 

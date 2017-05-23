@@ -41,6 +41,13 @@ public final class SubmittedTask {
   }
 
   /**
+   * @return the future of task result
+   */
+  public ListenableFuture<TaskResult> getTaskResultFuture() {
+    return resultFuture;
+  }
+
+  /**
    * @return the result of this task, after waiting it to complete
    * @throws InterruptedException when interrupted while waiting
    */
