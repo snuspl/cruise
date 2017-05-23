@@ -85,4 +85,13 @@ public final class ETPlan {
     }
     return nextOpsToExecute;
   }
+
+  @Override
+  public String toString() {
+    return "ETPlan{" +
+        "initialOps=" + initialOps +
+        ", numTotalOps=" + numTotalOps +
+        ", dependencyGraph=" + dependencyGraph.toJSON() +
+        '}';
+  }
 }

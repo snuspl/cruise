@@ -94,8 +94,9 @@ public final class PlanExecutorImpl implements PlanExecutor {
       }
     }
 
-    final ResultFuture<Void> resultFuture = new ResultFuture<>();
+    LOG.log(Level.INFO, "Start executing plan: {0}", plan);
 
+    final ResultFuture<Void> resultFuture = new ResultFuture<>();
     Executors.newSingleThreadExecutor().submit(() -> {
       // a map for virtual ids of new executors within this plan
       final Map<String, String> virtualIdToActualId = new ConcurrentHashMap<>();
