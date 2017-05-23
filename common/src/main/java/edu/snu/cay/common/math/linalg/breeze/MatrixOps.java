@@ -90,19 +90,19 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 SUBI_MM = Matrix$.MODULE$.m_m_UpdateOp_Float_OpSub();
 
   // scalar multiplication operators
-  static final UFunc.UImpl2 MUL_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpMulScalar();
-  static final UFunc.InPlaceImpl2 MULI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Double_OpMulScalar();
-  static final UFunc.UImpl2 MUL_ST = breeze.linalg.CSCMatrix.implOps_CSCT_T_eq_CSCT_Double_OpMulScalar();
-  static final UFunc.InPlaceImpl2 MULI_ST = breeze.linalg.CSCMatrix.csc_T_InPlace_Double_OpMulScalar();
+  static final UFunc.UImpl2 MUL_DT = breeze.linalg.DenseMatrix.op_DM_S_Float_OpMulScalar();
+  static final UFunc.InPlaceImpl2 MULI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Float_OpMulScalar();
+  static final UFunc.UImpl2 MUL_ST = breeze.linalg.CSCMatrix.implOps_CSCT_T_eq_CSCT_Float_OpMulScalar();
+  static final UFunc.InPlaceImpl2 MULI_ST = breeze.linalg.CSCMatrix.csc_T_InPlace_Float_OpMulScalar();
 
   // vector multiplication operators
-  static final UFunc.UImpl2 MUL_DMDV = breeze.linalg.DenseMatrix$.MODULE$.implOpMulMatrix_DVF_DMF_eq_DMF();
-  static final UFunc.UImpl2 MUL_DMSV = breeze.linalg.SparseVector.implOpMulMatrix_DM_SV_eq_DV_Double();
-  static final UFunc.UImpl2 MUL_SMDV = breeze.linalg.CSCMatrix.canMulM_DV_Double();
-  static final UFunc.UImpl2 MUL_SMSV = breeze.linalg.CSCMatrix.canMulM_SV_Double();
+  static final UFunc.UImpl2 MUL_DMDV = breeze.linalg.DenseMatrix.op_DM_V_Float();
+  static final UFunc.UImpl2 MUL_DMSV = breeze.linalg.SparseVector.implOpMulMatrix_DM_SV_eq_DV_Float();
+  static final UFunc.UImpl2 MUL_SMDV = breeze.linalg.CSCMatrix.canMulM_DV_Float();
+  static final UFunc.UImpl2 MUL_SMSV = breeze.linalg.CSCMatrix.canMulM_SV_Float();
 
   // matrix multiplication operators
-  static final UFunc.UImpl2 MUL_DMDM = breeze.linalg.DenseMatrix$.MODULE$.implOpMulMatrix_DVF_DMF_eq_DMF();
+  static final UFunc.UImpl2 MUL_DMDM = breeze.linalg.DenseMatrix.op_DM_DM_Float();
   static final UFunc.UImpl2 MUL_DMSM = breeze.linalg.CSCMatrix.canMulDM_M_Float();
   static final UFunc.UImpl2 MUL_SMDM = breeze.linalg.CSCMatrix.canMulM_DM_Float();
   static final UFunc.UImpl2 MUL_SMSM = breeze.linalg.CSCMatrix.canMulM_M_Float();
