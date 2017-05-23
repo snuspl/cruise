@@ -28,6 +28,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Represents a state where the table is completely allocated into executors.
@@ -115,13 +116,14 @@ public final class AllocatedTable {
   public synchronized ListenableFuture<?> subscribe(final List<AllocatedExecutor> executors) {
     stateMachine.checkState(State.INITIALIZED);
 
-    final Set<String> executorIdSet = new HashSet<>(executors.size());
-    executors.forEach(executor -> {
-      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
-      executorIdSet.add(executor.getId());
-    });
+    final Set<String> executorIdSet = executors.stream().map(AllocatedExecutor::getId).collect(Collectors.toSet());
 
-    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
+        blockManager.getOwnershipStatus(), false);
+    future.addListener(o -> executorIdSet.forEach(executorId ->
+        migrationManager.registerSubscription(tableConf.getId(), executorId)));
+
+    return future;
   }
 
   /**
@@ -150,13 +152,15 @@ public final class AllocatedTable {
   private synchronized ListenableFuture<?> associate(final Set<String> executorIdSet) {
     stateMachine.checkState(State.INITIALIZED);
 
-    executorIdSet.forEach(executorId -> {
-      blockManager.registerExecutor(executorId);
-      migrationManager.registerSubscription(tableConf.getId(), executorId);
-      executorIdSet.add(executorId);
-    });
+    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
+        blockManager.getOwnershipStatus(), false);
+    future.addListener(o ->
+        executorIdSet.forEach(executorId -> {
+          blockManager.registerExecutor(executorId);
+          migrationManager.registerSubscription(tableConf.getId(), executorId);
+        }));
 
-    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    return future;
   }
 
   private synchronized ListenableFuture<?> associate(final String executorId) {
