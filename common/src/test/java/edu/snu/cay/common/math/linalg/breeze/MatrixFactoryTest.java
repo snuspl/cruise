@@ -19,7 +19,6 @@ import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -54,7 +53,7 @@ public final class MatrixFactoryTest {
    */
   @Test
   public void testDenseMatrix() {
-    final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2};
+    final Float[] value = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f};
     final Vector vec1 = vectorFactory.createDense(value);
     final Vector vec2 = vectorFactory.createDense(value);
     final List<Vector> denseVectorList = new ArrayList<>();
@@ -63,7 +62,7 @@ public final class MatrixFactoryTest {
 
     final Matrix mat1 = matrixFactory.createDenseZeros(3, 4);
     final Matrix mat2 = matrixFactory.createDense(3, 4, value);
-    final Matrix mat3 = matrixFactory.createDense(12, 2, ArrayUtils.addAll(value, value));
+    final Matrix mat3 = matrixFactory.createDense(12, 2, mergeArrays(value, value));
 
     assertEquals(mat1.size(), 12);
     assertEquals(mat2.size(), 12);
@@ -77,7 +76,7 @@ public final class MatrixFactoryTest {
     }
 
     assertEquals(matrixFactory.horzcatVecDense(denseVectorList), mat3);
-    assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), 0.0);
+    assertArrayEquals(((DenseMatrix) mat3).toArray(), mergeArrays(value, value));
 
     final List<Matrix> denseMatrixList = new ArrayList<>();
     denseMatrixList.add(mat1);
@@ -113,7 +112,7 @@ public final class MatrixFactoryTest {
   @Test
   public void testCSCMatrix() {
     final int[][] index = {{0, 2, 4, 6}, {1, 2, 3, 4, 5}, {3, 5, 7}};
-    final double[][] value = {{0.1, 0.2, 0.3, 0.4}, {0.5, 0.6, 0.7, 0.8, 0.9}, {1.0, 1.1, 1.2}};
+    final Float[][] value = {{0.1f, 0.2f, 0.3f, 0.4f}, {0.5f, 0.6f, 0.7f, 0.8f, 0.9f}, {1.0f, 1.1f, 1.2f}};
     final Vector vec1 = vectorFactory.createSparse(index[0], value[0], 10);
     final Vector vec2 = vectorFactory.createSparse(index[1], value[1], 10);
     final Vector vec3 = vectorFactory.createSparse(index[2], value[2], 10);
@@ -133,5 +132,13 @@ public final class MatrixFactoryTest {
         assertEquals(mat2.get(index[i][j], i), value[i][j], 0.0);
       }
     }
+  }
+
+  private Float[] mergeArrays(final Float[] arr1, final Float[] arr2) {
+    final int size = arr1.length + arr2.length;
+    final Float[] combined = new Float[size];
+    System.arraycopy(arr1, 0, combined, 0, arr1.length);
+    System.arraycopy(arr2, 0, combined, arr1.length, arr2.length);
+    return combined;
   }
 }

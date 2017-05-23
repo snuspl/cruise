@@ -16,7 +16,7 @@
 package edu.snu.cay.common.math.linalg;
 
 /**
- * Interface for matrix whose elements are {@code double} values.
+ * Interface for matrix whose elements are {@code Float} values.
  */
 public interface Matrix {
 
@@ -56,7 +56,7 @@ public interface Matrix {
    * @param columnIndex an index in range [0, columns)
    * @return element specified by given indices
    */
-  double get(int rowIndex, int columnIndex);
+  Float get(int rowIndex, int columnIndex);
 
   /**
    * Returns the column specified by the index.
@@ -132,7 +132,7 @@ public interface Matrix {
    * @param columnIndex an index in range [0, columns)
    * @param value given value
    */
-  void set(int rowIndex, int columnIndex, double value);
+  void set(int rowIndex, int columnIndex, Float value);
 
   /**
    * Transpose this matrix.
@@ -151,14 +151,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix add(double value);
+  Matrix add(Float value);
 
   /**
    * Adds a scalar to all elements (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix addi(double value);
+  Matrix addi(Float value);
 
   /**
    * Adds a matrix, element-wise.
@@ -179,14 +179,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix sub(double value);
+  Matrix sub(Float value);
 
   /**
    * Subtracts a scalar from all elements (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix subi(double value);
+  Matrix subi(Float value);
 
   /**
    * Subtracts a matrix from this matrix, element-wise.
@@ -207,14 +207,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix mul(double value);
+  Matrix mul(Float value);
 
   /**
    * Multiplies all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix muli(double value);
+  Matrix muli(Float value);
 
   /**
    * Multiplies this matrix by another matrix, element-wise.
@@ -235,14 +235,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix div(double value);
+  Matrix div(Float value);
 
   /**
    * Divides all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix divi(double value);
+  Matrix divi(Float value);
 
   /**
    * Divides this matrix by another matrix, element-wise.

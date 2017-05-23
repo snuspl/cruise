@@ -35,8 +35,8 @@ import java.util.List;
  */
 public final class DefaultMatrixFactory implements MatrixFactory {
 
-  private static final ClassTag TAG = ClassTag$.MODULE$.Double();
-  private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
+  private static final ClassTag TAG = ClassTag$.MODULE$.Float();
+  private static final Zero ZERO = Zero$.MODULE$.forClass(Float.TYPE);
   private static final Predef.$less$colon$less CONFORMS = Predef.conforms();
 
   @Inject
@@ -64,7 +64,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    * @return a generated matrix
    */
   @Override
-  public DenseMatrix createDense(final int rows, final int columns, final double[] data) {
+  public DenseMatrix createDense(final int rows, final int columns, final Float[] data) {
     return new DenseMatrix(breeze.linalg.DenseMatrix.create(rows, columns, data, ZERO));
   }
 
@@ -88,9 +88,9 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public DenseMatrix horzcatVecDense(final List<Vector> vectors) {
-    final List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
-        new Function<Vector, breeze.linalg.DenseVector<Double>>() {
-          public breeze.linalg.DenseVector<Double> apply(final Vector vector) {
+    final List<breeze.linalg.DenseVector<Float>> breezeVecList = Lists.transform(vectors,
+        new Function<Vector, breeze.linalg.DenseVector<Float>>() {
+          public breeze.linalg.DenseVector<Float> apply(final Vector vector) {
             return ((DenseVector) vector).getBreezeVector();
           }
         });
@@ -106,9 +106,9 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public CSCMatrix horzcatVecSparse(final List<Vector> vectors) {
-    final List<breeze.linalg.SparseVector<Double>> breezeVecList = Lists.transform(vectors,
-        new Function<Vector, breeze.linalg.SparseVector<Double>>() {
-          public breeze.linalg.SparseVector<Double> apply(final Vector vector) {
+    final List<breeze.linalg.SparseVector<Float>> breezeVecList = Lists.transform(vectors,
+        new Function<Vector, breeze.linalg.SparseVector<Float>>() {
+          public breeze.linalg.SparseVector<Float> apply(final Vector vector) {
             return ((SparseVector) vector).getBreezeVector();
           }
         });
@@ -124,9 +124,9 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public Matrix horzcatMatDense(final List<Matrix> matrices) {
-    final List<breeze.linalg.DenseMatrix<Double>> breezeMatList = Lists.transform(matrices,
-        new Function<Matrix, breeze.linalg.DenseMatrix<Double>>() {
-          public breeze.linalg.DenseMatrix<Double> apply(final Matrix matrix) {
+    final List<breeze.linalg.DenseMatrix<Float>> breezeMatList = Lists.transform(matrices,
+        new Function<Matrix, breeze.linalg.DenseMatrix<Float>>() {
+          public breeze.linalg.DenseMatrix<Float> apply(final Matrix matrix) {
             return ((DenseMatrix) matrix).getBreezeMatrix();
           }
         });
@@ -142,9 +142,9 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public Matrix vertcatMatDense(final List<Matrix> matrices) {
-    final List<breeze.linalg.DenseMatrix<Double>> breezeMatList = Lists.transform(matrices,
-        new Function<Matrix, breeze.linalg.DenseMatrix<Double>>() {
-          public breeze.linalg.DenseMatrix<Double> apply(final Matrix matrix) {
+    final List<breeze.linalg.DenseMatrix<Float>> breezeMatList = Lists.transform(matrices,
+        new Function<Matrix, breeze.linalg.DenseMatrix<Float>>() {
+          public breeze.linalg.DenseMatrix<Float> apply(final Matrix matrix) {
             return ((DenseMatrix) matrix).getBreezeMatrix();
           }
         });

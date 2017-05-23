@@ -25,13 +25,13 @@ import edu.snu.cay.common.math.linalg.Vector;
  */
 public final class CSCMatrix implements Matrix {
 
-  private final breeze.linalg.CSCMatrix<Double> breezeMatrix;
+  private final breeze.linalg.CSCMatrix<Float> breezeMatrix;
 
-  CSCMatrix(final breeze.linalg.CSCMatrix<Double> breezeMatrix) {
+  CSCMatrix(final breeze.linalg.CSCMatrix<Float> breezeMatrix) {
     this.breezeMatrix = breezeMatrix;
   }
 
-  breeze.linalg.CSCMatrix<Double> getBreezeMatrix() {
+  breeze.linalg.CSCMatrix<Float> getBreezeMatrix() {
     return breezeMatrix;
   }
 
@@ -87,7 +87,7 @@ public final class CSCMatrix implements Matrix {
    * @return element specified by given indices
    */
   @Override
-  public double get(final int rowIndex, final int columnIndex) {
+  public Float get(final int rowIndex, final int columnIndex) {
     return breezeMatrix.apply(rowIndex, columnIndex);
   }
 
@@ -162,7 +162,7 @@ public final class CSCMatrix implements Matrix {
    * @param value given value
    */
   @Override
-  public void set(final int rowIndex, final int columnIndex, final double value) {
+  public void set(final int rowIndex, final int columnIndex, final Float value) {
     breezeMatrix.update(rowIndex, columnIndex, value);
   }
 
@@ -172,7 +172,7 @@ public final class CSCMatrix implements Matrix {
    */
   @Override
   public Matrix transpose() {
-    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.t(MatrixOps.T_S));
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.t(MatrixOps.T_S));
   }
 
   /**
@@ -213,8 +213,8 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix add(final double value) {
-    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$plus(value, MatrixOps.ADD_ST));
+  public Matrix add(final Float value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$plus(value, MatrixOps.ADD_ST));
   }
 
   /**
@@ -223,7 +223,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix addi(final double value) {
+  public Matrix addi(final Float value) {
     ((NumericOps) breezeMatrix).$plus$eq(value, MatrixOps.ADDI_ST);
     return this;
   }
@@ -238,10 +238,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Matrix add(final Matrix matrix) {
     if (matrix.isDense()) {
-      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Float>)
           breezeMatrix.$plus(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.ADD_SD));
     } else {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$plus(((CSCMatrix) matrix).breezeMatrix, MatrixOps.ADD_SS));
     }
   }
@@ -267,8 +267,8 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix sub(final double value) {
-    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$minus(value, MatrixOps.SUB_ST));
+  public Matrix sub(final Float value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$minus(value, MatrixOps.SUB_ST));
   }
 
   /**
@@ -277,7 +277,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix subi(final double value) {
+  public Matrix subi(final Float value) {
     ((NumericOps) breezeMatrix).$minus$eq(value, MatrixOps.SUBI_ST);
     return this;
   }
@@ -292,10 +292,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Matrix sub(final Matrix matrix) {
     if (matrix.isDense()) {
-      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Float>)
           breezeMatrix.$minus(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.SUB_SD));
     } else {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$minus(((CSCMatrix) matrix).breezeMatrix, MatrixOps.SUB_SS));
     }
   }
@@ -321,8 +321,8 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix mul(final double value) {
-    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$colon$times(value, MatrixOps.MUL_ST));
+  public Matrix mul(final Float value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$colon$times(value, MatrixOps.MUL_ST));
   }
 
   /**
@@ -331,7 +331,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix muli(final double value) {
+  public Matrix muli(final Float value) {
     ((NumericOps) breezeMatrix).$colon$times$eq(value, MatrixOps.MULI_ST);
     return this;
   }
@@ -344,10 +344,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Matrix mul(final Matrix matrix) {
     if (matrix.isDense()) {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$colon$times(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EMUL_MM));
     } else {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$colon$times(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EMUL_SS));
     }
   }
@@ -373,8 +373,8 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix div(final double value) {
-    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$div(value, MatrixOps.DIV_ST));
+  public Matrix div(final Float value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$div(value, MatrixOps.DIV_ST));
   }
 
   /**
@@ -383,7 +383,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix divi(final double value) {
+  public Matrix divi(final Float value) {
     ((NumericOps) breezeMatrix).$div$eq(value, MatrixOps.DIVI_ST);
     return this;
   }
@@ -396,10 +396,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Matrix div(final Matrix matrix) {
     if (matrix.isDense()) {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$div(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EDIV_MM));
     } else {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$div(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EDIV_SS));
     }
   }
@@ -429,10 +429,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Vector mmul(final Vector vector) {
     if (vector.isDense()) {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           breezeMatrix.$times(((DenseVector) vector).getBreezeVector(), MatrixOps.MUL_SMDV));
     } else {
-      return new SparseVector((breeze.linalg.SparseVector<Double>)
+      return new SparseVector((breeze.linalg.SparseVector<Float>)
           breezeMatrix.$times(((SparseVector) vector).getBreezeVector(), MatrixOps.MUL_SMSV));
     }
   }
@@ -447,10 +447,10 @@ public final class CSCMatrix implements Matrix {
   @Override
   public Matrix mmul(final Matrix matrix) {
     if (matrix.isDense()) {
-      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Float>)
           breezeMatrix.$times(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.MUL_SMDM));
     } else {
-      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Float>)
           breezeMatrix.$times(((CSCMatrix) matrix).breezeMatrix, MatrixOps.MUL_SMSM));
     }
   }
