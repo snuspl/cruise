@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 
 /**
  * A Pregel master that communicates with workers using CentComm services.
- * It synchronize all workers in a single superstep by checking messages that all workers have sent.
+ * It synchronizes all workers in a single superstep by checking messages that all workers have sent.
  */
 @DriverSide
 final class PregelMaster implements EventHandler<CentCommMsg> {
@@ -40,7 +40,7 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
-  private final Set<String> evaluatorIds;
+  private final Set<String> executorIds;
 
   private boolean isAllVerticesHalt;
 
@@ -50,7 +50,7 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
   private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
-    this.evaluatorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
+    this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
     isAllVerticesHalt = false;
     initThread();
   }
@@ -74,14 +74,14 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
     LOG.log(Level.INFO, "Received CentComm message {0} from {1}",
         new Object[]{message, sourceId});
 
-    if (!evaluatorIds.contains(sourceId)) {
-      evaluatorIds.add(sourceId);
+    if (!executorIds.contains(sourceId)) {
+      executorIds.add(sourceId);
     }
 
-    final WorkerMsg workerMsg = AvroUtils.fromBytes(message.getData().array(), WorkerMsg.class);
+    final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
     synchronized (this) {
-      isAllVerticesHalt = isAllVerticesHalt || workerMsg.getIsAllVerticesHalt();
+      isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
     }
     msgCountDown.countDown();
   }
@@ -97,24 +97,25 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
           throw new RuntimeException("Unexpected exception", e);
         }
 
-        final MasterMsgType masterMsgType = isAllVerticesHalt ? MasterMsgType.Stop : MasterMsgType.Start;
-        final MasterMsg masterMsg = MasterMsg.newBuilder()
-            .setType(masterMsgType)
+        final ControlMsgType controlMsgType = isAllVerticesHalt ? ControlMsgType.Stop : ControlMsgType.Start;
+        final SuperstepControlMsg controlMsg = SuperstepControlMsg.newBuilder()
+            .setType(controlMsgType)
             .build();
 
-        evaluatorIds.forEach(evaluatorId -> {
+        executorIds.forEach(executorId -> {
           try {
-            masterSideCentCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, evaluatorId,
-                AvroUtils.toBytes(masterMsg, MasterMsg.class));
+            masterSideCentCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, executorId,
+                AvroUtils.toBytes(controlMsg, SuperstepControlMsg.class));
           } catch (NetworkException e) {
             throw new RuntimeException(e);
           }
         });
 
-        if (masterMsgType.equals(MasterMsgType.Stop)) {
+        if (controlMsgType.equals(ControlMsgType.Stop)) {
           break;
         }
 
+        // reset for next superstep
         isAllVerticesHalt = false;
         msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }

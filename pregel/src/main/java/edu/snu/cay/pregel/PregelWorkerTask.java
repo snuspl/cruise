@@ -50,14 +50,14 @@ public final class PregelWorkerTask implements Task {
   /**
    * Manage message stores in this works.
    */
-  private final MessageManager<Long, Double> messageManager;
+  private final MessageManager messageManager;
 
   private final WorkerMsgManager workerMsgManager;
 
   private final TableAccessor tableAccessor;
 
   /**
-   * The number of active vertices in this graph partitions which were allocated to this worker.
+   * The number of active vertices in local graph partitions.
    * This value is set at the end of each superstep.
    * It is used to determine whether task finishes or not by {@link WorkerMsgManager}
    */
@@ -87,7 +87,7 @@ public final class PregelWorkerTask implements Task {
     while (true) {
 
       final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
-      final Computation<Double, Double> computation =
+      final Computation computation =
           new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
@@ -126,5 +126,4 @@ public final class PregelWorkerTask implements Task {
 
     return null;
   }
-
 }

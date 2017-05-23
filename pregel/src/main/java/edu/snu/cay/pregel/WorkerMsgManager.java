@@ -47,11 +47,11 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
   @Override
   public void onNext(final CentCommMsg message) {
     LOG.log(Level.INFO, "Received CentComm message {0}", message);
-    final MasterMsg masterMsg = AvroUtils.fromBytes(message.getData().array(), MasterMsg.class);
-    onMsgMasterMsg(masterMsg);
+    final SuperstepControlMsg controlMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepControlMsg.class);
+    onControlMsg(controlMsg);
   }
 
-  private void onMsgMasterMsg(final MasterMsg msg) {
+  private void onControlMsg(final SuperstepControlMsg msg) {
     switch (msg.getType()) {
     case Start:
       goNextSuperstep = true;
@@ -60,7 +60,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
       goNextSuperstep = false;
       break;
     default:
-      break;
+      throw new RuntimeException("unexpected type");
     }
     latch.countDown();
   }
@@ -73,11 +73,11 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
   boolean waitForTryNextSuperstepMsg(final int numActiveVertices) {
 
     final boolean isAllVerticesHalt = numActiveVertices == 0;
-    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
+    final SuperstepResultMsg resultMsg = SuperstepResultMsg.newBuilder()
         .setIsAllVerticesHalt(isAllVerticesHalt)
         .build();
 
-    centCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, AvroUtils.toBytes(workerMsg, WorkerMsg.class));
+    centCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, AvroUtils.toBytes(resultMsg, SuperstepResultMsg.class));
 
     try {
       latch.await();

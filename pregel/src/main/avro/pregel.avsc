@@ -15,26 +15,26 @@
  */
 [
 /**
- * Type of message which is sent to workers.
+ * Type of message that master sends to workers to control them.
  */
 {
   "namespace": "edu.snu.cay.pregel",
   "type": "record",
-  "name": "MasterMsg",
+  "name": "SuperstepControlMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "MasterMsgType",
+    {"name": "type", "type": {"type": "enum", "name": "ControlMsgType",
       "symbols": ["Start", "Stop"]}}
   ]
 },
 
 /**
- * Type of message which is sent to  master.
+ * Type of message that workers send to master about the result of superstep.
  */
 {
   "namespace": "edu.snu.cay.pregel",
   "type": "record",
-  "name": "WorkerMsg",
+  "name": "SuperstepResultMsg",
   "fields":
   [
     {"name": "isAllVerticesHalt", "type": "boolean"}

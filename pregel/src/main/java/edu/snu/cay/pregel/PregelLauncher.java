@@ -53,14 +53,20 @@ public final class PregelLauncher {
   private static final int MAX_NUMBER_OF_EVALUATORS = 5;
   private static final String DRIVER_IDENTIFIER = "Pregel";
 
+  /**
+   * Should not be instantiated.
+   */
   private PregelLauncher() {
-
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
     final Configuration clConf = parseCommandLine(args);
     final String tableInputPath = Tang.Factory.getTang().newInjector(clConf)
         .getNamedInstance(TableInputPath.class);
+
+    if (tableInputPath.equals(TableInputPath.EMPTY)) {
+      throw new IllegalArgumentException("User should set a input file");
+    }
 
     final LauncherStatus status = launch(tableInputPath);
     LOG.log(Level.INFO, "Pregel job completed: {0}", status);
@@ -97,10 +103,6 @@ public final class PregelLauncher {
     final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
-
-    if (tableInputPath.equals(TableInputPath.EMPTY)) {
-      throw new IllegalArgumentException("User should set a input file");
-    }
 
     final Configuration inputPathConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(TableInputPath.class, processInputDir(tableInputPath))
