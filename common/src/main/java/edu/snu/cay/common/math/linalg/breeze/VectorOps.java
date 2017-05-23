@@ -28,57 +28,57 @@ public final class VectorOps {
   }
 
   // set operators
-  static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseVector.dv_dv_UpdateOp_Double_OpSet();
-  static final UFunc.InPlaceImpl2 SET_DS = breeze.linalg.DenseVector.dv_v_InPlaceOp_Double_OpSet();
+  static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseVector.dv_dv_UpdateOp_Float_OpSet();
+  static final UFunc.InPlaceImpl2 SET_DS = breeze.linalg.DenseVector.dv_v_InPlaceOp_Float_OpSet();
 
   // slice operators
   static final CanSlice SLICE_D = breeze.linalg.DenseVector.canSlice();
 
   // scalar addition operator
-  static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpAdd();
-  static final UFunc.InPlaceImpl2 ADDI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpAdd();
-  static final UFunc.UImpl2 ADD_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpAdd();
-  static final UFunc.InPlaceImpl2 ADDI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpAdd();
+  static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseVector.dv_s_Op_Float_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Float_OpAdd();
+  static final UFunc.UImpl2 ADD_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Float_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Float_OpAdd();
 
   // vector addition operator
-  static final UFunc.UImpl2 ADD_DD = breeze.linalg.DenseVector.canAddD();
-  static final UFunc.InPlaceImpl2 ADDI_DD = breeze.linalg.DenseVector.canAddIntoD();
-  static final UFunc.UImpl2 ADD_DS = breeze.linalg.SparseVector.dv_sv_op_Double_OpAdd();
-  static final UFunc.InPlaceImpl2 ADDI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Double_OpAdd();
-  static final UFunc.UImpl2 ADD_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Double_OpAdd();
+  static final UFunc.UImpl2 ADD_DD = breeze.linalg.DenseVector.canAddF();
+  static final UFunc.InPlaceImpl2 ADDI_DD = breeze.linalg.DenseVector.canAddIntoF();
+  static final UFunc.UImpl2 ADD_DS = breeze.linalg.SparseVector.dv_sv_op_Float_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Float_OpAdd();
+  static final UFunc.UImpl2 ADD_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Float_OpAdd();
 
   // scalar subtraction operator
-  static final UFunc.UImpl2 SUB_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpSub();
-  static final UFunc.InPlaceImpl2 SUBI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpSub();
-  static final UFunc.UImpl2 SUB_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpSub();
-  static final UFunc.InPlaceImpl2 SUBI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpSub();
+  static final UFunc.UImpl2 SUB_DT = breeze.linalg.DenseVector.dv_s_Op_Float_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Float_OpSub();
+  static final UFunc.UImpl2 SUB_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Float_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Float_OpSub();
 
   // vector subtraction operator
   static final UFunc.UImpl2 SUB_DD = breeze.linalg.DenseVector.canSubD();
-  static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseVector.canSubIntoD();
-  static final UFunc.UImpl2 SUB_DS = breeze.linalg.SparseVector.dv_sv_op_Double_OpSub();
-  static final UFunc.InPlaceImpl2 SUBI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Double_OpSub();
-  static final UFunc.UImpl2 SUB_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Double_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseVector.canSubIntoF();
+  static final UFunc.UImpl2 SUB_DS = breeze.linalg.SparseVector.dv_sv_op_Float_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Float_OpSub();
+  static final UFunc.UImpl2 SUB_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Float_OpSub();
 
   // scale operator
-  static final UFunc.UImpl2 SCALE_D = breeze.linalg.DenseVector.dv_s_Op_Double_OpMulMatrix();
-  static final UFunc.InPlaceImpl2 SCALEI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpMulMatrix();
-  static final UFunc.UImpl2 SCALE_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpMulMatrix();
+  static final UFunc.UImpl2 SCALE_D = breeze.linalg.DenseVector.dv_s_Op_Float_OpMulMatrix();
+  static final UFunc.InPlaceImpl2 SCALEI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Float_OpMulMatrix();
+  static final UFunc.UImpl2 SCALE_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Float_OpMulMatrix();
 
   // division operator
-  static final UFunc.UImpl2 DIV_D = breeze.linalg.DenseVector.dv_s_Op_Double_OpDiv();
-  static final UFunc.InPlaceImpl2 DIVI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpDiv();
-  static final UFunc.UImpl2 DIV_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpDiv();
-  static final UFunc.InPlaceImpl2 DIVI_S = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpDiv();
+  static final UFunc.UImpl2 DIV_D = breeze.linalg.DenseVector.dv_s_Op_Float_OpDiv();
+  static final UFunc.InPlaceImpl2 DIVI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Float_OpDiv();
+  static final UFunc.UImpl2 DIV_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Float_OpDiv();
+  static final UFunc.InPlaceImpl2 DIVI_S = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Float_OpDiv();
 
   // axpy operator
   static final UFunc.InPlaceImpl3 AXPY_DD = breeze.linalg.DenseVector.canDaxpy$.MODULE$;
-  static final UFunc.InPlaceImpl3 AXPY_DS = breeze.linalg.SparseVector.implScaleAdd_DVT_T_SVT_InPlace_Double();
-  static final UFunc.InPlaceImpl3 AXPY_SS = breeze.linalg.SparseVector.implScaleAdd_SVT_T_SVT_InPlace_Double();
+  static final UFunc.InPlaceImpl3 AXPY_DS = breeze.linalg.SparseVector.implScaleAdd_DVT_T_SVT_InPlace_Float();
+  static final UFunc.InPlaceImpl3 AXPY_SS = breeze.linalg.SparseVector.implScaleAdd_SVT_T_SVT_InPlace_Float();
 
   // dot operator
   static final UFunc.UImpl2 DOT_DD = breeze.linalg.DenseVector.canDotD$.MODULE$;
-  static final UFunc.UImpl2 DOT_DS = breeze.linalg.SparseVector.implOpMulInner_DVT_SVT_eq_T_Double();
-  static final UFunc.UImpl2 DOT_SS = SparseVector.implOpMulInner_SVT_SVT_eq_T_Double();
+  static final UFunc.UImpl2 DOT_DS = breeze.linalg.SparseVector.implOpMulInner_DVT_SVT_eq_T_Float();
+  static final UFunc.UImpl2 DOT_SS = SparseVector.implOpMulInner_SVT_SVT_eq_T_Float();
 
 }

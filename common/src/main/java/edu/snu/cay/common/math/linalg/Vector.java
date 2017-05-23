@@ -16,7 +16,7 @@
 package edu.snu.cay.common.math.linalg;
 
 /**
- * Interface for vector whose elements are {@code double} values.
+ * Interface for vector whose elements are {@code float} values.
  */
 public interface Vector extends Iterable<VectorEntry> {
 
@@ -43,7 +43,7 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param index an index in range [0, length)
    * @return element specified by given index
    */
-  double get(int index);
+  float get(int index);
 
   /**
    * Returns a smaller vector that starts and ends at the specified indices.
@@ -62,7 +62,7 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param index an index in range [0, length)
    * @param value value to be set
    */
-  void set(int index, double value);
+  void set(int index, float value);
 
   /**
    * Returns a new vector same as this one.
@@ -75,14 +75,14 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param value operand scalar
    * @return operation result
    */
-  Vector addi(double value);
+  Vector addi(float value);
 
   /**
    * Adds a scalar to all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */
-  Vector add(double value);
+  Vector add(float value);
 
   /**
    * Element-wise vector addition (in place).
@@ -103,14 +103,14 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param value operand scalar
    * @return operation result
    */
-  Vector subi(double value);
+  Vector subi(float value);
 
   /**
    * Subtracts a scalar from all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */
-  Vector sub(double value);
+  Vector sub(float value);
 
   /**
    * Element-wise vector subtraction (in place).
@@ -131,28 +131,28 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param value operand scala
    * @return operation result
    */
-  Vector scalei(double value);
+  Vector scalei(float value);
 
   /**
    * Multiplies a scala to all elements.
    * @param value operand scala
    * @return operation result
    */
-  Vector scale(double value);
+  Vector scale(float value);
 
   /**
    * Divides all elements by a scalar (in place).
    * @param value operand scala
    * @return operation result
    */
-  Vector divi(double value);
+  Vector divi(float value);
 
   /**
    * Divides all elements by a scalar.
    * @param value operand scala
    * @return operation result
    */
-  Vector div(double value);
+  Vector div(float value);
 
   /**
    * In place axpy (y += a * x) operation.
@@ -160,12 +160,12 @@ public interface Vector extends Iterable<VectorEntry> {
    * @param vector operand x
    * @return operation result
    */
-  Vector axpy(double value, Vector vector);
+  Vector axpy(float value, Vector vector);
 
   /**
    * Computes inner product.
    * @param vector operand vector
    * @return operation result
    */
-  double dot(Vector vector);
+  float dot(Vector vector);
 }

@@ -36,8 +36,8 @@ import java.util.List;
 public final class DefaultVectorFactory implements VectorFactory {
 
   // If we want to use Scala object(singleton) in Java, we should use $ sign.
-  private static final ClassTag TAG = ClassTag$.MODULE$.Double();
-  private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
+  private static final ClassTag TAG = ClassTag$.MODULE$.Float();
+  private static final Zero ZERO = Zero$.MODULE$.forClass(Float.TYPE);
   private static final Semiring SEMI_RING = Semiring$.MODULE$.semiringD();
 
   @Inject
@@ -72,7 +72,7 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public DenseVector createDense(final double[] data) {
+  public DenseVector createDense(final Float[] data) {
     return new DenseVector(new breeze.linalg.DenseVector(data));
   }
 
@@ -96,7 +96,7 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public SparseVector createSparse(final int[] index, final double[] data, final int length) {
+  public SparseVector createSparse(final int[] index, final Float[] data, final int length) {
     assert (index.length == data.length);
     return new SparseVector(new breeze.linalg.SparseVector(index, data, length, ZERO));
   }
@@ -105,9 +105,9 @@ public final class DefaultVectorFactory implements VectorFactory {
    * {@inheritDoc}
    */
   public DenseVector concatDense(final List<Vector> vectors) {
-    final List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
-        new Function<Vector, breeze.linalg.DenseVector<Double>>() {
-          public breeze.linalg.DenseVector<Double> apply(final Vector vector) {
+    final List<breeze.linalg.DenseVector<Float>> breezeVecList = Lists.transform(vectors,
+        new Function<Vector, breeze.linalg.DenseVector<Float>>() {
+          public breeze.linalg.DenseVector<Float> apply(final Vector vector) {
             return ((DenseVector) vector).getBreezeVector();
           }
         });

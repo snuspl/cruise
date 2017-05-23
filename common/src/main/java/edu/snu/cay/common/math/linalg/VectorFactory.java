@@ -45,7 +45,7 @@ public interface VectorFactory {
    * @param data elements of a vector
    * @return created vector
    */
-  Vector createDense(double[] data);
+  Vector createDense(Float[] data);
 
   /**
    * Creates a sparse vector in which all elements are equal to {@code 0} with specified length.
@@ -61,7 +61,7 @@ public interface VectorFactory {
    * @param length vector length
    * @return created vector
    */
-  Vector createSparse(int[] index, double[] data, int length);
+  Vector createSparse(int[] index, Float[] data, int length);
 
   /**
    * Creates a dense vector by concatenating several vectors.
