@@ -101,7 +101,7 @@ public final class DolphinParameters {
   public final class WorkerSenderQueueSize implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The size of queue to handle remote access messages at server",
+  @NamedParameter(doc = "The number of threads to handle remote access messages at server",
                   short_name = "num_server_handler_threads",
                   default_value = "2")
   public final class NumServerHandlerThreads implements Name<Integer> {
