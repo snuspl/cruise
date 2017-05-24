@@ -51,12 +51,13 @@ public final class PlanCompiler {
   }
 
   /**
-   * Translate given a list of add, del, and transfersteps to.
-   * @param evalsToDel
-   * @param evalsToAdd
-   * @param transferSteps
-   * @param numEvalsToSwitch
-   * @return
+   * Translate given collections of add/del operations into transferstep list, by pairing each add and del operations.
+   * It generates a list of transferstep to apply change in this translation.
+   * @param evalsToDel a list of del
+   * @param evalsToAdd a list of add
+   * @param transferSteps a list of transferstep
+   * @param numEvalsToSwitch the number of executors to switch
+   * @return a pair of executor Ids to switch and transfersteps that match with switch
    */
   private Pair<List<String>, List<TransferStep>> translateToSwitch(final List<String> evalsToDel,
                                                                    final List<String> evalsToAdd,
@@ -69,7 +70,7 @@ public final class PlanCompiler {
       addIdToDelId.put(addSubList.get(idx), delSublist.get(idx));
     }
 
-    final List<String> serversToSwitch = new ArrayList<>(delSublist);
+    final List<String> executorIdsToSwitch = new ArrayList<>(delSublist);
     delSublist.clear();
     addSubList.clear();
 
@@ -85,13 +86,13 @@ public final class PlanCompiler {
       }
     }
 
-    return Pair.of(serversToSwitch, transferStepForSwitch);
+    return Pair.of(executorIdsToSwitch, transferStepForSwitch);
   }
 
   /**
    * Compiles a Dolphin's plan to {@link ETPlan}.
    * @param dolphinPlan a Dolphin's plan
-   * @param numAvailableExtraEvals an
+   * @param numAvailableExtraEvals an extra number of executors
    * @return a {@link ETPlan}
    */
   public ETPlan compile(final Plan dolphinPlan, final int numAvailableExtraEvals) {
