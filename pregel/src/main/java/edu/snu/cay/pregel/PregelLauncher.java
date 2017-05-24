@@ -98,10 +98,6 @@ public final class PregelLauncher {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
 
-    if (tableInputPath.equals(TableInputPath.EMPTY)) {
-      throw new IllegalArgumentException("User should set a input file");
-    }
-
     final Configuration inputPathConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(TableInputPath.class, processInputDir(tableInputPath))
         .build();
@@ -119,9 +115,8 @@ public final class PregelLauncher {
   }
 
   @NamedParameter(doc = "Path of a input file to load on a table",
-      short_name = "table_input", default_value = TableInputPath.EMPTY)
+      short_name = "table_input")
   final class TableInputPath implements Name<String> {
-    static final String EMPTY = "";
 
     // should not be instantiated
     private TableInputPath() {
