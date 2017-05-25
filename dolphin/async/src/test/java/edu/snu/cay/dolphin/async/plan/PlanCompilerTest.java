@@ -303,8 +303,9 @@ public class PlanCompilerTest {
 
     LOG.log(Level.INFO, "Plan: {0}", etPlan);
 
-    // Deleting one server involves: move, unassociate, deallocate, stop
-    // Adding one worker involves: allocate, associate, move, subscribe, start
+    // Switching server to worker involves following ops
+    // to stop server: move, unassociate, stop
+    // to start worker: associate, move, subscribe, start
     assertEquals(7, etPlan.getNumTotalOps());
 
     // check dependency
