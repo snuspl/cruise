@@ -127,6 +127,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     final NMFModel model = pullModels(keys);
 
+    // collect gradients computed in each thread
     final List<Future<Map<Integer, Vector>>> futures = new ArrayList<>(numTrainerThreads);
     try {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
@@ -318,12 +319,14 @@ final class NMFTrainer implements Trainer<NMFData> {
    * @return the loss value, computed by the sum of the errors.
    */
   private double computeLoss(final Collection<NMFData> instances, final NMFModel model) {
+    final Map<Integer, Vector> rMatrix = model.getRMatrix();
+
     double loss = 0.0;
     for (final NMFData datum : instances) {
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
         final int colIdx = column.getFirst();
-        final Vector rVec = model.getRMatrix().get(colIdx); // R_{*, j} : j-th column of R
+        final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
         final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
         loss += error * error;
       }
