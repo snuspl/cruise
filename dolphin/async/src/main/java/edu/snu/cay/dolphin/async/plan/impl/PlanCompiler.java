@@ -76,6 +76,8 @@ public final class PlanCompiler {
 
     final List<TransferStep> transferStepForSwitch = new ArrayList<>(transferSteps.size());
     for (final TransferStep transferStep : transferSteps) {
+      // Change the destination of TransferSteps to the executors that will be switched,
+      // if the TransferSteps were planned to move data to the executors that will be added.
       if (addIdToDelId.containsKey(transferStep.getDstId())) {
         transferStepForSwitch.add(
             new TransferStepImpl(transferStep.getSrcId(),
@@ -92,7 +94,7 @@ public final class PlanCompiler {
   /**
    * Compiles a Dolphin's plan to {@link ETPlan}.
    * @param dolphinPlan a Dolphin's plan
-   * @param numAvailableExtraEvals an extra number of executors
+   * @param numAvailableExtraEvals the number of extra executors
    * @return a {@link ETPlan}
    */
   public ETPlan compile(final Plan dolphinPlan, final int numAvailableExtraEvals) {
