@@ -54,7 +54,7 @@ public final class VectorOps {
   static final UFunc.InPlaceImpl2 SUBI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Float_OpSub();
 
   // vector subtraction operator
-  static final UFunc.UImpl2 SUB_DD = breeze.linalg.DenseVector.canSubD();
+  static final UFunc.UImpl2 SUB_DD = breeze.linalg.DenseVector.canSubF();
   static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseVector.canSubIntoF();
   static final UFunc.UImpl2 SUB_DS = breeze.linalg.SparseVector.dv_sv_op_Float_OpSub();
   static final UFunc.InPlaceImpl2 SUBI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Float_OpSub();
@@ -72,12 +72,12 @@ public final class VectorOps {
   static final UFunc.InPlaceImpl2 DIVI_S = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Float_OpDiv();
 
   // axpy operator
-  static final UFunc.InPlaceImpl3 AXPY_DD = breeze.linalg.DenseVector.canDaxpy$.MODULE$;
+  static final UFunc.InPlaceImpl3 AXPY_DD = breeze.linalg.DenseVector.axpy_Float();
   static final UFunc.InPlaceImpl3 AXPY_DS = breeze.linalg.SparseVector.implScaleAdd_DVT_T_SVT_InPlace_Float();
   static final UFunc.InPlaceImpl3 AXPY_SS = breeze.linalg.SparseVector.implScaleAdd_SVT_T_SVT_InPlace_Float();
 
   // dot operator
-  static final UFunc.UImpl2 DOT_DD = breeze.linalg.DenseVector.canDotD$.MODULE$;
+  static final UFunc.UImpl2 DOT_DD = breeze.linalg.DenseVector$.MODULE$.canDot_DV_DV_Float();
   static final UFunc.UImpl2 DOT_DS = breeze.linalg.SparseVector.implOpMulInner_DVT_SVT_eq_T_Float();
   static final UFunc.UImpl2 DOT_SS = SparseVector.implOpMulInner_SVT_SVT_eq_T_Float();
 

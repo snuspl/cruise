@@ -59,7 +59,7 @@ public final class GBTDataCodec implements Codec<GBTData>, StreamingCodec<GBTDat
   public void encodeToStream(final GBTData gbtData, final DataOutputStream daos) {
     try {
       denseVectorCodec.encodeToStream(gbtData.getFeature(), daos);
-      daos.writeDouble(gbtData.getValue());
+      daos.writeFloat(gbtData.getValue());
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
@@ -69,7 +69,7 @@ public final class GBTDataCodec implements Codec<GBTData>, StreamingCodec<GBTDat
   public GBTData decodeFromStream(final DataInputStream dais) {
     try {
       final Vector featureVector = denseVectorCodec.decodeFromStream(dais);
-      final double value = dais.readDouble();
+      final Float value = dais.readFloat();
       return new GBTData(featureVector, value);
     } catch (final IOException e) {
       throw new RuntimeException(e);

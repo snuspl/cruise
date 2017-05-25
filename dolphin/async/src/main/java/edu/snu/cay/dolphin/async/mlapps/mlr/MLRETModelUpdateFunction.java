@@ -49,9 +49,9 @@ public final class MLRETModelUpdateFunction implements UpdateFunction<Integer, V
 
   @Override
   public Vector initValue(final Integer integer) {
-    final double[] features = new double[numFeaturesPerPartition];
+    final float[] features = new float[numFeaturesPerPartition];
     for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = random.nextGaussian() * modelGaussian;
+      features[featureIndex] = (float) (random.nextGaussian() * modelGaussian);
     }
     return vectorFactory.createDense(features);
   }

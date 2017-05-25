@@ -45,15 +45,15 @@ public final class GBTreeListCodec implements Codec<List<GBTree>> {
 
     // (1) the size of the GBTree list, (2) the max depth of GBTree, and (3) the all the GBTree's size.
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE + Integer.SIZE +
-        (Integer.SIZE + Double.SIZE) * treeSize)) {
+        (Integer.SIZE + Float.SIZE) * treeSize)) {
       try (DataOutputStream dos = new DataOutputStream(baos)) {
         dos.writeInt(gbTreeList.size());
         dos.writeInt(treeMaxDepth);
 
         for (final GBTree gbTree : gbTreeList) {
-          for (final Pair<Integer, Double> node : gbTree.getTree()) {
+          for (final Pair<Integer, Float> node : gbTree.getTree()) {
             dos.writeInt(node.getLeft());
-            dos.writeDouble(node.getRight());
+            dos.writeFloat(node.getRight());
           }
         }
       }
@@ -74,7 +74,7 @@ public final class GBTreeListCodec implements Codec<List<GBTree>> {
           final GBTree gbTree = new GBTree(treeMaxDepth);
           for (int j = 0; j < (1 << treeMaxDepth) - 1; j++) {
             final int splitFeature = dais.readInt();
-            final double splitValue = dais.readDouble();
+            final Float splitValue = dais.readFloat();
             gbTree.add(Pair.of(splitFeature, splitValue));
           }
           resultList.add(gbTree);

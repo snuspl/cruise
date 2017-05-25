@@ -64,12 +64,12 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * Size of each step taken during gradient descent.
    */
-  private double stepSize;
+  private Float stepSize;
 
   /**
    * L2 regularization constant.
    */
-  private final double lambda;
+  private final Float lambda;
 
   /**
    * Object for creating {@link Vector} instances.
@@ -89,7 +89,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * The step size drops by this rate.
    */
-  private final double decayRate;
+  private final Float decayRate;
 
   /**
    * The step size drops after every {@code decayPeriod} epochs pass.
@@ -111,9 +111,9 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                     @Parameter(InitialStepSize.class) final double initStepSize,
-                     @Parameter(Lambda.class) final double lambda,
-                     @Parameter(DecayRate.class) final double decayRate,
+                     @Parameter(InitialStepSize.class) final Float initStepSize,
+                     @Parameter(Lambda.class) final Float lambda,
+                     @Parameter(DecayRate.class) final Float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
@@ -228,11 +228,11 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     LOG.log(Level.INFO, "Start computing loss value");
     final Vector[] params = model.getParams();
-    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, params);
-    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, params);
+    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, params);
+    final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy = computeLoss(testData, params);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
+      final Float prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
@@ -337,7 +337,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final Vector[] params) {
+  private Tuple3<Float, Float, Float> computeLoss(final Collection<MLRData> data, final Vector[] params) {
 
     double loss = 0;
     int correctPredictions = 0;
@@ -368,14 +368,14 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
     regLoss /= numClasses;
 
-    return new Tuple3<>(loss, regLoss, (double) correctPredictions / data.size());
+    return new Tuple3<>((float) loss, (float) regLoss, (float) correctPredictions / data.size());
   }
 
   /**
    * Compute the probability vector of the given data instance, represented by {@code features}.
    */
   private Vector predict(final Vector features, final Vector[] params) {
-    final double[] predict = new double[numClasses];
+    final float[] predict = new float[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       predict[classIndex] = params[classIndex].dot(features);
     }
@@ -387,7 +387,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     // https://lingpipe-blog.com/2009/06/25/log-sum-of-exponentials/
     final double logSumExp = logSumExp(vector);
     for (int index = 0; index < vector.length(); ++index) {
-      vector.set(index, Math.max(Math.min(1 - 1e-12, Math.exp(vector.get(index) - logSumExp)), 1e-12));
+      vector.set(index, (float) Math.max(Math.min(1 - 1e-12, Math.exp(vector.get(index) - logSumExp)), 1e-12));
     }
     return vector;
   }
@@ -397,7 +397,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private static double logSumExp(final Vector vector) {
     final double max = max(vector).getSecond();
-    double sumExp = 0;
+    double sumExp = 0f;
     for (int index = 0; index < vector.length(); ++index) {
       sumExp += Math.exp(vector.get(index) - max);
     }
@@ -407,11 +407,11 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * Find the largest value in {@code vector} and return its index and the value itself together.
    */
-  private static Pair<Integer, Double> max(final Vector vector) {
-    double maxValue = vector.get(0);
+  private static Pair<Integer, Float> max(final Vector vector) {
+    Float maxValue = vector.get(0);
     int maxIndex = 0;
     for (int index = 1; index < vector.length(); ++index) {
-      final double value = vector.get(index);
+      final Float value = vector.get(index);
       if (value > maxValue) {
         maxValue = value;
         maxIndex = index;
@@ -420,8 +420,8 @@ final class MLRTrainer implements Trainer<MLRData> {
     return new Pair<>(maxIndex, maxValue);
   }
   
-  private EpochResult buildEpochResult(final Tuple3<Double, Double, Double> traininglossRegLossAvgAccuracy,
-                                       final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy) {
+  private EpochResult buildEpochResult(final Tuple3<Float, Float, Float> traininglossRegLossAvgAccuracy,
+                                       final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, traininglossRegLossAvgAccuracy.getFirst())
         .addAppMetric(MetricKeys.TRAINING_REG_LOSS_AVG, traininglossRegLossAvgAccuracy.getSecond())

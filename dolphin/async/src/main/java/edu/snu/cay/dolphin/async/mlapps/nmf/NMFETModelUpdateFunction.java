@@ -32,11 +32,11 @@ import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.InitialMin;
  */
 public final class NMFETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
   private final NMFModelGenerator modelGenerator;
-  private final double stepSize;
+  private final float stepSize;
 
   @Inject
   private NMFETModelUpdateFunction(final NMFModelGenerator modelGenerator,
-                                   @Parameter(NMFParameters.StepSize.class) final double stepSize) {
+                                   @Parameter(NMFParameters.StepSize.class) final float stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

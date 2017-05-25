@@ -22,9 +22,9 @@ import edu.snu.cay.common.math.linalg.Vector;
  */
 final class GBTData {
   private final Vector feature;
-  private final double value;
+  private final Float value;
 
-  GBTData(final Vector feature, final double value) {
+  GBTData(final Vector feature, final float value) {
     this.feature = feature;
     this.value = value;
   }
@@ -39,7 +39,7 @@ final class GBTData {
   /**
    * @return Y-value of the training data instance.
    */
-  double getValue() {
+  float getValue() {
     return value;
   }
 }

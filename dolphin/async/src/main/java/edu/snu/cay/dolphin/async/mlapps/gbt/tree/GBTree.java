@@ -40,7 +40,7 @@ import java.util.List;
  * If the first instance is NodeState.EMPTY(-2), it means the tree node does not exist.
  * If the first instance is NodeState.LEAF(-1), it means the tree node is a leaf node.
  */
-public final class GBTree extends Tree<Pair<Integer, Double>> {
+public final class GBTree extends Tree<Pair<Integer, Float>> {
   public GBTree(final int treeMaxDepth) {
     super(treeMaxDepth);
   }
@@ -53,9 +53,9 @@ public final class GBTree extends Tree<Pair<Integer, Double>> {
    * @param gValues gValues's data is needed to compute leaf weight.
    * @param lambda lambda is needed to compute leaf weight.
    */
-  public void makeLeaf(final int nodeIdx, final DataTree dataTree, final List<Double> gValues,
-                       final double lambda) {
-    double gSum = 0;
+  public void makeLeaf(final int nodeIdx, final DataTree dataTree, final List<Float> gValues,
+                       final Float lambda) {
+    Float gSum = 0f;
     final List<Integer> thisNode = dataTree.get(nodeIdx);
     for (final int leafMember : thisNode) {
       gSum += gValues.get(leafMember);
@@ -80,7 +80,7 @@ public final class GBTree extends Tree<Pair<Integer, Double>> {
   /**
    * @return tree list.
    */
-  public List<Pair<Integer, Double>> getTree() {
+  public List<Pair<Integer, Float>> getTree() {
     return this.tree;
   }
 }

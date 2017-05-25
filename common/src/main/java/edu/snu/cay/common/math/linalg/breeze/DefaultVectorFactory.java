@@ -38,7 +38,7 @@ public final class DefaultVectorFactory implements VectorFactory {
   // If we want to use Scala object(singleton) in Java, we should use $ sign.
   private static final ClassTag TAG = ClassTag$.MODULE$.Float();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Float.TYPE);
-  private static final Semiring SEMI_RING = Semiring$.MODULE$.semiringD();
+  private static final Semiring SEMI_RING = Semiring$.MODULE$.semiringFloat();
 
   @Inject
   private DefaultVectorFactory() {
@@ -72,7 +72,7 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public DenseVector createDense(final Float[] data) {
+  public DenseVector createDense(final float[] data) {
     return new DenseVector(new breeze.linalg.DenseVector(data));
   }
 
@@ -96,9 +96,10 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public SparseVector createSparse(final int[] index, final Float[] data, final int length) {
+  public SparseVector createSparse(final int[] index, final float[] data, final int length) {
     assert (index.length == data.length);
-    return new SparseVector(new breeze.linalg.SparseVector(index, data, length, ZERO));
+    return new SparseVector(
+        new breeze.linalg.SparseVector(index, data, length, ZERO));
   }
 
   /**

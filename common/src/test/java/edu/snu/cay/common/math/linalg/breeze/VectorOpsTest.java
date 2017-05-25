@@ -46,8 +46,8 @@ public final class VectorOpsTest {
    */
   @Test
   public void testDenseVector() {
-    final Float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    final Float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
+    final float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    final float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
 
     final Vector vec1 = factory.createDense(value1);
     final Vector vec2 = factory.createDense(value2);
@@ -58,7 +58,7 @@ public final class VectorOpsTest {
     for (int i = 0; i < vec1.length(); i++) {
       dotResult += vec1.get(i) * vec2.get(i);
     }
-    assertEquals(dotResult, vec1.dot(vec2), 0.0);
+    assertEquals(dotResult, vec1.dot(vec2), EPSILON);
 
     final Vector addVec = vec1.add(vec2);
     vec1.addi(vec2);
@@ -94,9 +94,9 @@ public final class VectorOpsTest {
   @Test
   public void testSparseVector() {
     final int[] index1 = {0, 1, 2, 3, 4};
-    final Float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    final float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
     final int[] index2 = {0, 2, 4, 6, 8};
-    final Float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
+    final float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
 
     final Vector vec1 = factory.createSparse(index1, value1, 10);
     final Vector vec2 = factory.createSparse(index2, value2, 10);
@@ -111,7 +111,7 @@ public final class VectorOpsTest {
     for (int i = 0; i < vec1.length(); i++) {
       dotResult += vec1.get(i) * vec2.get(i);
     }
-    assertEquals(dotResult, vec1.dot(vec2), 0.0);
+    assertEquals(dotResult, vec1.dot(vec2), EPSILON);
 
     final Vector addVec = vec1.add(vec2);
     dVec.addi(vec2);

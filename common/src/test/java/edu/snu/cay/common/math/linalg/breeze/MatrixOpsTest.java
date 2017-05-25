@@ -53,10 +53,10 @@ public final class MatrixOpsTest {
    */
   @Test
   public void testDenseOps() {
-    final Float[] value1 = {0.1f, 0.2f, 0.3f};
-    final Float[] value2 = {0.4f, 0.5f, 0.6f};
-    final Float[] value3 = {1.0f, 2.0f};
-    final Float[] value4 = {-1.0f, -2.0f};
+    final float[] value1 = {0.1f, 0.2f, 0.3f};
+    final float[] value2 = {0.4f, 0.5f, 0.6f};
+    final float[] value3 = {1.0f, 2.0f};
+    final float[] value4 = {-1.0f, -2.0f};
     final Vector vec1 = vectorFactory.createDense(value1);
     final Vector vec2 = vectorFactory.createDense(value2);
     final Vector vec3 = vectorFactory.createDense(value3);
@@ -112,9 +112,9 @@ public final class MatrixOpsTest {
   @Test
   public void testCSCOps() {
     final int[][] index1 = {{0, 2, 4, 6}, {1, 2, 3, 4, 5}};
-    final Float[][] value1 = {{0.1f, 0.2f, 0.3f, 0.4f}, {0.5f, 0.6f, 0.7f, 0.8f, 0.9f}};
+    final float[][] value1 = {{0.1f, 0.2f, 0.3f, 0.4f}, {0.5f, 0.6f, 0.7f, 0.8f, 0.9f}};
     final int[][] index2 = {{0, 1}, {1}, {0, 1}};
-    final Float[][] value2 = {{2.0f, 1.0f}, {0.5f}, {-1.0f, 0.0f}};
+    final float[][] value2 = {{2.0f, 1.0f}, {0.5f}, {-1.0f, 0.0f}};
     final Vector vec1 = vectorFactory.createSparse(index1[0], value1[0], 7);
     final Vector vec2 = vectorFactory.createSparse(index1[1], value1[1], 7);
     final Vector vec3 = vectorFactory.createSparse(index2[0], value2[0], 2);
@@ -154,8 +154,8 @@ public final class MatrixOpsTest {
   public void testDenseCSCOps() {
     final int[][] index1 = {{0, 1, 2}, {0, 1, 2}};
     final int[][] index2 = {{0, 1}, {0, 1}};
-    final Float[][] value1 = {{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}};
-    final Float[][] value2 = {{1.0f, 0.0f}, {0.0f, 1.0f}};
+    final float[][] value1 = {{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}};
+    final float[][] value2 = {{1.0f, 0.0f}, {0.0f, 1.0f}};
 
     final List<Vector> denseVectorList1 = new ArrayList<>();
     final List<Vector> denseVectorList2 = new ArrayList<>();

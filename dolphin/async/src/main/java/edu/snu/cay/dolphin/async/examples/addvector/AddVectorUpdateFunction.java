@@ -25,7 +25,7 @@ import javax.inject.Inject;
 /**
  * {@link UpdateFunction} for the AddIntegerREEF application.
  * Simply adds all incoming integer values to all elements of the vector
- * (see {@link AddVectorUpdateFunction#update(Vector, Vector)}).
+ * (see {@link AddVectorUpdateFunction#updateValue(Integer, Vector, Integer)}).
  * The initial element in vector of every distinct key is set to be 0
  * (see {@link AddVectorUpdateFunction#initValue(Integer)}).
  */
@@ -43,18 +43,18 @@ final class AddVectorUpdateFunction implements UpdateFunction<Integer, Vector, I
 
   @Override
   public Vector initValue(final Integer key) {
-    final double[] vector = new double[vectorSize];
+    final float[] vector = new float[vectorSize];
     for (int vectorIdx = 0; vectorIdx < vectorSize; vectorIdx++) {
-      vector[vectorIdx] = 0;
+      vector[vectorIdx] = 0f;
     }
     return vectorFactory.createDense(vector);
   }
 
   @Override
   public Vector updateValue(final Integer key, final Vector oldValue, final Integer updateValue) {
-    final double[] vector = new double[vectorSize];
+    final float[] vector = new float[vectorSize];
     for (int vectorIdx = 0; vectorIdx < vectorSize; vectorIdx++) {
-      vector[vectorIdx] = updateValue;
+      vector[vectorIdx] = (float) updateValue;
     }
 
     return oldValue.addi(vectorFactory.createDense(vector));

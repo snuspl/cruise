@@ -64,7 +64,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    * @return a generated matrix
    */
   @Override
-  public DenseMatrix createDense(final int rows, final int columns, final Float[] data) {
+  public DenseMatrix createDense(final int rows, final int columns, final float[] data) {
     return new DenseMatrix(breeze.linalg.DenseMatrix.create(rows, columns, data, ZERO));
   }
 

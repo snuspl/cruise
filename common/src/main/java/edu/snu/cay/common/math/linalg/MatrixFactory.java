@@ -41,7 +41,7 @@ public interface MatrixFactory {
    * @param data elements of a matrix in column-major order
    * @return a generated matrix
    */
-  Matrix createDense(int rows, int columns, Float[] data);
+  Matrix createDense(int rows, int columns, float[] data);
 
   /**
    * Creates a CSC matrix in which all elements are equal to {@code 0}.

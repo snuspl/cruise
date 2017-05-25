@@ -49,18 +49,18 @@ public final class LassoETModelUpdateFunction implements UpdateFunction<Integer,
 
   @Override
   public Vector initValue(final Integer integer) {
-    final double[] features = new double[numFeaturesPerPartition];
+    final float[] features = new float[numFeaturesPerPartition];
     for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = random.nextGaussian() * modelGaussian;
+      features[featureIndex] = (float) (random.nextGaussian() * modelGaussian);
     }
     return vectorFactory.createDense(features);
   }
 
   @Override
   public Vector updateValue(final Integer integer, final Vector oldValue, final Vector deltaValue) {
-    final double[] features = new double[numFeaturesPerPartition];
+    final float[] features = new float[numFeaturesPerPartition];
     for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = random.nextGaussian() * modelGaussian;
+      features[featureIndex] = (float) (random.nextGaussian() * modelGaussian);
     }
     return vectorFactory.createDense(features);
   }

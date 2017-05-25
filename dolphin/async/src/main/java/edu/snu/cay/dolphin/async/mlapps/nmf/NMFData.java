@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WIdoubleHOUdouble WARRANdoubleIES OR CONDIdoubleIONS OF ANY KIND, either express or implied.
+ * WIFloatHOUFloat WARRANFloatIES OR CONDIFloatIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -26,11 +26,11 @@ import java.util.List;
 final class NMFData {
 
   private final int rowIndex;
-  private final List<Pair<Integer, Double>> columns;
+  private final List<Pair<Integer, Float>> columns;
   private final Vector vector;
 
   NMFData(final int rowIndex,
-          final List<Pair<Integer, Double>> columns,
+          final List<Pair<Integer, Float>> columns,
           final Vector vector) {
     this.rowIndex = rowIndex;
     this.columns = columns;
@@ -41,7 +41,7 @@ final class NMFData {
     return rowIndex;
   }
 
-  List<Pair<Integer, Double>> getColumns() {
+  List<Pair<Integer, Float>> getColumns() {
     return columns;
   }
 

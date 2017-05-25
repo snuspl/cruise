@@ -59,7 +59,7 @@ public final class LassoDataCodec implements Codec<LassoData>, StreamingCodec<La
   public void encodeToStream(final LassoData lassoData, final DataOutputStream daos) {
     try {
       sparseVectorCodec.encodeToStream(lassoData.getFeature(), daos);
-      daos.writeDouble(lassoData.getValue());
+      daos.writeFloat(lassoData.getValue());
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
@@ -69,7 +69,7 @@ public final class LassoDataCodec implements Codec<LassoData>, StreamingCodec<La
   public LassoData decodeFromStream(final DataInputStream dais) {
     try {
       final Vector featureVector = sparseVectorCodec.decodeFromStream(dais);
-      final double value = dais.readDouble();
+      final float value = dais.readFloat();
       return new LassoData(featureVector, value);
     } catch (final IOException e) {
       throw new RuntimeException(e);
