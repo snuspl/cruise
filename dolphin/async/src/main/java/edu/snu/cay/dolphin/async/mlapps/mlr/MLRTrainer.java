@@ -173,7 +173,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
     instances.addAll(miniBatchTrainingData);
 
-    // collects the results (new models here) computed by multiple threads
+    // collects the gradients computed by multiple threads
     final List<Future<Vector[]>> futures = new ArrayList<>(numTrainerThreads);
     try {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.

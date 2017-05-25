@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.utils.Copyable;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -26,21 +25,14 @@ import java.util.Map;
  */
 final class NMFModel implements Copyable<NMFModel> {
   private final Map<Integer, Vector> rMatrix;
-  private final Map<Integer, Vector> rGradient;
 
   NMFModel(final Map<Integer, Vector> rMatrix) {
     this.rMatrix = rMatrix;
-    this.rGradient = new HashMap<>();
-  }
-
-  private NMFModel(final Map<Integer, Vector> rMatrix, final Map<Integer, Vector> rGradient) {
-    this.rMatrix = rMatrix;
-    this.rGradient = rGradient;
   }
 
   @Override
   public NMFModel copyOf() {
-    return new NMFModel(copyMap(rMatrix), copyMap(rGradient));
+    return new NMFModel(rMatrix);
   }
 
   /**
@@ -48,21 +40,5 @@ final class NMFModel implements Copyable<NMFModel> {
    */
   Map<Integer, Vector> getRMatrix() {
     return rMatrix;
-  }
-
-  /**
-   * @return the gradient of R matrix
-   */
-  Map<Integer, Vector> getRGradient() {
-    return rGradient;
-  }
-
-  /**
-   * Creates a deep copy of a map. The types of entries are restricted to those we use in NMF app.
-   */
-  private Map<Integer, Vector> copyMap(final Map<Integer, Vector> toCopy) {
-    final Map<Integer, Vector> copied = new HashMap<>(toCopy.size());
-    toCopy.forEach((integer, vector) -> copied.put(integer, vector.copy()));
-    return copied;
   }
 }
