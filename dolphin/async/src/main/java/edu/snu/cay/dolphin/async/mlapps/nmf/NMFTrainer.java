@@ -71,11 +71,6 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private final int numTrainerThreads;
 
-  /**
-   * Allows to access and update the latest model.
-   */
-  private final ModelHolder<NMFModel> modelHolder;
-
   private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
 
   @Inject
@@ -89,7 +84,6 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                     final ModelHolder<NMFModel> modelHolder,
                      final NMFModelGenerator modelGenerator,
                      final TrainingDataProvider<Long, NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
@@ -109,7 +103,6 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.modelGenerator = modelGenerator;
     this.trainingDataProvider = trainingDataProvider;
 
-    this.modelHolder = modelHolder;
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
@@ -132,19 +125,19 @@ final class NMFTrainer implements Trainer<NMFData> {
     // pull data when mini-batch is started
     final List<Integer> keys = getKeys(instances);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
-    pullModels(keys);
+    final NMFModel model = pullModels(keys);
 
-    final List<Future<NMFModel>> futures = new ArrayList<>(numTrainerThreads);
+    // collect gradients computed in each thread
+    final List<Future<Map<Integer, Vector>>> futures = new ArrayList<>(numTrainerThreads);
     try {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
       // This way we can mitigate the slowdown from straggler threads.
       final int drainSize = Math.max(instances.size() / numTrainerThreads / numTrainerThreads, 1);
 
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-        final Future<NMFModel> future = executor.submit(() -> {
+        final Future<Map<Integer, Vector>> future = executor.submit(() -> {
           final List<NMFData> drainedInstances = new ArrayList<>(drainSize);
-          final NMFModel model = modelHolder.getModel()
-              .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+          final Map<Integer, Vector> threadRGradient = new HashMap<>();
 
           int count = 0;
           while (true) {
@@ -153,14 +146,14 @@ final class NMFTrainer implements Trainer<NMFData> {
               break;
             }
 
-            drainedInstances.forEach(instance -> updateModel(instance, model));
+            drainedInstances.forEach(instance -> updateGradient(instance, model, threadRGradient));
             drainedInstances.clear();
             count += numDrained;
           }
           latch.countDown();
           LOG.log(Level.INFO, "{0} has computed {1} instances",
               new Object[] {Thread.currentThread().getName(), count});
-          return model;
+          return threadRGradient;
         });
         futures.add(future);
       }
@@ -170,8 +163,8 @@ final class NMFTrainer implements Trainer<NMFData> {
       throw new RuntimeException(e);
     }
 
-    final List<NMFModel> newModels = ThreadUtils.retrieveResults(futures);
-    final Map<Integer, Vector> gradients = aggregateGradient(newModels);
+    final List<Map<Integer, Vector>> totalRGradients = ThreadUtils.retrieveResults(futures);
+    final Map<Integer, Vector> gradients = aggregateGradient(totalRGradients);
 
     // push gradients
     pushAndResetGradients(gradients);
@@ -182,10 +175,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                                      final Collection<NMFData> testData,
                                      final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels(getKeys(epochTrainingData));
-
-    final NMFModel model = modelHolder.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+    final NMFModel model = pullModels(getKeys(epochTrainingData));
 
     LOG.log(Level.INFO, "Start computing loss value");
     final double trainingLoss = computeLoss(epochTrainingData, model);
@@ -222,10 +212,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     LOG.log(Level.INFO, lsb.toString());
 
     // print transposed R matrix
-    pullModels(getKeys(workload));
-    final NMFModel model = modelHolder.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
+    final NMFModel model = pullModels(getKeys(workload));
     final StringBuilder rsb = new StringBuilder();
     for (final Map.Entry<Integer, Vector> entry : model.getRMatrix().entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));
@@ -239,24 +226,27 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   /**
-   * Pull up-to-date model parameters from server, which become accessible via {@link ModelHolder#getModel()}.
+   * Pull up-to-date model parameters from server.
    * @param keys Column indices with which server stores the model parameters.
    */
-  private void pullModels(final List<Integer> keys) {
+  private NMFModel pullModels(final List<Integer> keys) {
     final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
     final List<Vector> vectors = modelAccessor.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
-
-    modelHolder.resetModel(new NMFModel(rMatrix));
+    return new NMFModel(rMatrix);
   }
 
   /**
    * Processes one training data instance and update the intermediate model.
    * @param datum training data instance
+   * @param model up-to-date NMFModel which is pulled from server
+   * @param threadRGradient gradient matrix to update {@param model}
+
    */
-  private void updateModel(final NMFData datum, final NMFModel model) {
+  private void updateGradient(final NMFData datum, final NMFModel model,
+                              final Map<Integer, Vector> threadRGradient) {
     final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
     final Vector lGradSum;
     if (lambda != 0.0D) {
@@ -283,8 +273,8 @@ final class NMFTrainer implements Trainer<NMFData> {
       // aggregate L matrix gradients
       lGradSum.addi(lGrad);
 
-      // accumulate R matrix's gradient
-      accumulateRMatrixGradient(colIdx, rGrad, model);
+      // accumulate R matrix's gradient at threadRGradient
+      accumulateRMatrixGradient(colIdx, rGrad, model, threadRGradient);
     }
 
     // update L matrix
@@ -294,21 +284,18 @@ final class NMFTrainer implements Trainer<NMFData> {
   /**
    * Aggregate the model computed by multiple threads, to get the gradients to push.
    * gradient[j] = sum(gradient_t[j]) where j is the column index of the gradient matrix.
-   * @param newModels list of results (model parameters) computed by trainer threads
-   * @return the gradient matrix
+   * @param totalRGradients list of threadRGradients computed by trainer threads
+   * @return aggregated gradient matrix
    */
-  private Map<Integer, Vector> aggregateGradient(final List<NMFModel> newModels) {
+  private Map<Integer, Vector> aggregateGradient(final List<Map<Integer, Vector>> totalRGradients) {
     final Map<Integer, Vector> aggregated = new HashMap<>();
-    newModels.forEach(nmfModel -> {
-      final Map<Integer, Vector> gradient = nmfModel.getRGradient();
-      gradient.forEach((k, v) -> {
-        if (aggregated.containsKey(k)) {
-          aggregated.get(k).addi(v);
-        } else {
-          aggregated.put(k, v);
-        }
-      });
-    });
+    totalRGradients.forEach(threadRGradient -> threadRGradient.forEach((k, v) -> {
+      if (aggregated.containsKey(k)) {
+        aggregated.get(k).addi(v);
+      } else {
+        aggregated.put(k, v);
+      }
+    }));
     return aggregated;
   }
 
@@ -372,19 +359,18 @@ final class NMFTrainer implements Trainer<NMFData> {
    * Accumulates a new gradient into the R Matrix's gradient.
    * @param colIdx index of the column that the gradient is associated with
    * @param newGrad new gradient vector to accumulate
-   * @param model current model parameters that contain R Matrix and its gradient
+   * @param model up-to-date NMFModel which is pulled from server
+   * @param threadRGradient gradient matrix to update {@param rMatrix}
    */
-  private void accumulateRMatrixGradient(final int colIdx, final Vector newGrad, final NMFModel model) {
-    final Map<Integer, Vector> rMatrix = model.getRMatrix();
-    final Map<Integer, Vector> gradients = model.getRGradient();
-
-    final Vector grad = gradients.get(colIdx);
+  private void accumulateRMatrixGradient(final int colIdx, final Vector newGrad, final NMFModel model,
+                                         final Map<Integer, Vector> threadRGradient) {
+    final Vector grad = threadRGradient.get(colIdx);
     if (grad == null) {
       // l2 regularization term. 2 * lambda * R_{*, j}
       if (lambda != 0.0D) {
-        newGrad.axpy(2.0D * lambda, rMatrix.get(colIdx));
+        newGrad.axpy(2.0D * lambda, model.getRMatrix().get(colIdx));
       }
-      gradients.put(colIdx, newGrad);
+      threadRGradient.put(colIdx, newGrad);
     } else {
       grad.addi(newGrad);
     }
