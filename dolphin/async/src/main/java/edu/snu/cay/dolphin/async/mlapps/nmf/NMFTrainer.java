@@ -163,8 +163,8 @@ final class NMFTrainer implements Trainer<NMFData> {
       throw new RuntimeException(e);
     }
 
-    final List<Map<Integer, Vector>> threadRGradients = ThreadUtils.retrieveResults(futures);
-    final Map<Integer, Vector> gradients = aggregateGradient(threadRGradients);
+    final List<Map<Integer, Vector>> totalRGradients = ThreadUtils.retrieveResults(futures);
+    final Map<Integer, Vector> gradients = aggregateGradient(totalRGradients);
 
     // push gradients
     pushAndResetGradients(gradients);
@@ -284,12 +284,12 @@ final class NMFTrainer implements Trainer<NMFData> {
   /**
    * Aggregate the model computed by multiple threads, to get the gradients to push.
    * gradient[j] = sum(gradient_t[j]) where j is the column index of the gradient matrix.
-   * @param threadRGradients list of threadRGradients computed by trainer threads
+   * @param totalRGradients list of threadRGradients computed by trainer threads
    * @return aggregated gradient matrix
    */
-  private Map<Integer, Vector> aggregateGradient(final List<Map<Integer, Vector>> threadRGradients) {
+  private Map<Integer, Vector> aggregateGradient(final List<Map<Integer, Vector>> totalRGradients) {
     final Map<Integer, Vector> aggregated = new HashMap<>();
-    threadRGradients.forEach(threadRGradient -> threadRGradient.forEach((k, v) -> {
+    totalRGradients.forEach(threadRGradient -> threadRGradient.forEach((k, v) -> {
       if (aggregated.containsKey(k)) {
         aggregated.get(k).addi(v);
       } else {
