@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.common.dataloader.HdfsDataSet;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.exceptions.KeyGenerationException;
+import edu.snu.cay.utils.MemoryUtils;
 import org.apache.hadoop.io.Text;
 
 import javax.inject.Inject;
@@ -55,12 +56,15 @@ final class BulkDataLoader<V> {
   @SuppressWarnings("unchecked")
   Map<Integer, Map<Long, V>> loadBlockData(final String serializedHdfsSplitInfo)
       throws IOException, KeyGenerationException {
+    LOG.log(Level.INFO, "Before loading data. Used memory {0} MB", MemoryUtils.getUsedMemoryMB());
+
     final HdfsDataSet<?, Text> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo);
 
     final List<String> rawDataList = new LinkedList<>();
     hdfsDataSet.forEach(pair -> rawDataList.add(pair.getValue().toString()));
     final List<V> dataList = dataParser.parse(rawDataList);
-    LOG.log(Level.INFO, "{0} data items have been loaded from Hdfs.", dataList.size());
+    LOG.log(Level.INFO, "{0} data items have been loaded from hdfs. Used memory: {1} MB",
+        new Object[] {dataList.size(), MemoryUtils.getUsedMemoryMB()});
 
     final Map<Integer, List<Long>> blockIdToKeyListMap = localKeyGenerator.getBlockToKeys(dataList.size());
 
@@ -71,8 +75,8 @@ final class BulkDataLoader<V> {
       blockIdToDataMap.put(blockId, dataMap);
       keyList.forEach(key -> dataMap.put(key, dataIterator.next()));
     });
-    LOG.log(Level.INFO, "Load {0} data items for {1} blocks.",
-        new Object[]{dataList.size(), blockIdToDataMap.size()});
+    LOG.log(Level.INFO, "{0} data items are assigned to {1} blocks. Used memory: {2} MB",
+        new Object[]{dataList.size(), blockIdToDataMap.size(), MemoryUtils.getUsedMemoryMB()});
 
     return blockIdToDataMap;
   }
