@@ -60,7 +60,7 @@ public final class GBTreeCodec implements Codec<GBTree> {
 
         for (int i = 0; i < (1 << treeMaxDepth) - 1; ++i) {
           final int splitFeature = dais.readInt();
-          final Float splitValue = dais.readFloat();
+          final float splitValue = dais.readFloat();
           gbTree.add(Pair.of(splitFeature, splitValue));
         }
       }

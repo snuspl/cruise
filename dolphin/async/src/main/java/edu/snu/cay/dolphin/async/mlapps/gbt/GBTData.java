@@ -22,7 +22,7 @@ import edu.snu.cay.common.math.linalg.Vector;
  */
 final class GBTData {
   private final Vector feature;
-  private final Float value;
+  private final float value;
 
   GBTData(final Vector feature, final float value) {
     this.feature = feature;

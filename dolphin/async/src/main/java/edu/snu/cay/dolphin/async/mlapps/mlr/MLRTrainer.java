@@ -410,7 +410,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Find the largest value in {@code vector} and return its index and the value itself together.
    */
   private static Pair<Integer, Float> max(final Vector vector) {
-    Float maxValue = vector.get(0);
+    float maxValue = vector.get(0);
     int maxIndex = 0;
     for (int index = 1; index < vector.length(); ++index) {
       final float value = vector.get(index);

@@ -103,7 +103,7 @@ final class NMFDataCodec implements Codec<NMFData>, StreamingCodec<NMFData> {
     final List<Pair<Integer, Float>> columns = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final int first = dais.readInt();
-      final Float second = dais.readFloat();
+      final float second = dais.readFloat();
       columns.add(new Pair<>(first, second));
     }
     return columns;

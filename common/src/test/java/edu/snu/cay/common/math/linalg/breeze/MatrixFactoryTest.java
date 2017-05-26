@@ -19,6 +19,7 @@ import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -27,6 +28,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -61,7 +63,7 @@ public final class MatrixFactoryTest {
 
     final Matrix mat1 = matrixFactory.createDenseZeros(3, 4);
     final Matrix mat2 = matrixFactory.createDense(3, 4, value);
-    final Matrix mat3 = matrixFactory.createDense(12, 2, mergeArrays(value, value));
+    final Matrix mat3 = matrixFactory.createDense(12, 2, ArrayUtils.addAll(value, value));
 
     assertEquals(mat1.size(), 12);
     assertEquals(mat2.size(), 12);
@@ -75,7 +77,7 @@ public final class MatrixFactoryTest {
     }
 
     assertEquals(matrixFactory.horzcatVecDense(denseVectorList), mat3);
-//    assertArrayEquals(((DenseMatrix) mat3).toArray(), mergeArrays(value, value));
+    assertArrayEquals(((DenseMatrix) mat3).toArray(), mergeToObjArrays(value, value));
 
     final List<Matrix> denseMatrixList = new ArrayList<>();
     denseMatrixList.add(mat1);
@@ -133,11 +135,17 @@ public final class MatrixFactoryTest {
     }
   }
 
-  private float[] mergeArrays(final float[] arr1, final float[] arr2) {
-    final int size = arr1.length + arr2.length;
-    final float[] combined = new float[size];
-    System.arraycopy(arr1, 0, combined, 0, arr1.length);
-    System.arraycopy(arr2, 0, combined, arr1.length, arr2.length);
-    return combined;
+  /**
+   * Merges two arrays with primitive float type into one array that consists of Float objects.
+   */
+  private Float[] mergeToObjArrays(final float[] arr1, final float[] arr2) {
+    final Float[] merged = new Float[arr1.length + arr2.length];
+    for (int i = 0; i < arr1.length; i++) {
+      merged[i] = arr1[i];
+    }
+    for (int j = 0; j < arr2.length; j++) {
+      merged[arr1.length + j] = arr2[j];
+    }
+    return merged;
   }
 }

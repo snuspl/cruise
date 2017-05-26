@@ -74,7 +74,7 @@ public final class GBTreeListCodec implements Codec<List<GBTree>> {
           final GBTree gbTree = new GBTree(treeMaxDepth);
           for (int j = 0; j < (1 << treeMaxDepth) - 1; j++) {
             final int splitFeature = dais.readInt();
-            final Float splitValue = dais.readFloat();
+            final float splitValue = dais.readFloat();
             gbTree.add(Pair.of(splitFeature, splitValue));
           }
           resultList.add(gbTree);

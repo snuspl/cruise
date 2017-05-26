@@ -56,7 +56,7 @@ public interface Matrix {
    * @param columnIndex an index in range [0, columns)
    * @return element specified by given indices
    */
-  Float get(int rowIndex, int columnIndex);
+  float get(int rowIndex, int columnIndex);
 
   /**
    * Returns the column specified by the index.
@@ -132,7 +132,7 @@ public interface Matrix {
    * @param columnIndex an index in range [0, columns)
    * @param value given value
    */
-  void set(int rowIndex, int columnIndex, Float value);
+  void set(int rowIndex, int columnIndex, float value);
 
   /**
    * Transpose this matrix.
@@ -151,14 +151,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix add(Float value);
+  Matrix add(float value);
 
   /**
    * Adds a scalar to all elements (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix addi(Float value);
+  Matrix addi(float value);
 
   /**
    * Adds a matrix, element-wise.
@@ -179,14 +179,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix sub(Float value);
+  Matrix sub(float value);
 
   /**
    * Subtracts a scalar from all elements (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix subi(Float value);
+  Matrix subi(float value);
 
   /**
    * Subtracts a matrix from this matrix, element-wise.
@@ -207,14 +207,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix mul(Float value);
+  Matrix mul(float value);
 
   /**
    * Multiplies all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix muli(Float value);
+  Matrix muli(float value);
 
   /**
    * Multiplies this matrix by another matrix, element-wise.
@@ -235,14 +235,14 @@ public interface Matrix {
    * @param value operand scalar
    * @return operation result
    */
-  Matrix div(Float value);
+  Matrix div(float value);
 
   /**
    * Divides all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
-  Matrix divi(Float value);
+  Matrix divi(float value);
 
   /**
    * Divides this matrix by another matrix, element-wise.

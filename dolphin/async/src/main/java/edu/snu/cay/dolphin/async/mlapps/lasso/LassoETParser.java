@@ -58,7 +58,7 @@ final class LassoETParser implements DataParser<LassoData> {
       }
 
       final String[] split = line.split("\\s+|:");
-      final Float yValue = Float.parseFloat(split[0]);
+      final float yValue = Float.parseFloat(split[0]);
 
       final int[] indices = new int[split.length / 2];
       final float[] data = new float[split.length / 2];

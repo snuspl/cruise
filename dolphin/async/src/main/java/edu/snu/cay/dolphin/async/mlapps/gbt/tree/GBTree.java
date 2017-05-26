@@ -54,8 +54,8 @@ public final class GBTree extends Tree<Pair<Integer, Float>> {
    * @param lambda lambda is needed to compute leaf weight.
    */
   public void makeLeaf(final int nodeIdx, final DataTree dataTree, final List<Float> gValues,
-                       final Float lambda) {
-    Float gSum = 0f;
+                       final float lambda) {
+    float gSum = 0f;
     final List<Integer> thisNode = dataTree.get(nodeIdx);
     for (final int leafMember : thisNode) {
       gSum += gValues.get(leafMember);

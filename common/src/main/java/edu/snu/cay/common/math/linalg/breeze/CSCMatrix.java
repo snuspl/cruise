@@ -87,7 +87,7 @@ public final class CSCMatrix implements Matrix {
    * @return element specified by given indices
    */
   @Override
-  public Float get(final int rowIndex, final int columnIndex) {
+  public float get(final int rowIndex, final int columnIndex) {
     return breezeMatrix.apply(rowIndex, columnIndex);
   }
 
@@ -162,7 +162,7 @@ public final class CSCMatrix implements Matrix {
    * @param value given value
    */
   @Override
-  public void set(final int rowIndex, final int columnIndex, final Float value) {
+  public void set(final int rowIndex, final int columnIndex, final float value) {
     breezeMatrix.update(rowIndex, columnIndex, value);
   }
 
@@ -213,7 +213,7 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix add(final Float value) {
+  public Matrix add(final float value) {
     return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$plus(value, MatrixOps.ADD_ST));
   }
 
@@ -223,7 +223,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix addi(final Float value) {
+  public Matrix addi(final float value) {
     ((NumericOps) breezeMatrix).$plus$eq(value, MatrixOps.ADDI_ST);
     return this;
   }
@@ -267,7 +267,7 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix sub(final Float value) {
+  public Matrix sub(final float value) {
     return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$minus(value, MatrixOps.SUB_ST));
   }
 
@@ -277,7 +277,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix subi(final Float value) {
+  public Matrix subi(final float value) {
     ((NumericOps) breezeMatrix).$minus$eq(value, MatrixOps.SUBI_ST);
     return this;
   }
@@ -321,7 +321,7 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix mul(final Float value) {
+  public Matrix mul(final float value) {
     return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$colon$times(value, MatrixOps.MUL_ST));
   }
 
@@ -331,7 +331,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix muli(final Float value) {
+  public Matrix muli(final float value) {
     ((NumericOps) breezeMatrix).$colon$times$eq(value, MatrixOps.MULI_ST);
     return this;
   }
@@ -373,7 +373,7 @@ public final class CSCMatrix implements Matrix {
    * @return new {@link CSCMatrix} with operation result
    */
   @Override
-  public Matrix div(final Float value) {
+  public Matrix div(final float value) {
     return new CSCMatrix((breeze.linalg.CSCMatrix<Float>) breezeMatrix.$div(value, MatrixOps.DIV_ST));
   }
 
@@ -383,7 +383,7 @@ public final class CSCMatrix implements Matrix {
    * @return this matrix with operation result
    */
   @Override
-  public Matrix divi(final Float value) {
+  public Matrix divi(final float value) {
     ((NumericOps) breezeMatrix).$div$eq(value, MatrixOps.DIVI_ST);
     return this;
   }
