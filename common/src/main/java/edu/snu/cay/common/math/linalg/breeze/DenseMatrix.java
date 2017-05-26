@@ -220,8 +220,8 @@ public class DenseMatrix implements Matrix {
    * This method is testing purpose.
    * @return flat array with matrix elements
    */
-  Float[] toArray() {
-    return (Float[]) breezeMatrix.toArray();
+  float[] toArray() {
+    return (float[]) breezeMatrix.toArray();
   }
 
   /**

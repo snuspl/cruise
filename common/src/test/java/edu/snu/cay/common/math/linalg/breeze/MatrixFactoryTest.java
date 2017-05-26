@@ -35,6 +35,7 @@ import static org.junit.Assert.assertEquals;
  * This tests {@link DefaultMatrixFactory}.
  */
 public final class MatrixFactoryTest {
+  private static final float EPSILON = 0.00001f;
 
   private MatrixFactory matrixFactory;
   private VectorFactory vectorFactory;
@@ -71,13 +72,13 @@ public final class MatrixFactoryTest {
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 4; j++) {
-        assertEquals(mat1.get(i, j), 0.0, 0.0);
-        assertEquals(mat2.get(i, j), value[i + j * 3], 0.0);
+        assertEquals(mat1.get(i, j), 0.0, EPSILON);
+        assertEquals(mat2.get(i, j), value[i + j * 3], EPSILON);
       }
     }
 
     assertEquals(matrixFactory.horzcatVecDense(denseVectorList), mat3);
-    assertArrayEquals(((DenseMatrix) mat3).toArray(), mergeToObjArrays(value, value));
+    assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), EPSILON);
 
     final List<Matrix> denseMatrixList = new ArrayList<>();
     denseMatrixList.add(mat1);
@@ -130,7 +131,7 @@ public final class MatrixFactoryTest {
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < index[i].length; j++) {
-        assertEquals(mat2.get(index[i][j], i), value[i][j], 0.0);
+        assertEquals(mat2.get(index[i][j], i), value[i][j], EPSILON);
       }
     }
   }
@@ -138,14 +139,11 @@ public final class MatrixFactoryTest {
   /**
    * Merges two arrays with primitive float type into one array that consists of Float objects.
    */
-  private Float[] mergeToObjArrays(final float[] arr1, final float[] arr2) {
-    final Float[] merged = new Float[arr1.length + arr2.length];
-    for (int i = 0; i < arr1.length; i++) {
-      merged[i] = arr1[i];
+  private float[] convertPrimitiveArray(final Float[] arr) {
+    final float[] primitiveArr = new float[arr.length];
+    for (int i = 0; i < arr.length; i++) {
+      primitiveArr[i] = arr[i];
     }
-    for (int j = 0; j < arr2.length; j++) {
-      merged[arr1.length + j] = arr2[j];
-    }
-    return merged;
+    return primitiveArr;
   }
 }

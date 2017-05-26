@@ -32,7 +32,7 @@ import static org.junit.Assert.assertNotEquals;
  */
 public final class VectorFactoryTest {
 
-  private static final double EPSILON = 0.01;
+  private static final float EPSILON = 0.00001f;
   private VectorFactory factory;
 
   @Before
