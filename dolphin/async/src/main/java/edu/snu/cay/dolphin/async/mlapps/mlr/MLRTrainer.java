@@ -188,7 +188,8 @@ final class MLRTrainer implements Trainer<MLRData> {
           for (int classIdx = 0; classIdx < numClasses; classIdx++) {
             threadGradient[classIdx] = vectorFactory.createDenseZeros(numFeatures);
           }
-          
+          LOG.log(Level.INFO, "Gradient vectors are initialized. Used memory: {0} MB", MemoryUtils.getUsedMemoryMB());
+
           int count = 0;
           while (true) {
             final int numDrained = instances.drainTo(drainedInstances, drainSize);
