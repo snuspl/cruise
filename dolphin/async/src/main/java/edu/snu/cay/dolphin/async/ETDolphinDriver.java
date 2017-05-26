@@ -95,8 +95,8 @@ public final class ETDolphinDriver {
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
 
-  private final Configuration workerContextConf;
-  private final Configuration workerServiceConf;
+  private final Configuration centCommContextConf;
+  private final Configuration centCommServiceConf;
 
   private final AtomicInteger workerTaskIdCount = new AtomicInteger(0);
   private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
@@ -155,9 +155,9 @@ public final class ETDolphinDriver {
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
-    // user configuration for worker executors
-    this.workerContextConf = centCommConfProvider.getContextConfiguration();
-    this.workerServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
+    // cent comm configuration for executors
+    this.centCommContextConf = centCommConfProvider.getContextConfiguration();
+    this.centCommServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
 
     optimizationOrchestrator.start();
   }
@@ -245,8 +245,8 @@ public final class ETDolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserContextConf(workerContextConf)
-        .setUserServiceConf(workerServiceConf)
+        .setUserContextConf(centCommContextConf)
+        .setUserServiceConf(centCommServiceConf)
         .build();
   }
 
@@ -254,6 +254,8 @@ public final class ETDolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
         .setRemoteAccessConf(serverRemoteAccessConf)
+        .setUserContextConf(centCommContextConf)
+        .setUserServiceConf(centCommServiceConf)
         .build();
   }
 
