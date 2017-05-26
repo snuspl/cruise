@@ -24,16 +24,12 @@ import scala.collection.JavaConversions;
 import scala.runtime.RichInt;
 
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Vector implementation based on breeze dense vector.
  * This class should be initialized by {@link edu.snu.cay.common.math.linalg.VectorFactory}.
  */
 public class DenseVector implements Vector {
-  private static final Logger LOG = Logger.getLogger(DenseVector.class.getName());
-
   private final breeze.linalg.DenseVector<Float> breezeVector;
 
   DenseVector(final breeze.linalg.DenseVector<Float> breezeVector) {
@@ -306,12 +302,8 @@ public class DenseVector implements Vector {
   @Override
   public float dot(final Vector vector) {
     if (vector.isDense()) {
-      LOG.log(Level.INFO, "dot DenseVector DOT_DD");
-      final DenseVector denseVector = (DenseVector) vector;
-      final float dot = (float) breezeVector.dot(denseVector.getBreezeVector(), VectorOps.DOT_DD);
-      return dot;
+      return (float) breezeVector.dot(((DenseVector) vector).getBreezeVector(), VectorOps.DOT_DD);
     } else {
-      LOG.log(Level.INFO, "dot SparseVector DOT_DS");
       return (float) breezeVector.dot(((SparseVector) vector).getBreezeVector(), VectorOps.DOT_DS);
     }
   }

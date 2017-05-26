@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.utils.MemoryUtils;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -64,12 +65,12 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * Size of each step taken during gradient descent.
    */
-  private Float stepSize;
+  private float stepSize;
 
   /**
    * L2 regularization constant.
    */
-  private final Float lambda;
+  private final float lambda;
 
   /**
    * Object for creating {@link Vector} instances.
@@ -89,7 +90,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * The step size drops by this rate.
    */
-  private final Float decayRate;
+  private final float decayRate;
 
   /**
    * The step size drops after every {@code decayPeriod} epochs pass.
@@ -111,9 +112,9 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                     @Parameter(InitialStepSize.class) final Float initStepSize,
-                     @Parameter(Lambda.class) final Float lambda,
-                     @Parameter(DecayRate.class) final Float decayRate,
+                     @Parameter(InitialStepSize.class) final float initStepSize,
+                     @Parameter(Lambda.class) final float lambda,
+                     @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
@@ -232,7 +233,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy = computeLoss(testData, params);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
-      final Float prevStepSize = stepSize;
+      final float prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
@@ -411,7 +412,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     Float maxValue = vector.get(0);
     int maxIndex = 0;
     for (int index = 1; index < vector.length(); ++index) {
-      final Float value = vector.get(index);
+      final float value = vector.get(index);
       if (value > maxValue) {
         maxValue = value;
         maxIndex = index;
