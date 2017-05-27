@@ -16,7 +16,7 @@
 package edu.snu.cay.common.math.linalg;
 
 /**
- * Interface for matrix whose elements are {@code Float} values.
+ * Interface for matrix whose elements are {@code float} values.
  */
 public interface Matrix {
 
