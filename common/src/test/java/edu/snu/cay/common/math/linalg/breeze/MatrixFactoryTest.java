@@ -35,6 +35,7 @@ import static org.junit.Assert.assertEquals;
  * This tests {@link DefaultMatrixFactory}.
  */
 public final class MatrixFactoryTest {
+  private static final float EPSILON = 0.00001f;
 
   private MatrixFactory matrixFactory;
   private VectorFactory vectorFactory;
@@ -54,7 +55,7 @@ public final class MatrixFactoryTest {
    */
   @Test
   public void testDenseMatrix() {
-    final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2};
+    final float[] value = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f};
     final Vector vec1 = vectorFactory.createDense(value);
     final Vector vec2 = vectorFactory.createDense(value);
     final List<Vector> denseVectorList = new ArrayList<>();
@@ -71,13 +72,13 @@ public final class MatrixFactoryTest {
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 4; j++) {
-        assertEquals(mat1.get(i, j), 0.0, 0.0);
-        assertEquals(mat2.get(i, j), value[i + j * 3], 0.0);
+        assertEquals(mat1.get(i, j), 0.0, EPSILON);
+        assertEquals(mat2.get(i, j), value[i + j * 3], EPSILON);
       }
     }
 
     assertEquals(matrixFactory.horzcatVecDense(denseVectorList), mat3);
-    assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), 0.0);
+    assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), EPSILON);
 
     final List<Matrix> denseMatrixList = new ArrayList<>();
     denseMatrixList.add(mat1);
@@ -113,7 +114,7 @@ public final class MatrixFactoryTest {
   @Test
   public void testCSCMatrix() {
     final int[][] index = {{0, 2, 4, 6}, {1, 2, 3, 4, 5}, {3, 5, 7}};
-    final double[][] value = {{0.1, 0.2, 0.3, 0.4}, {0.5, 0.6, 0.7, 0.8, 0.9}, {1.0, 1.1, 1.2}};
+    final float[][] value = {{0.1f, 0.2f, 0.3f, 0.4f}, {0.5f, 0.6f, 0.7f, 0.8f, 0.9f}, {1.0f, 1.1f, 1.2f}};
     final Vector vec1 = vectorFactory.createSparse(index[0], value[0], 10);
     final Vector vec2 = vectorFactory.createSparse(index[1], value[1], 10);
     final Vector vec3 = vectorFactory.createSparse(index[2], value[2], 10);
@@ -130,8 +131,19 @@ public final class MatrixFactoryTest {
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < index[i].length; j++) {
-        assertEquals(mat2.get(index[i][j], i), value[i][j], 0.0);
+        assertEquals(mat2.get(index[i][j], i), value[i][j], EPSILON);
       }
     }
+  }
+
+  /**
+   * Merges two arrays with primitive float type into one array that consists of Float objects.
+   */
+  private float[] convertPrimitiveArray(final Float[] arr) {
+    final float[] primitiveArr = new float[arr.length];
+    for (int i = 0; i < arr.length; i++) {
+      primitiveArr[i] = arr[i];
+    }
+    return primitiveArr;
   }
 }

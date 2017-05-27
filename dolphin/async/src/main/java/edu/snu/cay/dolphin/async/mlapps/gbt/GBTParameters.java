@@ -28,15 +28,15 @@ final class GBTParameters {
   }
 
   @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
-  static final class StepSize implements Name<Double> {
+  static final class StepSize implements Name<Float> {
   }
 
   @NamedParameter(doc = "regularization constant for leaf", short_name = "lambda")
-  static final class Lambda implements Name<Double> {
+  static final class Lambda implements Name<Float> {
   }
 
   @NamedParameter(doc = "regularization constant for tree", short_name = "gamma")
-  static final class Gamma implements Name<Double> {
+  static final class Gamma implements Name<Float> {
   }
 
   @NamedParameter(doc = "maximum depth of model trees", short_name = "max_depth_of_tree")

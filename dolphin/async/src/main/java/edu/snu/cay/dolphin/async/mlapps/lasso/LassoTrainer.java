@@ -53,8 +53,8 @@ final class LassoTrainer implements Trainer<LassoData> {
   private static final double ZERO_THRESHOLD = 1e-9;
 
   private final int numFeatures;
-  private final double lambda;
-  private double stepSize;
+  private final float lambda;
+  private float stepSize;
   private final double decayRate;
   private final int decayPeriod;
 
@@ -83,9 +83,9 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   @Inject
   private LassoTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
-                       @Parameter(Lambda.class) final double lambda,
+                       @Parameter(Lambda.class) final float lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
-                       @Parameter(StepSize.class) final double stepSize,
+                       @Parameter(StepSize.class) final float stepSize,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -158,7 +158,8 @@ final class LassoTrainer implements Trainer<LassoData> {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(featureIdx)));
-      newModel.set(featureIdx, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
+      newModel.set(featureIdx,
+          (float) sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
       preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
     }
 

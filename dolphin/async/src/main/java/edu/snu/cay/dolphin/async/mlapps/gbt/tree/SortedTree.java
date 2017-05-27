@@ -24,7 +24,7 @@ import java.util.List;
  * This tree is for sortedByFeature list.
  * In each node of the tree, data are sorted by their feature values.
  */
-public final class SortedTree extends Tree<List<Pair<Integer, Double>>> {
+public final class SortedTree extends Tree<List<Pair<Integer, Float>>> {
   public SortedTree(final int treeMaxDepth) {
     super(treeMaxDepth);
     for (int i = 0; i < treeSize; i++) {
@@ -34,7 +34,7 @@ public final class SortedTree extends Tree<List<Pair<Integer, Double>>> {
 
   @Override
   public void clear() {
-    for (final List<Pair<Integer, Double>> node : tree) {
+    for (final List<Pair<Integer, Float>> node : tree) {
       node.clear();
     }
     tree.clear();

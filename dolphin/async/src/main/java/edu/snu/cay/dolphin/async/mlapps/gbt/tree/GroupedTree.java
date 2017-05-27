@@ -29,7 +29,7 @@ import java.util.List;
  * First value of the pair is the number of values in that label.
  * Second value of the pair is the sum of the g values of the values that are belong to the label.
  */
-public final class GroupedTree extends Tree<List<Pair<Integer, Double>>> {
+public final class GroupedTree extends Tree<List<Pair<Integer, Float>>> {
   public GroupedTree(final int treeMaxDepth) {
     super(treeMaxDepth);
     for (int  i = 0; i < treeSize; i++) {
@@ -39,7 +39,7 @@ public final class GroupedTree extends Tree<List<Pair<Integer, Double>>> {
 
   @Override
   public void clear() {
-    for (final List<Pair<Integer, Double>> node : tree) {
+    for (final List<Pair<Integer, Float>> node : tree) {
       node.clear();
     }
     tree.clear();
