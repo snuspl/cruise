@@ -43,7 +43,7 @@ public final class ETTaskRunner {
 
   private final ETMaster etMaster;
 
-  private final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture;
+  private final InjectionFuture<DolphinMaster> etDolphinDriverFuture;
 
   private final WorkerStateManager workerStateManager;
 
@@ -53,12 +53,12 @@ public final class ETTaskRunner {
   private final Map<String, SubmittedTask> executorIdToTask = new ConcurrentHashMap<>();
 
   @Inject
-  private ETTaskRunner(final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture,
+  private ETTaskRunner(final InjectionFuture<DolphinMaster> dolphinMasterFuture,
                        final ETMaster etMaster,
                        final WorkerStateManager workerStateManager,
                        @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.etMaster = etMaster;
-    this.etDolphinDriverFuture = etDolphinDriverFuture;
+    this.etDolphinDriverFuture = dolphinMasterFuture;
     this.workerStateManager = workerStateManager;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
   }

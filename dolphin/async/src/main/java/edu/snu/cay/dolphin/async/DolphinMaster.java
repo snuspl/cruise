@@ -18,9 +18,9 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
+import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -35,10 +35,8 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
-import org.apache.reef.driver.context.FailedContext;
-import org.apache.reef.driver.evaluator.FailedEvaluator;
-import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -47,11 +45,8 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -69,14 +64,13 @@ import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TAB
 import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
 
 /**
- * Driver code for Dolphin on ET.
+ * A Dolphin master using ET.
  */
-@Unit
-public final class ETDolphinDriver {
-  private static final Logger LOG = Logger.getLogger(ETDolphinDriver.class.getName());
+public final class DolphinMaster {
+  private static final Logger LOG = Logger.getLogger(DolphinMaster.class.getName());
 
   private final ETMaster etMaster;
-  private final edu.snu.cay.services.et.metric.MetricManager metricManager;
+  private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
   private final ProgressTracker progressTracker;
 
@@ -102,31 +96,31 @@ public final class ETDolphinDriver {
   private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
 
   @Inject
-  private ETDolphinDriver(final ETMaster etMaster,
-                          final edu.snu.cay.services.et.metric.MetricManager metricManager,
-                          final ETOptimizationOrchestrator optimizationOrchestrator,
-                          final ETTaskRunner taskRunner,
-                          final ProgressTracker progressTracker,
-                          final ConfigurationSerializer confSerializer,
-                          final CentCommConfProvider centCommConfProvider,
-                          @Parameter(NumServers.class) final int numServers,
-                          @Parameter(ServerMemSize.class) final int serverMemSize,
-                          @Parameter(NumServerCores.class) final int numServerCores,
-                          @Parameter(NumWorkers.class) final int numWorkers,
-                          @Parameter(WorkerMemSize.class) final int workerMemSize,
-                          @Parameter(NumWorkerCores.class) final int numWorkerCores,
-                          @Parameter(NumServerSenderThreads.class) final int numServerSenderThreads,
-                          @Parameter(NumServerHandlerThreads.class) final int numServerHandlerThreads,
-                          @Parameter(ServerSenderQueueSize.class) final int serverSenderQueueSize,
-                          @Parameter(ServerHandlerQueueSize.class) final int serverHandlerQueueSize,
-                          @Parameter(NumWorkerSenderThreads.class) final int numWorkerSenderThreads,
-                          @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
-                          @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
-                          @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
-                          @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
-                          @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
-                          @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
-                          @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
+  private DolphinMaster(final ETMaster etMaster,
+                        final MetricManager metricManager,
+                        final ETOptimizationOrchestrator optimizationOrchestrator,
+                        final ETTaskRunner taskRunner,
+                        final ProgressTracker progressTracker,
+                        final ConfigurationSerializer confSerializer,
+                        final CentCommConfProvider centCommConfProvider,
+                        @Parameter(NumServers.class) final int numServers,
+                        @Parameter(ServerMemSize.class) final int serverMemSize,
+                        @Parameter(NumServerCores.class) final int numServerCores,
+                        @Parameter(NumWorkers.class) final int numWorkers,
+                        @Parameter(WorkerMemSize.class) final int workerMemSize,
+                        @Parameter(NumWorkerCores.class) final int numWorkerCores,
+                        @Parameter(NumServerSenderThreads.class) final int numServerSenderThreads,
+                        @Parameter(NumServerHandlerThreads.class) final int numServerHandlerThreads,
+                        @Parameter(ServerSenderQueueSize.class) final int serverSenderQueueSize,
+                        @Parameter(ServerHandlerQueueSize.class) final int serverHandlerQueueSize,
+                        @Parameter(NumWorkerSenderThreads.class) final int numWorkerSenderThreads,
+                        @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
+                        @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
+                        @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
+                        @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
+                        @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
+                        @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
+                        @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.metricManager = metricManager;
@@ -272,73 +266,37 @@ public final class ETDolphinDriver {
   }
 
   /**
-   * A driver start handler for requesting executors.
+   * Start running a job.
    */
-  final class StartHandler implements EventHandler<StartTime> {
-    @Override
-    public void onNext(final StartTime startTime) {
-      try {
-        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getServerExecutorConf()).get();
-        servers.forEach(server -> metricManager.startMetricCollection(server.getId(), getServerMetricConf()));
+  public void start() {
+    try {
+      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getServerExecutorConf()).get();
+      servers.forEach(server -> metricManager.startMetricCollection(server.getId(), getServerMetricConf()));
 
-        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getWorkerExecutorConf()).get();
-        workers.forEach(worker -> metricManager.startMetricCollection(worker.getId(), getWorkerMetricConf()));
+      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getWorkerExecutorConf()).get();
+      workers.forEach(worker -> metricManager.startMetricCollection(worker.getId(), getWorkerMetricConf()));
 
-        Executors.newSingleThreadExecutor().submit(() -> {
-          try {
-            final Future<AllocatedTable> modelTable = etMaster.createTable(serverTableConf, servers);
-            final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
+      Executors.newSingleThreadExecutor().submit(() -> {
+        try {
+          final Future<AllocatedTable> modelTable = etMaster.createTable(serverTableConf, servers);
+          final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
 
-            modelTable.get().subscribe(workers);
-            inputTable.get();
+          modelTable.get().subscribe(workers);
+          inputTable.get();
 
-            final List<TaskResult> taskResults = taskRunner.run(workers, servers);
-            checkTaskResults(taskResults);
+          final List<TaskResult> taskResults = taskRunner.run(workers, servers);
+          checkTaskResults(taskResults);
 
-            workers.forEach(AllocatedExecutor::close);
-            servers.forEach(AllocatedExecutor::close);
-          } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Exception while running a job", e);
-            throw new RuntimeException(e);
-          }
-        });
+          workers.forEach(AllocatedExecutor::close);
+          servers.forEach(AllocatedExecutor::close);
+        } catch (Exception e) {
+          LOG.log(Level.SEVERE, "Exception while running a job", e);
+          throw new RuntimeException(e);
+        }
+      });
 
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
-  /**
-   * Handler for FailedContext, which throws RuntimeException to shutdown the entire job.
-   */
-  final class FailedContextHandler implements EventHandler<FailedContext> {
-    @Override
-    public void onNext(final FailedContext failedContext) {
-      // TODO #677: Handle failure from Evaluators properly
-      throw new RuntimeException(failedContext.asError());
-    }
-  }
-
-  /**
-   * Handler for FailedEvaluator, which throws RuntimeException to shutdown the entire job.
-   */
-  final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
-    @Override
-    public void onNext(final FailedEvaluator failedEvaluator) {
-      // TODO #677: Handle failure from Evaluators properly
-      throw new RuntimeException(failedEvaluator.getEvaluatorException());
-    }
-  }
-
-  /**
-   * Handler for FailedTask, which throws RuntimeException to shutdown the entire job.
-   */
-  final class FailedTaskHandler implements EventHandler<FailedTask> {
-    @Override
-    public void onNext(final FailedTask failedTask) {
-      // TODO #677: Handle failure from Evaluators properly
-      throw new RuntimeException(failedTask.asError());
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
     }
   }
 
