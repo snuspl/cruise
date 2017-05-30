@@ -15,6 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
+/**
+ * This instance contains information about which evaluator should send or receive blocks and how many blocks are need
+ * to be moved.
+ */
 final class BlockDelta {
   private int numBlocksToMove;
   private final int evalId;
