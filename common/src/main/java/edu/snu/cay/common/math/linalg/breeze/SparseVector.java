@@ -31,13 +31,13 @@ import java.util.Iterator;
  */
 public class SparseVector implements Vector {
 
-  private final breeze.linalg.SparseVector<Double> breezeVector;
+  private final breeze.linalg.SparseVector<Float> breezeVector;
 
-  SparseVector(final breeze.linalg.SparseVector<Double> breezeVector) {
+  SparseVector(final breeze.linalg.SparseVector<Float> breezeVector) {
     this.breezeVector = breezeVector;
   }
 
-  breeze.linalg.SparseVector<Double> getBreezeVector() {
+  breeze.linalg.SparseVector<Float> getBreezeVector() {
     return breezeVector;
   }
 
@@ -74,7 +74,7 @@ public class SparseVector implements Vector {
    * @return element specified by given index
    */
   @Override
-  public double get(final int index) {
+  public float get(final int index) {
     return breezeVector.array().apply(index);
   }
 
@@ -89,7 +89,7 @@ public class SparseVector implements Vector {
    * @param value value to be set
    */
   @Override
-  public void set(final int index, final double value) {
+  public void set(final int index, final float value) {
     breezeVector.array().update(index, value);
   }
 
@@ -134,7 +134,7 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector addi(final double value) {
+  public Vector addi(final float value) {
     ((NumericOps)breezeVector).$plus$eq(value, VectorOps.ADDI_ST);
     return this;
   }
@@ -145,8 +145,8 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector add(final double value) {
-    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$plus(value, VectorOps.ADD_ST));
+  public Vector add(final float value) {
+    return new SparseVector((breeze.linalg.SparseVector<Float>) breezeVector.$plus(value, VectorOps.ADD_ST));
   }
 
   /**
@@ -170,10 +170,10 @@ public class SparseVector implements Vector {
   @Override
   public Vector add(final Vector vector) {
     if (vector.isDense()) {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           ((DenseVector) vector).getBreezeVector().$plus(breezeVector, VectorOps.ADD_DS));
     } else {
-      return new SparseVector((breeze.linalg.SparseVector<Double>)
+      return new SparseVector((breeze.linalg.SparseVector<Float>)
           breezeVector.$plus(((SparseVector) vector).breezeVector, VectorOps.ADD_SS));
     }
   }
@@ -184,7 +184,7 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector subi(final double value) {
+  public Vector subi(final float value) {
     ((NumericOps)breezeVector).$minus$eq(value, VectorOps.SUBI_ST);
     return this;
   }
@@ -195,8 +195,8 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector sub(final double value) {
-    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$minus(value, VectorOps.SUB_ST));
+  public Vector sub(final float value) {
+    return new SparseVector((breeze.linalg.SparseVector<Float>) breezeVector.$minus(value, VectorOps.SUB_ST));
   }
 
   /**
@@ -220,10 +220,10 @@ public class SparseVector implements Vector {
   @Override
   public Vector sub(final Vector vector) {
     if (vector.isDense()) {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           ((DenseVector) vector).getBreezeVector().$minus(breezeVector, VectorOps.SUB_DS));
     } else {
-      return new SparseVector((breeze.linalg.SparseVector<Double>)
+      return new SparseVector((breeze.linalg.SparseVector<Float>)
           breezeVector.$minus(((SparseVector) vector).breezeVector, VectorOps.SUB_SS));
     }
   }
@@ -235,7 +235,7 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector scalei(final double value) {
+  public Vector scalei(final float value) {
     throw new UnsupportedOperationException();
   }
 
@@ -246,8 +246,8 @@ public class SparseVector implements Vector {
    * @return new {@link SparseVector} with operation result
    */
   @Override
-  public Vector scale(final double value) {
-    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_S));
+  public Vector scale(final float value) {
+    return new SparseVector((breeze.linalg.SparseVector<Float>) breezeVector.$colon$times(value, VectorOps.SCALE_S));
   }
 
   /**
@@ -256,7 +256,7 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector divi(final double value) {
+  public Vector divi(final float value) {
     ((NumericOps)breezeVector).$div$eq(value, VectorOps.DIVI_S);
     return this;
   }
@@ -267,8 +267,8 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector div(final double value) {
-    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$div(value, VectorOps.DIV_S));
+  public Vector div(final float value) {
+    return new SparseVector((breeze.linalg.SparseVector<Float>) breezeVector.$div(value, VectorOps.DIV_S));
   }
 
   /**
@@ -278,7 +278,7 @@ public class SparseVector implements Vector {
    * @return this vector with operation result
    */
   @Override
-  public Vector axpy(final double value, final Vector vector) {
+  public Vector axpy(final float value, final Vector vector) {
     if (vector.isDense()) {
       throw new UnsupportedOperationException();
     } else {
@@ -293,17 +293,17 @@ public class SparseVector implements Vector {
    * @return operation result
    */
   @Override
-  public double dot(final Vector vector) {
+  public float dot(final Vector vector) {
     if (vector.isDense()) {
-      return (double) ((DenseVector) vector).getBreezeVector().dot(breezeVector, VectorOps.DOT_DS);
+      return (float) ((DenseVector) vector).getBreezeVector().dot(breezeVector, VectorOps.DOT_DS);
     } else {
-      return (double) breezeVector.dot(((SparseVector) vector).breezeVector, VectorOps.DOT_SS);
+      return (float) breezeVector.dot(((SparseVector) vector).breezeVector, VectorOps.DOT_SS);
     }
   }
 
   private class SparseVectorIterator implements Iterator<VectorEntry> {
 
-    private final Iterator<Tuple2<Object, Double>> iterator
+    private final Iterator<Tuple2<Object, Float>> iterator
         = JavaConversions.asJavaIterator(breezeVector.activeIterator());
     private final SparseVectorEntry entry = new SparseVectorEntry();
 
@@ -323,13 +323,13 @@ public class SparseVector implements Vector {
 
   private class SparseVectorEntry implements VectorEntry {
 
-    private Tuple2<Object, Double> cursor;
+    private Tuple2<Object, Float> cursor;
 
     public int index() {
       return (int) cursor._1();
     }
 
-    public double value() {
+    public float value() {
       return cursor._2();
     }
   }

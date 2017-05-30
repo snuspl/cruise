@@ -58,13 +58,13 @@ final class LassoETParser implements DataParser<LassoData> {
       }
 
       final String[] split = line.split("\\s+|:");
-      final double yValue = Double.parseDouble(split[0]);
+      final float yValue = Float.parseFloat(split[0]);
 
       final int[] indices = new int[split.length / 2];
-      final double[] data = new double[split.length / 2];
+      final float[] data = new float[split.length / 2];
       for (int index = 0; index < split.length / 2; ++index) {
         indices[index] = Integer.parseInt(split[2 * index + 1]);
-        data[index] = Double.parseDouble(split[2 * index + 2]);
+        data[index] = Float.parseFloat(split[2 * index + 2]);
       }
 
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);

@@ -59,7 +59,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
       dos.writeInt(vector.activeSize());
       for (final VectorEntry element : vector) {
         dos.writeInt(element.index());
-        dos.writeDouble(element.value());
+        dos.writeFloat(element.value());
       }
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
@@ -83,7 +83,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
       final Vector vector = vectorFactory.createSparseZeros(size);
       for (int i = 0; i < numNonZeros; ++i) {
         final int index = dis.readInt();
-        final double value = dis.readDouble();
+        final float value = dis.readFloat();
         vector.set(index, value);
       }
       return vector;
@@ -96,6 +96,6 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     if (vector.isDense()) {
       LOG.warning("the given vector is not sparse.");
     }
-    return 2 * Integer.BYTES + (Integer.BYTES + Double.BYTES) * vector.activeSize();
+    return 2 * Integer.BYTES + (Integer.BYTES + Float.BYTES) * vector.activeSize();
   }
 }

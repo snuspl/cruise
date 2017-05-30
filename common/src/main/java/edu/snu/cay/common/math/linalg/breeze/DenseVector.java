@@ -30,14 +30,13 @@ import java.util.Iterator;
  * This class should be initialized by {@link edu.snu.cay.common.math.linalg.VectorFactory}.
  */
 public class DenseVector implements Vector {
+  private final breeze.linalg.DenseVector<Float> breezeVector;
 
-  private final breeze.linalg.DenseVector<Double> breezeVector;
-
-  DenseVector(final breeze.linalg.DenseVector<Double> breezeVector) {
+  DenseVector(final breeze.linalg.DenseVector<Float> breezeVector) {
     this.breezeVector = breezeVector;
   }
 
-  breeze.linalg.DenseVector<Double> getBreezeVector() {
+  breeze.linalg.DenseVector<Float> getBreezeVector() {
     return breezeVector;
   }
 
@@ -74,7 +73,7 @@ public class DenseVector implements Vector {
    * @return element specified by given index
    */
   @Override
-  public double get(final int index) {
+  public float get(final int index) {
     return breezeVector.apply(index);
   }
 
@@ -83,7 +82,7 @@ public class DenseVector implements Vector {
    */
   @Override
   public DenseVector slice(final int start, final int end) {
-    return new DenseVector((breeze.linalg.DenseVector<Double>)
+    return new DenseVector((breeze.linalg.DenseVector<Float>)
         breezeVector.apply(new RichInt(start).until(end), VectorOps.SLICE_D));
   }
 
@@ -94,7 +93,7 @@ public class DenseVector implements Vector {
    * @param value value to be set
    */
   @Override
-  public void set(final int index, final double value) {
+  public void set(final int index, final float value) {
     breezeVector.update(index, value);
   }
 
@@ -139,7 +138,7 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector addi(final double value) {
+  public Vector addi(final float value) {
     ((NumericOps)breezeVector).$plus$eq(value, VectorOps.ADDI_DT);
     return this;
   }
@@ -150,8 +149,8 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector add(final double value) {
-    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$plus(value, VectorOps.ADD_DT));
+  public Vector add(final float value) {
+    return new DenseVector((breeze.linalg.DenseVector<Float>) breezeVector.$plus(value, VectorOps.ADD_DT));
   }
 
   /**
@@ -177,10 +176,10 @@ public class DenseVector implements Vector {
   @Override
   public Vector add(final Vector vector) {
     if (vector.isDense()) {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           breezeVector.$plus(((DenseVector) vector).breezeVector, VectorOps.ADD_DD));
     } else {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           breezeVector.$plus(((SparseVector) vector).getBreezeVector(), VectorOps.ADD_DS));
     }
   }
@@ -191,7 +190,7 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector subi(final double value) {
+  public Vector subi(final float value) {
     ((NumericOps)breezeVector).$minus$eq(value, VectorOps.SUBI_DT);
     return this;
   }
@@ -202,8 +201,8 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector sub(final double value) {
-    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$minus(value, VectorOps.SUB_DT));
+  public Vector sub(final float value) {
+    return new DenseVector((breeze.linalg.DenseVector<Float>) breezeVector.$minus(value, VectorOps.SUB_DT));
   }
 
   /**
@@ -229,10 +228,10 @@ public class DenseVector implements Vector {
   @Override
   public Vector sub(final Vector vector) {
     if (vector.isDense()) {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           breezeVector.$minus(((DenseVector) vector).breezeVector, VectorOps.SUB_DD));
     } else {
-      return new DenseVector((breeze.linalg.DenseVector<Double>)
+      return new DenseVector((breeze.linalg.DenseVector<Float>)
           breezeVector.$minus(((SparseVector) vector).getBreezeVector(), VectorOps.SUB_DS));
     }
   }
@@ -243,7 +242,7 @@ public class DenseVector implements Vector {
    * @return this vector with operation result
    */
   @Override
-  public Vector scalei(final double value) {
+  public Vector scalei(final float value) {
     ((NumericOps)breezeVector).$colon$times$eq(value, VectorOps.SCALEI_D);
     return this;
   }
@@ -254,8 +253,8 @@ public class DenseVector implements Vector {
    * @return new {@link DenseVector} with operation result
    */
   @Override
-  public Vector scale(final double value) {
-    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_D));
+  public Vector scale(final float value) {
+    return new DenseVector((breeze.linalg.DenseVector<Float>) breezeVector.$colon$times(value, VectorOps.SCALE_D));
   }
 
   /**
@@ -264,7 +263,7 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector divi(final double value) {
+  public Vector divi(final float value) {
     ((NumericOps)breezeVector).$div$eq(value, VectorOps.DIVI_D);
     return this;
   }
@@ -275,8 +274,8 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public Vector div(final double value) {
-    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$div(value, VectorOps.DIV_D));
+  public Vector div(final float value) {
+    return new DenseVector((breeze.linalg.DenseVector<Float>) breezeVector.$div(value, VectorOps.DIV_D));
   }
 
   /**
@@ -286,7 +285,7 @@ public class DenseVector implements Vector {
    * @return this vector with operation result
    */
   @Override
-  public Vector axpy(final double value, final Vector vector) {
+  public Vector axpy(final float value, final Vector vector) {
     if (vector.isDense()) {
       package$.MODULE$.axpy(value, ((DenseVector) vector).breezeVector, breezeVector, VectorOps.AXPY_DD);
     } else {
@@ -301,17 +300,17 @@ public class DenseVector implements Vector {
    * @return operation result
    */
   @Override
-  public double dot(final Vector vector) {
+  public float dot(final Vector vector) {
     if (vector.isDense()) {
-      return (double) breezeVector.dot(((DenseVector) vector).breezeVector, VectorOps.DOT_DD);
+      return (float) breezeVector.dot(((DenseVector) vector).getBreezeVector(), VectorOps.DOT_DD);
     } else {
-      return (double) breezeVector.dot(((SparseVector) vector).getBreezeVector(), VectorOps.DOT_DS);
+      return (float) breezeVector.dot(((SparseVector) vector).getBreezeVector(), VectorOps.DOT_DS);
     }
   }
 
   private class DenseVectorIterator implements Iterator<VectorEntry> {
 
-    private final Iterator<Tuple2<Object, Double>> iterator
+    private final Iterator<Tuple2<Object, Float>> iterator
         = JavaConversions.asJavaIterator(breezeVector.activeIterator());
     private final DenseVectorEntry entry = new DenseVectorEntry();
 
@@ -331,13 +330,13 @@ public class DenseVector implements Vector {
 
   private class DenseVectorEntry implements VectorEntry {
 
-    private Tuple2<Object, Double> cursor;
+    private Tuple2<Object, Float> cursor;
 
     public int index() {
       return (int) cursor._1();
     }
 
-    public double value() {
+    public float value() {
       return cursor._2();
     }
   }

@@ -28,18 +28,18 @@ final class NMFParameters {
   }
 
   @NamedParameter(doc = "step size for stochastic gradient descent", short_name = "step_size")
-  static final class StepSize implements Name<Double> {
+  static final class StepSize implements Name<Float> {
   }
 
   @NamedParameter(doc = "regularization constant value", short_name = "lambda", default_value = "0.0")
-  static final class Lambda implements Name<Double> {
+  static final class Lambda implements Name<Float> {
   }
 
   @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative). this value must be larger than 0 " +
       "and less than or equal to 1. if decay_rate=1.0, decaying process is turned off.",
       short_name = "decay_rate",
       default_value = "0.9")
-  static final class DecayRate implements Name<Double> {
+  static final class DecayRate implements Name<Float> {
   }
 
   @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
@@ -50,15 +50,15 @@ final class NMFParameters {
   }
 
   @NamedParameter(doc = "maximum value for each element", short_name = "max_val", default_value = "1e6")
-  static final class MaxValue implements Name<Double> {
+  static final class MaxValue implements Name<Float> {
   }
 
   @NamedParameter(doc = "maximum value for initial elements", short_name = "init_max", default_value = "1.0")
-  static final class InitialMax implements Name<Double> {
+  static final class InitialMax implements Name<Float> {
   }
 
   @NamedParameter(doc = "minimum value for initial elements", short_name = "init_min", default_value = "0.0")
-  static final class InitialMin implements Name<Double> {
+  static final class InitialMin implements Name<Float> {
   }
 
   @NamedParameter(doc = "whether generated matrices are printed or not at the end", short_name = "print_mat",

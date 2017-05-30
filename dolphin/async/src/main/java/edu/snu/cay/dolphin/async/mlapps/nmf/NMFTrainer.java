@@ -45,8 +45,8 @@ final class NMFTrainer implements Trainer<NMFData> {
   private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
   private final VectorFactory vectorFactory;
   private final int rank;
-  private double stepSize;
-  private final double lambda;
+  private float stepSize;
+  private final float lambda;
 
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
@@ -54,7 +54,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   /**
    * The step size drops by this rate.
    */
-  private final double decayRate;
+  private final float decayRate;
 
   /**
    * The step size drops after every {@code decayPeriod} epochs pass.
@@ -77,9 +77,9 @@ final class NMFTrainer implements Trainer<NMFData> {
   private NMFTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      final VectorFactory vectorFactory,
                      @Parameter(Rank.class) final int rank,
-                     @Parameter(StepSize.class) final double stepSize,
-                     @Parameter(Lambda.class) final double lambda,
-                     @Parameter(DecayRate.class) final double decayRate,
+                     @Parameter(StepSize.class) final float stepSize,
+                     @Parameter(Lambda.class) final float lambda,
+                     @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
@@ -133,6 +133,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
       // This way we can mitigate the slowdown from straggler threads.
       final int drainSize = Math.max(instances.size() / numTrainerThreads / numTrainerThreads, 1);
+      LOG.log(Level.INFO, "Drained {0} items", drainSize);
 
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<Map<Integer, Vector>> future = executor.submit(() -> {
@@ -178,10 +179,10 @@ final class NMFTrainer implements Trainer<NMFData> {
     final NMFModel model = pullModels(getKeys(epochTrainingData));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final double trainingLoss = computeLoss(epochTrainingData, model);
+    final float trainingLoss = computeLoss(epochTrainingData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
+      final float prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
@@ -249,17 +250,17 @@ final class NMFTrainer implements Trainer<NMFData> {
                               final Map<Integer, Vector> threadRGradient) {
     final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
     final Vector lGradSum;
-    if (lambda != 0.0D) {
+    if (lambda != 0.0f) {
       // l2 regularization term. 2 * lambda * L_{i, *}
-      lGradSum = lVec.scale(2.0D * lambda);
+      lGradSum = lVec.scale(2.0f * lambda);
     } else {
       lGradSum = vectorFactory.createDenseZeros(rank);
     }
 
-    for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
+    for (final Pair<Integer, Float> column : datum.getColumns()) { // a pair of column index and value
       final int colIdx = column.getFirst();
       final Vector rVec = model.getRMatrix().get(colIdx); // R_{*, j} : j-th column of R
-      final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
+      final float error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
 
       // compute gradients
       // lGrad = 2 * e * R_{*, j}'
@@ -267,8 +268,8 @@ final class NMFTrainer implements Trainer<NMFData> {
       final Vector lGrad;
       final Vector rGrad;
 
-      lGrad = rVec.scale(2.0D * error);
-      rGrad = lVec.scale(2.0D * error);
+      lGrad = rVec.scale(2.0f * error);
+      rGrad = lVec.scale(2.0f * error);
 
       // aggregate L matrix gradients
       lGradSum.addi(lGrad);
@@ -279,6 +280,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     // update L matrix
     modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
+    LOG.log(Level.INFO, "getValidVector");
   }
 
   /**
@@ -318,16 +320,16 @@ final class NMFTrainer implements Trainer<NMFData> {
    * @param instances The training data instances to evaluate training loss.
    * @return the loss value, computed by the sum of the errors.
    */
-  private double computeLoss(final Collection<NMFData> instances, final NMFModel model) {
+  private float computeLoss(final Collection<NMFData> instances, final NMFModel model) {
     final Map<Integer, Vector> rMatrix = model.getRMatrix();
 
-    double loss = 0.0;
+    float loss = 0.0f;
     for (final NMFData datum : instances) {
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
-      for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
+      for (final Pair<Integer, Float> column : datum.getColumns()) { // a pair of column index and value
         final int colIdx = column.getFirst();
         final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
-        final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
+        final float error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
         loss += error * error;
       }
     }
@@ -368,7 +370,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     if (grad == null) {
       // l2 regularization term. 2 * lambda * R_{*, j}
       if (lambda != 0.0D) {
-        newGrad.axpy(2.0D * lambda, model.getRMatrix().get(colIdx));
+        newGrad.axpy(2.0f * lambda, model.getRMatrix().get(colIdx));
       }
       threadRGradient.put(colIdx, newGrad);
     } else {
@@ -376,7 +378,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     }
   }
   
-  private EpochResult buildEpochResult(final double trainingLoss) {
+  private EpochResult buildEpochResult(final float trainingLoss) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
         .build();

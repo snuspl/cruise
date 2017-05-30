@@ -30,5 +30,5 @@ public interface VectorEntry {
    * Returns the value of this element.
    * @return value
    */
-  double value();
+  float value();
 }

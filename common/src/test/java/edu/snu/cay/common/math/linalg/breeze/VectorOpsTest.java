@@ -46,8 +46,8 @@ public final class VectorOpsTest {
    */
   @Test
   public void testDenseVector() {
-    final double[] value1 = {0.1, 0.2, 0.3, 0.4, 0.5};
-    final double[] value2 = {0.1, 0.3, 0.5, 0.7, 0.9};
+    final float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    final float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
 
     final Vector vec1 = factory.createDense(value1);
     final Vector vec2 = factory.createDense(value2);
@@ -58,18 +58,18 @@ public final class VectorOpsTest {
     for (int i = 0; i < vec1.length(); i++) {
       dotResult += vec1.get(i) * vec2.get(i);
     }
-    assertEquals(dotResult, vec1.dot(vec2), 0.0);
+    assertEquals(dotResult, vec1.dot(vec2), EPSILON);
 
     final Vector addVec = vec1.add(vec2);
     vec1.addi(vec2);
     assertEquals(addVec, vec1);
 
-    final Vector scaleVec = vec1.scale(1.5);
-    vec1.scalei(1.5);
+    final Vector scaleVec = vec1.scale(1.5f);
+    vec1.scalei(1.5f);
     assertEquals(scaleVec, vec1);
 
     final Vector addScaleVec = vec1.add(vec2);
-    vec1.axpy(1.0, vec2);
+    vec1.axpy(1.0f, vec2);
     assertEquals(addScaleVec, vec1);
 
     assertEquals(vec3, vec4.add(1));
@@ -83,7 +83,7 @@ public final class VectorOpsTest {
     assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
 
     // check that changes on sliceVec affect the original vector
-    sliceVec.set(0, 1.0);
+    sliceVec.set(0, 1.0f);
     assertEquals(vec1.get(2), sliceVec.get(0), EPSILON);
     assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
   }
@@ -94,9 +94,9 @@ public final class VectorOpsTest {
   @Test
   public void testSparseVector() {
     final int[] index1 = {0, 1, 2, 3, 4};
-    final double[] value1 = {0.1, 0.2, 0.3, 0.4, 0.5};
+    final float[] value1 = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
     final int[] index2 = {0, 2, 4, 6, 8};
-    final double[] value2 = {0.1, 0.3, 0.5, 0.7, 0.9};
+    final float[] value2 = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
 
     final Vector vec1 = factory.createSparse(index1, value1, 10);
     final Vector vec2 = factory.createSparse(index2, value2, 10);
@@ -111,15 +111,15 @@ public final class VectorOpsTest {
     for (int i = 0; i < vec1.length(); i++) {
       dotResult += vec1.get(i) * vec2.get(i);
     }
-    assertEquals(dotResult, vec1.dot(vec2), 0.0);
+    assertEquals(dotResult, vec1.dot(vec2), EPSILON);
 
     final Vector addVec = vec1.add(vec2);
     dVec.addi(vec2);
     assertEquals(addVec, dVec);
 
-    assertEquals(addVec.scale(2.0), dVec.scale(2.0));
+    assertEquals(addVec.scale(2.0f), dVec.scale(2.0f));
 
-    vec1.axpy(1.0, vec2);
+    vec1.axpy(1.0f, vec2);
     assertEquals(dVec, vec1);
 
     vec3.addi(1);

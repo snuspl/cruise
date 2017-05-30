@@ -295,13 +295,13 @@ public final class ETDolphinLauncher {
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ETDolphinDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, ETDolphinDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, ETDolphinDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, ETDolphinDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, ETDolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.FailedTaskHandler.class)
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
