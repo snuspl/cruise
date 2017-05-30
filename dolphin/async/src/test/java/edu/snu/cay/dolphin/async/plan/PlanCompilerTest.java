@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan;
 
-import edu.snu.cay.dolphin.async.ETDolphinDriver;
+import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
@@ -45,7 +45,7 @@ import static org.junit.Assert.*;
  * A test for {@link PlanCompiler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ETDolphinDriver.class})
+@PrepareForTest({DolphinMaster.class})
 public class PlanCompilerTest {
   private static final Logger LOG = Logger.getLogger(PlanCompilerTest.class.getName());
   private static final String EVAL_ID_PREFIX = "EVAL-";
@@ -57,9 +57,9 @@ public class PlanCompilerTest {
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    final ETDolphinDriver etDolphinDriver = mock(ETDolphinDriver.class);
+    final DolphinMaster dolphinMaster = mock(DolphinMaster.class);
 
-    injector.bindVolatileInstance(ETDolphinDriver.class, etDolphinDriver);
+    injector.bindVolatileInstance(DolphinMaster.class, dolphinMaster);
 
     compiler = injector.getInstance(PlanCompiler.class);
   }

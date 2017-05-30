@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.impl;
 
-import edu.snu.cay.dolphin.async.ETDolphinDriver;
+import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -43,11 +43,11 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
 public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
 
-  private final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture;
+  private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
 
   @Inject
-  private PlanCompiler(final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture) {
-    this.etDolphinDriverFuture = etDolphinDriverFuture;
+  private PlanCompiler(final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+    this.dolphinMasterFuture = dolphinMasterFuture;
   }
 
   /**
@@ -246,8 +246,8 @@ public final class PlanCompiler {
 
           final StopOp serverStopOp = new StopOp(executor);
           stopOps.put(executor, serverStopOp);
-          final StartOp workerStartOp = new StartOp(executor, etDolphinDriverFuture.get().getWorkerTaskConf(),
-              etDolphinDriverFuture.get().getWorkerMetricConf());
+          final StartOp workerStartOp = new StartOp(executor, dolphinMasterFuture.get().getWorkerTaskConf(),
+              dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(executor, workerStartOp);
 
           dag.addVertex(serverStopOp);
@@ -278,8 +278,8 @@ public final class PlanCompiler {
 
           final StopOp workerStopOp = new StopOp(executor);
           stopOps.put(executor, workerStopOp);
-          final StartOp serverStartOp = new StartOp(executor, etDolphinDriverFuture.get().getServerTaskConf(),
-              etDolphinDriverFuture.get().getServerMetricConf());
+          final StartOp serverStartOp = new StartOp(executor, dolphinMasterFuture.get().getServerTaskConf(),
+              dolphinMasterFuture.get().getServerMetricConf());
           startOps.put(executor, serverStartOp);
 
           dag.addVertex(workerStopOp);
@@ -346,7 +346,7 @@ public final class PlanCompiler {
       final Collection<String> evalsToAdd = entry.getValue();
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
-          etDolphinDriverFuture.get().getWorkerExecutorConf() : etDolphinDriverFuture.get().getServerExecutorConf();
+          dolphinMasterFuture.get().getWorkerExecutorConf() : dolphinMasterFuture.get().getServerExecutorConf();
       final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
 
       for (final String evalToAdd : evalsToAdd) {
@@ -361,8 +361,8 @@ public final class PlanCompiler {
 
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StartOp startOp = new StartOp(evalToAdd,
-              etDolphinDriverFuture.get().getWorkerTaskConf(),
-              etDolphinDriverFuture.get().getWorkerMetricConf());
+              dolphinMasterFuture.get().getWorkerTaskConf(),
+              dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(evalToAdd, startOp);
           final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, MODEL_TABLE_ID);
           subscribeOps.put(evalToAdd, subscribeOp);
@@ -373,8 +373,8 @@ public final class PlanCompiler {
           dag.addEdge(subscribeOp, startOp);
         } else {
           final StartOp startOp = new StartOp(evalToAdd,
-              etDolphinDriverFuture.get().getServerTaskConf(),
-              etDolphinDriverFuture.get().getServerMetricConf());
+              dolphinMasterFuture.get().getServerTaskConf(),
+              dolphinMasterFuture.get().getServerMetricConf());
           startOps.put(evalToAdd, startOp);
 
           dag.addVertex(startOp);
