@@ -143,7 +143,7 @@ final class WorkerGlobalBarrier {
   }
 
   /**
-   *
+   * Handles release msgs from driver.
    */
   synchronized void onReleaseMsg() {
     LOG.log(Level.FINE, "Received a response message from the driver");

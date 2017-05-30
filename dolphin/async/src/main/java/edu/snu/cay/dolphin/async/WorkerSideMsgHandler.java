@@ -22,7 +22,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 /**
- *
+ * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 public final class WorkerSideMsgHandler implements EventHandler<CentCommMsg> {
   private final WorkerGlobalBarrier workerGlobalBarrier;

@@ -80,7 +80,7 @@ public class WorkerStateManagerTest {
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
-    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class));
+    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
     final EventHandler<CentCommMsg> driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
 
     driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
@@ -116,8 +116,7 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockedSlaveSideCentCommMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final EventHandler<CentCommMsg> workerSideMsgHandler =
-        injector.getInstance(WorkerSideMsgHandler.class);
+    final EventHandler<CentCommMsg> workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
         new Tuple3<>(workerGlobalBarrier, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));

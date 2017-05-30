@@ -40,6 +40,10 @@ public final class ProgressReporter {
     this.msgSender = msgSender;
   }
 
+  /**
+   * Report its progress to {@link ProgressTracker}.
+   * @param epochIdx a current processing epoch index
+   */
   public void report(final int epochIdx) {
     final ProgressMsg progressMsg = ProgressMsg.newBuilder()
         .setExecutorId(executorId)
