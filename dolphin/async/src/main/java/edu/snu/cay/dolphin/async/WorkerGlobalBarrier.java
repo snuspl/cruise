@@ -15,19 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
-import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
-import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,22 +37,12 @@ final class WorkerGlobalBarrier {
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
-  private final String executorId;
-  private final String jobId;
-
-  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
-  private final SerializableCodec<State> codec;
+  private final WorkerSideMsgSender workerSideMsgSender;
 
   @Inject
-  private WorkerGlobalBarrier(@Parameter(ExecutorIdentifier.class) final String executorId,
-                              @Parameter(JobIdentifier.class) final String jobId,
-                              final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
-                              final SerializableCodec<State> codec) {
+  private WorkerGlobalBarrier(final WorkerSideMsgSender workerSideMsgSender) {
     this.stateMachine = initStateMachine();
-    this.executorId = executorId;
-    this.jobId = jobId;
-    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
-    this.codec = codec;
+    this.workerSideMsgSender = workerSideMsgSender;
   }
 
   enum State {
@@ -77,24 +60,6 @@ final class WorkerGlobalBarrier {
         .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(State.INIT)
         .build();
-  }
-
-  private void sendMsgToDriver() {
-    LOG.log(Level.INFO, "Sending a synchronization message to the driver");
-    final byte[] serializedState = codec.encode((State) stateMachine.getCurrentState());
-
-    final SyncMsg syncMsg = SyncMsg.newBuilder()
-        .setExecutorId(executorId)
-        .setSerializedState(ByteBuffer.wrap(serializedState))
-        .build();
-
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setType(dolphinMsgType.SyncMsg)
-        .setSyncMsg(syncMsg)
-        .build();
-
-    slaveSideCentCommMsgSender.send(jobId,
-        AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
   }
 
   /**
@@ -117,7 +82,9 @@ final class WorkerGlobalBarrier {
       throw new RuntimeException("Invalid state: await() should not be called in the CLEANUP state");
     }
 
-    sendMsgToDriver();
+    LOG.log(Level.INFO, "Sending a synchronization message to the driver");
+    workerSideMsgSender.sendSyncMsg((State) stateMachine.getCurrentState());
+
     countDownLatch.awaitAndReset(1);
     LOG.log(Level.INFO, "Release from barrier");
   }
