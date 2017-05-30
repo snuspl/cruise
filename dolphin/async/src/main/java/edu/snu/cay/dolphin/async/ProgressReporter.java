@@ -15,28 +15,19 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
-import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-
-import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 
 /**
  * A class for reporting epoch progress to driver.
  */
 @EvaluatorSide
 public final class ProgressReporter {
-  private final String executorId;
-  private final SlaveSideCentCommMsgSender msgSender;
+  private final WorkerSideMsgSender msgSender;
 
   @Inject
-  private ProgressReporter(@Parameter(ExecutorIdentifier.class) final String executorId,
-                           final SlaveSideCentCommMsgSender msgSender) {
-    this.executorId = executorId;
+  private ProgressReporter(final WorkerSideMsgSender msgSender) {
     this.msgSender = msgSender;
   }
 
@@ -45,16 +36,6 @@ public final class ProgressReporter {
    * @param epochIdx a current processing epoch index
    */
   public void report(final int epochIdx) {
-    final ProgressMsg progressMsg = ProgressMsg.newBuilder()
-        .setExecutorId(executorId)
-        .setEpochIdx(epochIdx)
-        .build();
-
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setType(dolphinMsgType.ProgressMsg)
-        .setProgressMsg(progressMsg)
-        .build();
-
-    msgSender.send(CENT_COMM_CLIENT_NAME, AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    msgSender.sendProgressMsg(epochIdx);
   }
 }

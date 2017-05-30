@@ -15,12 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -34,8 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
-
 /**
  * A driver-side component that coordinates synchronization between the driver and workers.
  * It is used to synchronize workers in two points: after initialization (STATE_INIT -> STATE_RUN)
@@ -48,10 +43,7 @@ import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 public final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
 
-  private static final byte[] RELEASE_MSG = AvroUtils.toBytes(
-      DolphinMsg.newBuilder().setType(dolphinMsgType.ReleaseMsg).build(), DolphinMsg.class);
-
-  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
+  private final MasterSideMsgSender msgSender;
 
   private final Codec<WorkerGlobalBarrier.State> codec;
 
@@ -92,10 +84,10 @@ public final class WorkerStateManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private WorkerStateManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
+  private WorkerStateManager(final MasterSideMsgSender msgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
-    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
+    this.msgSender = msgSender;
     this.numWorkers = numWorkers;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -252,16 +244,12 @@ public final class WorkerStateManager {
   }
 
   private void sendResponseMessage(final String workerId) {
-    try {
-      final String networkId = workerIdToNetworkId.get(workerId);
-      if (networkId == null) {
-        throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
-      }
-
-      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, networkId, RELEASE_MSG);
-    } catch (final NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
+    final String networkId = workerIdToNetworkId.get(workerId);
+    if (networkId == null) {
+      throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
     }
+
+    msgSender.sendReleaseMsg(networkId);
   }
 
   /**
