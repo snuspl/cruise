@@ -67,6 +67,7 @@ import java.util.logging.Logger;
 @ClientSide
 public final class ETDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(ETDolphinLauncher.class.getName());
+  static final String CENT_COMM_CLIENT_NAME = ETDolphinLauncher.class.getName();
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParamConf implements Name<String> {
@@ -312,12 +313,7 @@ public final class ETDolphinLauncher {
         .build();
 
     final CentCommConf centCommServiceConf = CentCommConf.newBuilder()
-        .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
-            WorkerStateManager.MessageHandler.class,
-            WorkerGlobalBarrier.MessageHandler.class)
-        .addCentCommClient(ProgressTracker.CENT_COMM_CLIENT_NAME,
-            ProgressTracker.MessageHandler.class,
-            ProgressReporter.DummyMessageHandler.class)
+        .addCentCommClient(CENT_COMM_CLIENT_NAME, MasterSideMsgHandler.class, WorkerSideMsgHandler.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();

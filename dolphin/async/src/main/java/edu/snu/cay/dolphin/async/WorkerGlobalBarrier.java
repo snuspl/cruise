@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.AvroUtils;
@@ -24,8 +23,6 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
@@ -33,13 +30,14 @@ import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
+
 /**
  * Synchronizes all workers by exchanging synchronization messages with the driver.
  * It is used to synchronize the local worker with other workers in two points: after initialization and before cleanup.
  */
 @EvaluatorSide
 @NotThreadSafe
-@Unit
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
@@ -88,8 +86,13 @@ final class WorkerGlobalBarrier {
         .setSerializedState(ByteBuffer.wrap(serializedState))
         .build();
 
-    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME,
-        AvroUtils.toBytes(syncMsg, SyncMsg.class));
+    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setType(dolphinMsgType.SyncMsg)
+        .setSyncMsg(syncMsg)
+        .build();
+
+    slaveSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME,
+        AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
   }
 
   /**
@@ -139,14 +142,13 @@ final class WorkerGlobalBarrier {
     }
   }
 
-  final class MessageHandler implements EventHandler<CentCommMsg> {
+  /**
+   *
+   */
+  synchronized void onReleaseMsg() {
+    LOG.log(Level.FINE, "Received a response message from the driver");
 
-    @Override
-    public synchronized void onNext(final CentCommMsg centCommMsg) {
-      LOG.log(Level.FINE, "Received a response message from the driver");
-
-      transitToNextState();
-      countDownLatch.countDown();
-    }
+    transitToNextState();
+    countDownLatch.countDown();
   }
 }

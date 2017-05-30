@@ -48,7 +48,7 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class})
+@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class, ProgressTracker.class})
 public class WorkerStateManagerTest {
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
@@ -79,8 +79,9 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockedMasterSideCentCommMsgSender);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
-    final EventHandler<CentCommMsg> driverSideMsgHandler =
-        injector.getInstance(WorkerStateManager.MessageHandler.class);
+
+    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class));
+    final EventHandler<CentCommMsg> driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
 
     driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
 
@@ -116,7 +117,7 @@ public class WorkerStateManagerTest {
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
     final EventHandler<CentCommMsg> workerSideMsgHandler =
-        injector.getInstance(WorkerGlobalBarrier.MessageHandler.class);
+        injector.getInstance(WorkerSideMsgHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
         new Tuple3<>(workerGlobalBarrier, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));
