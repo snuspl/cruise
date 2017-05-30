@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (C) 2017 Seoul National University
+=======
+ * Copyright (C) 2016 Seoul National University
+>>>>>>> in progress
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +38,6 @@ public final class ILPPlanGeneratorTest {
 
   private ILPPlanGenerator ilpPlanGenerator;
   private int[] oldRole, newRole, oldDataBlockNum, newDataBlockNum, oldModelBlockNum, newModelBlockNum;
-
   @Before
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
