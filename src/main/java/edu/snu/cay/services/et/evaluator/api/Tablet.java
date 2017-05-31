@@ -108,6 +108,20 @@ public interface Tablet<K, V, U> {
   Iterator<Entry<K, V>> getDataIterator();
 
   /**
+   * Gets an iterator of local blocks, which can react to background block migration.
+   * Specifically, new blocks can be added to this iterator and the existing blocks can be deleted, for the blocks that
+   * have not been consumed by this iterator yet.
+   * Consistency of iterator depends on the implementation of Table.
+   * @return an iterator of local {@link Block}s
+   */
+  Iterator<Block<K, V, U>> getBlockIterator();
+
+  /**
+   * @return the number of local blocks in the Tablet.
+   */
+  int getNumBlocks();
+
+  /**
    * @return the number of local data items existing in the Tablet.
    */
   int getNumDataItems();

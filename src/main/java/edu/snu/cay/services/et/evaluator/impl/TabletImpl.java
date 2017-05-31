@@ -161,6 +161,16 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
   }
 
   @Override
+  public Iterator<Block<K, V, U>> getBlockIterator() {
+    return blockStore.iterator();
+  }
+
+  @Override
+  public int getNumBlocks() {
+    return blockStore.getNumBlocks();
+  }
+
+  @Override
   public int getNumDataItems() {
     int numTotal = 0;
 
