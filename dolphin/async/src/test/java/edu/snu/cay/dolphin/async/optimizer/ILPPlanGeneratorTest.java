@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.optimizer.impl.ILPPlanGenerator;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
+import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.dolphin.async.plan.impl.ILPPlanDescriptor;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -68,8 +69,8 @@ public final class ILPPlanGeneratorTest {
     System.out.println();
 
     System.out.println("Added workers");
-    for (final Integer addedWorekr : workerEvaluatorToAdd) {
-      System.out.print(addedWorekr + "  ");
+    for (final Integer addedWorker : workerEvaluatorToAdd) {
+      System.out.print(addedWorker + "  ");
     }
     System.out.println();
 
@@ -84,5 +85,17 @@ public final class ILPPlanGeneratorTest {
       System.out.print(deletedWorkers + "  ");
     }
     System.out.println();
+
+    System.out.println("Server transfer plan");
+    for (final TransferStep transferStep : ilpPlanDescriptor.getTransferSteps(Constants.NAMESPACE_SERVER)) {
+      System.out.println("From " + transferStep.getSrcId() + " to " + transferStep.getDstId() +
+          " NumBlocks " + transferStep.getDataInfo().getNumBlocks());
+    }
+
+    System.out.println("Worker transfer plan");
+    for (final TransferStep transferStep : ilpPlanDescriptor.getTransferSteps(Constants.NAMESPACE_WORKER)) {
+      System.out.println("From " + transferStep.getSrcId() + " to " + transferStep.getDstId() +
+          " NumBlocks " + transferStep.getDataInfo().getNumBlocks());
+    }
   }
 }

@@ -15,10 +15,27 @@
  */
 package edu.snu.cay.dolphin.async.plan.api;
 
+import edu.snu.cay.dolphin.async.optimizer.impl.ILPPlanGenerator;
+
 import java.util.List;
 
+/**
+ * Block moving plan for ILP solver's optimizing solution.
+ */
 public interface PlanDescriptor {
+
+  /**
+   * @return temporal IDs of evaluators to add.
+   */
   List<Integer> getEvaluatorsToAdd(String namespace);
+
+  /**
+   * @return temporal IDs of evaluators to delete.
+   */
   List<Integer> getEvaluatorsToDelete(String namespace);
+
+  /**
+   * @return transferring steps that are generated in {@link ILPPlanGenerator}.
+   */
   List<TransferStep> getTransferSteps(String namespace);
 }
