@@ -35,13 +35,13 @@ public final class GBTreeCodec implements Codec<GBTree> {
 
     // (1) max depth of the gbTree, and (2) the sum of all inner node's size.
     try (ByteArrayOutputStream baos =
-             new ByteArrayOutputStream(Integer.SIZE + (Integer.SIZE + Double.SIZE) * gbTree.getTreeSize())) {
+             new ByteArrayOutputStream(Integer.SIZE + (Integer.SIZE + Float.SIZE) * gbTree.getTreeSize())) {
       try (DataOutputStream dos = new DataOutputStream(baos)) {
         dos.writeInt(gbTree.getMaxDepth());
 
-        for (final Pair<Integer, Double> node : gbTree.getTree()) {
+        for (final Pair<Integer, Float> node : gbTree.getTree()) {
           dos.writeInt(node.getLeft());
-          dos.writeDouble(node.getRight());
+          dos.writeFloat(node.getRight());
         }
       }
       return baos.toByteArray();
@@ -60,7 +60,7 @@ public final class GBTreeCodec implements Codec<GBTree> {
 
         for (int i = 0; i < (1 << treeMaxDepth) - 1; ++i) {
           final int splitFeature = dais.readInt();
-          final double splitValue = dais.readDouble();
+          final float splitValue = dais.readFloat();
           gbTree.add(Pair.of(splitFeature, splitValue));
         }
       }

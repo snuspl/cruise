@@ -71,7 +71,7 @@ final class NMFDataCodec implements Codec<NMFData>, StreamingCodec<NMFData> {
   public NMFData decodeFromStream(final DataInputStream dais) {
     try {
       final int rowIndex = dais.readInt();
-      final List<Pair<Integer, Double>> columns = decodeColumns(dais);
+      final List<Pair<Integer, Float>> columns = decodeColumns(dais);
       final Vector vector = denseVectorCodec.decodeFromStream(dais);
       return new NMFData(rowIndex, columns, vector);
     } catch (final IOException e) {
@@ -84,26 +84,26 @@ final class NMFDataCodec implements Codec<NMFData>, StreamingCodec<NMFData> {
    * to record the number of the columns {@link #encodeColumns(List, DataOutputStream)}.
    * @return the total number of bytes of the encoded columns
    */
-  private int getNumBytes(final List<Pair<Integer, Double>> columns) {
-    return Integer.BYTES + columns.size() * (Integer.BYTES + Double.BYTES);
+  private int getNumBytes(final List<Pair<Integer, Float>> columns) {
+    return Integer.BYTES + columns.size() * (Integer.BYTES + Float.BYTES);
   }
 
-  private void encodeColumns(final List<Pair<Integer, Double>> columns,
+  private void encodeColumns(final List<Pair<Integer, Float>> columns,
                              final DataOutputStream daos) throws IOException {
     daos.writeInt(columns.size());
-    for (final Pair<Integer, Double> column : columns) {
+    for (final Pair<Integer, Float> column : columns) {
       daos.writeInt(column.getFirst());
-      daos.writeDouble(column.getSecond());
+      daos.writeFloat(column.getSecond());
     }
   }
 
-  private List<Pair<Integer, Double>> decodeColumns(final DataInputStream dais)
+  private List<Pair<Integer, Float>> decodeColumns(final DataInputStream dais)
       throws IOException {
     final int size = dais.readInt();
-    final List<Pair<Integer, Double>> columns = new ArrayList<>(size);
+    final List<Pair<Integer, Float>> columns = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final int first = dais.readInt();
-      final double second = dais.readDouble();
+      final float second = dais.readFloat();
       columns.add(new Pair<>(first, second));
     }
     return columns;

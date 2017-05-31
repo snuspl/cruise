@@ -76,6 +76,54 @@ public final class DolphinParameters {
                   default_value = "1")
   public final class NumServerCores implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "The queue size to handle remote access messages at server",
+                  short_name = "server_handler_queue_size",
+                  default_value = "500000")
+  public final class ServerHandlerQueueSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The queue size to handle remote access messages at worker",
+                  short_name = "worker_handler_queue_size",
+                  default_value = "500000")
+  public final class WorkerHandlerQueueSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The queue size to send remote access messages at server",
+                  short_name = "server_sender_queue_size",
+                  default_value = "500000")
+  public final class ServerSenderQueueSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The queue size to send remote access messages at worker",
+                  short_name = "worker_sender_queue_size",
+                  default_value = "500000")
+  public final class WorkerSenderQueueSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of threads to handle remote access messages at server",
+                  short_name = "num_server_handler_threads",
+                  default_value = "2")
+  public final class NumServerHandlerThreads implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of threads to handle remote access messages at worker",
+                  short_name = "num_worker_handler_threads",
+                  default_value = "2")
+  public final class NumWorkerHandlerThreads implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of threads to send remote access messages at server",
+                  short_name = "num_server_sender_threads",
+                  default_value = "2")
+  public final class NumServerSenderThreads implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of threads to send remote access messages at worker",
+                  short_name = "num_worker_sender_threads",
+                  default_value = "2")
+  public final class NumWorkerSenderThreads implements Name<Integer> {
+  }
   
   @NamedParameter(doc = "The path of test data",
                   short_name = "test_data_path",

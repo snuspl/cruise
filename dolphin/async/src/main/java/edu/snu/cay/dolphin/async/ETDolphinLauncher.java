@@ -20,17 +20,17 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
+import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
+import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
-import edu.snu.cay.dolphin.async.plan.ETPlanExecutorClass;
-import edu.snu.cay.services.em.optimizer.api.Optimizer;
-import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
+import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
@@ -184,7 +184,11 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // generic params
         NumServers.class, ServerMemSize.class, NumServerCores.class,
+        NumServerHandlerThreads.class, NumServerSenderThreads.class,
+        ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
+        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
@@ -291,13 +295,13 @@ public final class ETDolphinLauncher {
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ETDolphinDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, ETDolphinDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, ETDolphinDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, ETDolphinDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, ETDolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.FailedTaskHandler.class)
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 

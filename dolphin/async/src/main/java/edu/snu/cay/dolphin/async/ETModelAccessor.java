@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.MemoryUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * An implementation of {@link ModelAccessor} that handles push/pull requests using Elastic Tables (ET).
@@ -36,6 +39,8 @@ import java.util.concurrent.Future;
  */
 @NotThreadSafe
 public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(ETModelAccessor.class.getName());
+
   public static final String MODEL_TABLE_ID = "model_table";
 
   private final Table<K, V, P> modelTable;
@@ -101,6 +106,8 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
     }
 
     pullTracer.recordTime(keys.size());
+    LOG.log(Level.INFO, "{0} keys have been pulled. Used memory: {1} MB",
+        new Object[] {keys.size(), MemoryUtils.getUsedMemoryMB()});
     return resultValues;
   }
 

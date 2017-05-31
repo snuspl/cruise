@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.metric.avro.*;
-import edu.snu.cay.services.et.evaluator.impl.MetricCollector;
+import edu.snu.cay.services.et.metric.MetricCollector;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -45,7 +45,7 @@ final class ETWorkerTask<K, V> implements Task {
   private final ModelAccessor modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
-  private final MetricCollector<DolphinWorkerMetrics> metricCollector;
+  private final MetricCollector metricCollector;
 
   /**
    * A boolean flag that becomes true when {@link #close()} is called,
@@ -63,7 +63,7 @@ final class ETWorkerTask<K, V> implements Task {
                        final ModelAccessor modelAccessor,
                        final TestDataProvider<V> testDataProvider,
                        final Trainer<V> trainer,
-                       final MetricCollector<DolphinWorkerMetrics> metricCollector) {
+                       final MetricCollector metricCollector) {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
@@ -126,11 +126,9 @@ final class ETWorkerTask<K, V> implements Task {
         }
       }
 
+      final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
       final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-      final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochData.size(), epochElapsedTime, perOpTimeInEpoch);
+      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers

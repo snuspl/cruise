@@ -56,7 +56,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     try {
       daos.writeInt(vector.length());
       for (int i = 0; i < vector.length(); i++) {
-        daos.writeDouble(vector.get(i));
+        daos.writeFloat(vector.get(i));
       }
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
@@ -78,7 +78,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
       final int vecSize = dais.readInt();
       final Vector vector = vectorFactory.createDenseZeros(vecSize);
       for (int i = 0; i < vecSize; i++) {
-        vector.set(i, dais.readDouble());
+        vector.set(i, dais.readFloat());
       }
       return vector;
     } catch (final IOException e) {
@@ -90,6 +90,6 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     if (!vector.isDense()) {
       LOG.warning("the given vector is not dense.");
     }
-    return Integer.BYTES + Double.BYTES * vector.length();
+    return Integer.BYTES + Float.BYTES * vector.length();
   }
 }

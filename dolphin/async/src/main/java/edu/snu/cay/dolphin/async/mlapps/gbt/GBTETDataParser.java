@@ -27,14 +27,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Parser class for the GBT application.
- * Input files should be in the following form:
- *
+ * A data parser for sparse vector classification input.
+ * Assumes the following data format.
  * <p>
- *   x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
- *   x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
- *   ... <br>
- *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
+ *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
 final class GBTETDataParser implements DataParser<GBTData> {
@@ -52,20 +48,24 @@ final class GBTETDataParser implements DataParser<GBTData> {
   @Override
   public List<GBTData> parse(final Collection<String> rawData) {
     final List<GBTData> retList = new LinkedList<>();
-    for (final String value : rawData) {
-      final String line = value.trim();
+    for (final String datum : rawData) {
+      final String line = datum.trim();
       if (line.startsWith("#") || line.length() == 0) {
         // comments and empty lines
         continue;
       }
-
-      final String[] split = line.split("\\s+");
-      assert (split.length == numFeatures + 1);  // split array is composed of feature, and y-value.
-      final Vector feature =  vectorFactory.createDenseZeros(numFeatures);
-      for (int index = 0; index < numFeatures; index++) {
-        feature.set(index, Double.parseDouble(split[index]));
+      
+      final String[] split = line.split("\\s+|:");
+      final float yValue = Integer.parseInt(split[0]);
+  
+      final int[] indices = new int[split.length / 2];
+      final float[] data = new float[split.length / 2];
+      for (int index = 0; index < split.length / 2; ++index) {
+        indices[index] = Integer.parseInt(split[2 * index + 1]);
+        data[index] = Float.parseFloat(split[2 * index + 2]);
       }
-      final double yValue = Double.parseDouble(split[numFeatures]);
+      final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
+      
       retList.add(new GBTData(feature, yValue));
     }
 

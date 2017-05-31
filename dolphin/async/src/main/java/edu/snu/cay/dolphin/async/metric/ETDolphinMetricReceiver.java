@@ -18,8 +18,9 @@ package edu.snu.cay.dolphin.async.metric;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.avro.MetricMsg;
+import edu.snu.cay.services.et.avro.MetricMsgType;
+import edu.snu.cay.services.et.avro.MetricReportMsg;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -54,22 +55,27 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   @Override
   public void onMetricMsg(final String srcId, final MetricMsg metricMsg) {
-    if (metricMsg.getTableToNumBlocks().isEmpty()) { // Tables are not prepared yet.
+    if (!metricMsg.getType().equals(MetricMsgType.MetricReportMsg)) {
+      throw new RuntimeException(String.format("Received a message with an invalid type: %s", metricMsg.getType()));
+    }
+
+    final MetricReportMsg metricReportMsg = metricMsg.getMetricReportMsg();
+    if (metricReportMsg.getTableToNumBlocks().isEmpty()) { // Tables are not prepared yet.
       return;
     }
 
-    if (isWorkerMetrics(metricMsg)) {
-      processWorkerMetrics(srcId, metricMsg);
+    if (isWorkerMetrics(metricReportMsg)) {
+      processWorkerMetrics(srcId, metricReportMsg);
     } else {
-      processServerMetrics(srcId, metricMsg);
+      processServerMetrics(srcId, metricReportMsg);
     }
   }
 
   /**
    * Distinguishes the metrics from workers if the metrics consist of information of the training data table.
    */
-  private boolean isWorkerMetrics(final MetricMsg metricMsg) {
-    return metricMsg.getTableToNumBlocks().containsKey(TRAINING_DATA_TABLE_ID);
+  private boolean isWorkerMetrics(final MetricReportMsg metricReportMsg) {
+    return metricReportMsg.getTableToNumBlocks().containsKey(TRAINING_DATA_TABLE_ID);
   }
 
   /**
@@ -77,22 +83,22 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * For now the worker metrics are converted to be compatible to the EM's Optimizers.
    */
   // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
-  private void processWorkerMetrics(final String srcId, final MetricMsg metricMsg) {
-    for (final ByteBuffer encodedBuffer : metricMsg.getCustomMetrics()) {
+  private void processWorkerMetrics(final String srcId, final MetricReportMsg metricReportMsg) {
+    for (final ByteBuffer encodedBuffer : metricReportMsg.getCustomMetrics()) {
       final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
-      final Map<String, Integer> tableToNumBlocks = metricMsg.getTableToNumBlocks();
-      final String hostname = metricMsg.getHostname();
+      final Map<String, Integer> tableToNumBlocks = metricReportMsg.getTableToNumBlocks();
+      final String hostname = metricReportMsg.getHostname();
 
       switch (workerMetrics.getType()) {
       case BatchMetrics:
         final BatchMetrics batchMetrics = workerMetrics.getBatchMetrics();
         final WorkerMetrics convertedBatchMetrics =
-            convertBatchMetrics(metricMsg, tableToNumBlocks, hostname, batchMetrics);
+            convertBatchMetrics(metricReportMsg, tableToNumBlocks, hostname, batchMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedBatchMetrics);
         break;
       case EpochMetrics:
         final EpochMetrics epochMetrics = workerMetrics.getEpochMetrics();
-        final WorkerMetrics convertedEpochMetrics = convertEpochMetrics(metricMsg, hostname, epochMetrics);
+        final WorkerMetrics convertedEpochMetrics = convertEpochMetrics(metricReportMsg, hostname, epochMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedEpochMetrics);
         break;
       default:
@@ -108,7 +114,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
    */
   // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
-  private WorkerMetrics convertEpochMetrics(final MetricMsg metricMsg,
+  private WorkerMetrics convertEpochMetrics(final MetricReportMsg metricReportMsg,
                                             final String hostname,
                                             final EpochMetrics epochMetrics) {
     return WorkerMetrics.newBuilder()
@@ -116,12 +122,12 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setMiniBatchSize(miniBatchSize)
               .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
               .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
-              .setNumDataBlocks(metricMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
+              .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
               .setTotalTime(epochMetrics.getEpochTimeSec())
               .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
               .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
               .setTotalPushTime(epochMetrics.getEpochPushTimeSec())
-              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
+              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricReportMsg))
               .setHostname(hostname)
               .build();
   }
@@ -131,7 +137,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
    */
   // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
-  private WorkerMetrics convertBatchMetrics(final MetricMsg metricMsg,
+  private WorkerMetrics convertBatchMetrics(final MetricReportMsg metricReportMsg,
                                             final Map<String, Integer> tableToNumBlocks,
                                             final String hostname,
                                             final BatchMetrics batchMetrics) {
@@ -145,7 +151,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setTotalCompTime(batchMetrics.getBatchCompTimeSec())
               .setTotalPullTime(batchMetrics.getBatchPullTimeSec())
               .setTotalPushTime(batchMetrics.getBatchPushTimeSec())
-              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
+              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricReportMsg))
               .setHostname(hostname)
               .build();
   }
@@ -155,10 +161,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
    */
   // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
-  private ParameterWorkerMetrics buildParameterWorkerMetrics(final MetricMsg metricMsg) {
+  private ParameterWorkerMetrics buildParameterWorkerMetrics(final MetricReportMsg metricReportMsg) {
     return ParameterWorkerMetrics.newBuilder()
-        .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
-        .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L))
+        .setTotalPullCount(metricReportMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
+        .setTotalReceivedBytes(metricReportMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L))
         .build();
   }
 
@@ -168,10 +174,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * any server-specific information.
    */
   // TODO #1104: Collect metrics from Servers in Dolphin-on-ET
-  private void processServerMetrics(final String srcId, final MetricMsg metricMsg) {
-    final String hostname = metricMsg.getHostname();
+  private void processServerMetrics(final String srcId, final MetricReportMsg metricReportMsg) {
+    final String hostname = metricReportMsg.getHostname();
     final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-        .setNumModelBlocks(metricMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
+        .setNumModelBlocks(metricReportMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
         .setHostname(hostname)
         .build();
     metricManager.storeServerMetrics(srcId, serverMetrics);

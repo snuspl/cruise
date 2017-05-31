@@ -65,10 +65,7 @@
 
   <modules>
     <module>dolphin/async</module>
-    <module>services/elastic-memory</module>
     <module>services/evaluator-manager</module>
-    <module>services/shuffle</module>
-    <module>services/ps</module>
     <module>utils</module>
     <module>common</module>
     <module>pregel</module>
@@ -352,8 +349,6 @@
           <instrumentation>
             <excludes>
               <exclude>edu/snu/cay/dolphin/examples/**/*.class</exclude>
-              <exclude>edu/snu/cay/services/em/examples/**/*.class</exclude>
-              <exclude>edu/snu/cay/services/shuffle/examples/**/*.class</exclude>
             </excludes>
           </instrumentation>
           <aggregate>true</aggregate>

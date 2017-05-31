@@ -18,13 +18,13 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Vector;
 
 /**
- * Abstraction for training data used in Lasso, consisting of feature vector and value (Double).
+ * Abstraction for training data used in Lasso, consisting of feature vector and value (Float).
  */
 final class LassoData {
   private final Vector feature;
-  private final double value;
+  private final float value;
 
-  LassoData(final Vector feature, final double value) {
+  LassoData(final Vector feature, final float value) {
     this.feature = feature;
     this.value = value;
   }
@@ -33,7 +33,7 @@ final class LassoData {
     return feature;
   }
 
-  double getValue() {
+  float getValue() {
     return value;
   }
 }

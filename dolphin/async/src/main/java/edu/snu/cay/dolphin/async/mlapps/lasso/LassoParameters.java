@@ -28,11 +28,11 @@ final class LassoParameters {
   }
 
   @NamedParameter(doc = "value of the step size", short_name = "step_size")
-  static final class StepSize implements Name<Double> {
+  static final class StepSize implements Name<Float> {
   }
 
   @NamedParameter(doc = "regularization constant", short_name = "lambda")
-  static final class Lambda implements Name<Double> {
+  static final class Lambda implements Name<Float> {
   }
 
   @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",

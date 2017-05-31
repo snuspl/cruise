@@ -32,7 +32,7 @@ import static org.junit.Assert.assertNotEquals;
  */
 public final class VectorFactoryTest {
 
-  private static final double EPSILON = 0.01;
+  private static final float EPSILON = 0.00001f;
   private VectorFactory factory;
 
   @Before
@@ -49,7 +49,7 @@ public final class VectorFactoryTest {
    */
   @Test
   public void testDenseVector() {
-    final double[] value = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    final float[] value = {1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f};
     final Vector vec1 = factory.createDenseZeros(10);
     final Vector vec2 = factory.createDense(value);
     final Vector vec3 = factory.createDenseOnes(10);
@@ -79,7 +79,7 @@ public final class VectorFactoryTest {
   @Test
   public void testSparseVector() {
     final int[] index = {1, 3, 5, 7};
-    final double[] value = {0.1, 0.2, 0.3, 0.4};
+    final float[] value = {0.1f, 0.2f, 0.3f, 0.4f};
     final Vector vec1 = factory.createSparseZeros(10);
     final Vector vec2 = factory.createSparse(index, value, 10);
 

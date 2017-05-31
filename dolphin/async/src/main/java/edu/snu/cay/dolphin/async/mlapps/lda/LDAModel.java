@@ -17,8 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.utils.Copyable;
 
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -58,9 +56,6 @@ public final class LDAModel implements Copyable<LDAModel> {
 
   @Override
   public LDAModel copyOf() {
-    final int[] topicSummaryVectorCopy = Arrays.copyOf(topicSummaryVector, topicSummaryVector.length);
-    final Map<Integer, int[]> wordTopicVectorsCopy = new HashMap<>(wordTopicVectors.size());
-    wordTopicVectors.forEach((k, v) -> wordTopicVectorsCopy.put(k, v.clone()));
-    return new LDAModel(topicSummaryVectorCopy, wordTopicVectorsCopy, topicChanges.copyOf());
+    return new LDAModel(topicSummaryVector, wordTopicVectors, topicChanges.copyOf());
   }
 }

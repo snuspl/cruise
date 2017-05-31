@@ -35,16 +35,16 @@ final class NMFModelGenerator {
   private final VectorFactory vectorFactory;
   private final Random random = new Random();
   private final int rank;
-  private final double initMax;
-  private final double initMin;
-  private final double maxVal;
+  private final Float initMax;
+  private final Float initMin;
+  private final Float maxVal;
 
   @Inject
   private NMFModelGenerator(final VectorFactory vectorFactory,
                             @Parameter(Rank.class) final int rank,
-                            @Parameter(InitialMax.class) final double initMax,
-                            @Parameter(InitialMin.class) final double initMin,
-                            @Parameter(MaxValue.class) final double maxVal) {
+                            @Parameter(InitialMax.class) final float initMax,
+                            @Parameter(InitialMin.class) final float initMin,
+                            @Parameter(MaxValue.class) final Float maxVal) {
     this.vectorFactory = vectorFactory;
     this.rank = rank;
     this.initMax = initMax;
@@ -57,19 +57,19 @@ final class NMFModelGenerator {
    * @param value value to check validation
    * @return valid value
    */
-  private double getValidValue(final double value) {
+  private float getValidValue(final float value) {
     // value should not be larger than maxVal to prevent overflow
-    double newValue = value;
+    float newValue = value;
     if (newValue > maxVal) {
       LOG.log(Level.FINE,
           "Value {0} is greater than the max {1} and will be replaced with the max", new Object[]{newValue, maxVal});
       newValue = maxVal;
     }
     // non-negativity
-    if (newValue < 0.0D) {
+    if (newValue < 0.0f) {
       LOG.log(Level.FINE,
           "Value {0} is less than zero and will be replaced with zero for non-negativity", newValue);
-      newValue = 0.0D;
+      newValue = 0.0f;
     }
     return newValue;
   }
@@ -93,9 +93,9 @@ final class NMFModelGenerator {
    * @return newly generated random vector
    */
   Vector createRandomVector() {
-    final double[] values = new double[rank];
+    final float[] values = new float[rank];
     for (int i = 0; i < rank; ++i) {
-      final double newValue = random.nextDouble() * (initMax - initMin) + initMin;
+      final float newValue = random.nextFloat() * (initMax - initMin) + initMin;
       values[i] = getValidValue(newValue);
     }
     return vectorFactory.createDense(values);

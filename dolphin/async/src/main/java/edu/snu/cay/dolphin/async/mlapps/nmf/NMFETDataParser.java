@@ -44,13 +44,13 @@ final class NMFETDataParser implements DataParser<NMFData> {
     this.modelGenerator = modelGenerator;
   }
 
-  private List<Pair<Integer, Double>> parseColumns(final String columnsString) {
+  private List<Pair<Integer, Float>> parseColumns(final String columnsString) {
     final String[] columns = columnsString.split("\\s+");
-    final List<Pair<Integer, Double>> result = new ArrayList<>(columns.length);
+    final List<Pair<Integer, Float>> result = new ArrayList<>(columns.length);
 
     for (final String column : columns) {
       final int index;
-      final double value;
+      final float value;
 
       final String[] split = column.split(",");
       if (split.length != 2) {
@@ -62,9 +62,9 @@ final class NMFETDataParser implements DataParser<NMFData> {
         throw new RuntimeException("Failed to parse: numbers for indices should be integer", e);
       }
       try {
-        value = Double.valueOf(split[1]);
+        value = Float.valueOf(split[1]);
       } catch (final NumberFormatException e) {
-        throw new RuntimeException("Failed to parse: numbers for values should be double.", e);
+        throw new RuntimeException("Failed to parse: numbers for values should be Float.", e);
       }
 
       // check validity of values

@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.primitives.Ints;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -28,7 +30,7 @@ final class Document {
 
   private final List<Integer> words;
   private final int[] assignments;
-  private final int[] topicCounts;
+  private final Map<Integer, Integer> topicCounts;
   private final int numTopics;
 
   /**
@@ -40,7 +42,7 @@ final class Document {
   Document(final int[] words, final int numTopics) {
     this.words = Ints.asList(words);
     this.assignments = new int[words.length];
-    this.topicCounts = new int[numTopics];
+    this.topicCounts = new HashMap<>(words.length); // the number of assigned topics is bound to the document's words
     this.numTopics = numTopics;
 
     initialize();
@@ -54,7 +56,7 @@ final class Document {
    * @param numTopics Number of topics determined by user parameter
    *                  ({@link edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics})
    */
-  Document(final int[] words, final int[] assignments, final int[] topicCounts, final int numTopics) {
+  Document(final int[] words, final int[] assignments, final Map<Integer, Integer> topicCounts, final int numTopics) {
     this.words = Ints.asList(words);
     this.assignments = assignments;
     this.topicCounts = topicCounts;
@@ -69,7 +71,13 @@ final class Document {
     for (int i = 0; i < assignments.length; i++) {
       final int topic = rand.nextInt(numTopics);
       assignments[i] = topic;
-      topicCounts[topic]++;
+      topicCounts.compute(topic, (key, oldValue) -> {
+        if (oldValue == null) {
+          return 1;
+        } else {
+          return oldValue + 1;
+        }
+      });
     }
   }
 
@@ -95,16 +103,28 @@ final class Document {
 
   void removeWordAtIndex(final int index) {
     final int oldTopic = assignments[index];
-    topicCounts[oldTopic]--;
+    topicCounts.compute(oldTopic, (key, oldValue) -> {
+      if (oldValue == null || oldValue == 0) {
+        throw new RuntimeException(String.format("The TopicCounts for %d-th word is %d", index, oldValue));
+      } else {
+        return oldValue - 1;
+      }
+    });
   }
 
   void addWordAtIndex(final int index, final int newTopic) {
     assignments[index] = newTopic;
-    topicCounts[newTopic]++;
+    topicCounts.compute(newTopic, (key, oldValue) -> {
+      if (oldValue == null) {
+        return 1;
+      } else {
+        return oldValue + 1;
+      }
+    });
   }
 
   void setTopicCount(final int topicIdx, final int value) {
-    topicCounts[topicIdx] = value;
+    topicCounts.put(topicIdx, value);
   }
 
   /**
@@ -112,6 +132,10 @@ final class Document {
    * @return Number of words that are assigned to the topic
    */
   int getTopicCount(final int topicIndex) {
-    return topicCounts[topicIndex];
+    return topicCounts.getOrDefault(topicIndex, 0);
+  }
+
+  Map<Integer, Integer> getTopicCounts() {
+    return topicCounts;
   }
 }
