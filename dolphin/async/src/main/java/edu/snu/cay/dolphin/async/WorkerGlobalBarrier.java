@@ -22,6 +22,7 @@ import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -29,8 +30,6 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 
 /**
  * Synchronizes all workers by exchanging synchronization messages with the driver.
@@ -46,16 +45,19 @@ final class WorkerGlobalBarrier {
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
   private final String executorId;
+  private final String jobId;
 
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SerializableCodec<State> codec;
 
   @Inject
   private WorkerGlobalBarrier(@Parameter(ExecutorIdentifier.class) final String executorId,
+                              @Parameter(JobIdentifier.class) final String jobId,
                               final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                               final SerializableCodec<State> codec) {
     this.stateMachine = initStateMachine();
     this.executorId = executorId;
+    this.jobId = jobId;
     this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
   }
@@ -91,7 +93,7 @@ final class WorkerGlobalBarrier {
         .setSyncMsg(syncMsg)
         .build();
 
-    slaveSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME,
+    slaveSideCentCommMsgSender.send(jobId,
         AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
   }
 

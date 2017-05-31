@@ -19,11 +19,10 @@ import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-
-import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 
 /**
  * A class for reporting epoch progress to driver.
@@ -31,12 +30,15 @@ import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 @EvaluatorSide
 public final class ProgressReporter {
   private final String executorId;
+  private final String jobId;
   private final SlaveSideCentCommMsgSender msgSender;
 
   @Inject
   private ProgressReporter(@Parameter(ExecutorIdentifier.class) final String executorId,
+                           @Parameter(JobIdentifier.class) final String jobId,
                            final SlaveSideCentCommMsgSender msgSender) {
     this.executorId = executorId;
+    this.jobId = jobId;
     this.msgSender = msgSender;
   }
 
@@ -55,6 +57,6 @@ public final class ProgressReporter {
         .setProgressMsg(progressMsg)
         .build();
 
-    msgSender.send(CENT_COMM_CLIENT_NAME, AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    msgSender.send(jobId, AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
   }
 }

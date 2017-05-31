@@ -23,6 +23,7 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -33,8 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static edu.snu.cay.dolphin.async.ETDolphinLauncher.CENT_COMM_CLIENT_NAME;
 
 /**
  * A driver-side component that coordinates synchronization between the driver and workers.
@@ -54,6 +53,8 @@ public final class WorkerStateManager {
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
   private final Codec<WorkerGlobalBarrier.State> codec;
+
+  private final String jobId;
 
   /**
    * The total number of workers.
@@ -93,9 +94,11 @@ public final class WorkerStateManager {
 
   @Inject
   private WorkerStateManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
+                             @Parameter(JobIdentifier.class) final String jobId,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
+    this.jobId = jobId;
     this.numWorkers = numWorkers;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -258,7 +261,7 @@ public final class WorkerStateManager {
         throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
       }
 
-      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, networkId, RELEASE_MSG);
+      masterSideCentCommMsgSender.send(jobId, networkId, RELEASE_MSG);
     } catch (final NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }
