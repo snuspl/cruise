@@ -41,7 +41,7 @@ final class LDATrainer implements Trainer<Document> {
 
   private final List<Integer> vocabList;
 
-  private final TrainingDataProvider<Long, Document> trainingDataProvider;
+  private final TrainingDataProvider<Document> trainingDataProvider;
 
   private final ModelAccessor<Integer, int[], int[]> modelAccessor;
 
@@ -53,7 +53,7 @@ final class LDATrainer implements Trainer<Document> {
   @Inject
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
-                     final TrainingDataProvider<Long, Document> trainingDataProvider,
+                     final TrainingDataProvider<Document> trainingDataProvider,
                      final ModelAccessor<Integer, int[], int[]> modelAccessor,
                      final ModelHolder<LDAModel> modelHolder,
                      @Parameter(NumVocabs.class) final int numVocabs,
@@ -84,8 +84,7 @@ final class LDATrainer implements Trainer<Document> {
   public void initGlobalSettings() {
     // In LDA, topic counts should be initialized by pushing values before running.
     final TopicChanges topicChanges = new TopicChanges();
-    final Map<Long, Document> data = trainingDataProvider.getEpochData();
-    for (final Document document : data.values()) {
+    for (final Document document : trainingDataProvider.getEpochData()) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
         topicChanges.increment(word, document.getAssignment(i), 1);

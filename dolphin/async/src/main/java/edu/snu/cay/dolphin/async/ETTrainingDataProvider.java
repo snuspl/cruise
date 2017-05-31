@@ -30,16 +30,16 @@ import java.util.logging.Logger;
 
 /**
  * Provides the training data to process in mini-batches, taking a block for each mini-batch.
- * @param <K> type of the key, which should be the same with the one in MemoryStore.
+ * @param <V> type of the training data
  */
 @TaskSide
-public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
+public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> {
   private static final Logger LOG = Logger.getLogger(ETTrainingDataProvider.class.getName());
   public static final String TRAINING_DATA_TABLE_ID = "training_data_table";
 
-  private volatile Iterator<Block<K, V, ?>> blockIterator = Iterators.emptyIterator();
+  private volatile Iterator<Block<?, V, ?>> blockIterator = Iterators.emptyIterator();
 
-  private final Table<K, V, Object> trainingDataTable;
+  private final Table<?, V, Object> trainingDataTable;
 
   @Inject
   private ETTrainingDataProvider(final TableAccessor tableAccessor) throws TableNotExistException {
@@ -59,7 +59,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
   @Override
   public List<V> getNextBatchData() {
     if (blockIterator.hasNext()) {
-      final Map<K, V> batchData = blockIterator.next().getAll();
+      final Map<?, V> batchData = blockIterator.next().getAll();
       final List<V> valueList = new ArrayList<>(batchData.values());
 
       Collections.shuffle(valueList); // shuffle to avoid bias
@@ -73,7 +73,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
   }
 
   @Override
-  public Map<K, V> getEpochData() {
-    return trainingDataTable.getLocalTablet().getDataMap();
+  public Collection<V> getEpochData() {
+    return trainingDataTable.getLocalTablet().getDataMap().values();
   }
 }
