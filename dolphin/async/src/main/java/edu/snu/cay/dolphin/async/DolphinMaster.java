@@ -117,6 +117,8 @@ public final class DolphinMaster {
                         @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
                         @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
                         @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
+                        @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
+                        @Parameter(NumServerBlocks.class) final int numServerBlocks,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
@@ -139,7 +141,7 @@ public final class DolphinMaster {
     this.serverResourceConf = buildResourceConf(numServerCores, serverMemSize);
     this.serverRemoteAccessConf = buildRemoteAccessConf(numServerSenderThreads, serverSenderQueueSize,
         numServerHandlerThreads, serverHandlerQueueSize);
-    this.serverTableConf = buildServerTableConf(serverInjector, userParamConf);
+    this.serverTableConf = buildServerTableConf(serverInjector, numServerBlocks, userParamConf);
 
     // initialize worker-side configurations
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
@@ -147,7 +149,7 @@ public final class DolphinMaster {
     this.workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
     this.workerRemoteAccessConf = buildRemoteAccessConf(numWorkerSenderThreads, workerSenderQueueSize,
         numWorkerHandlerThreads, workerHandlerQueueSize);
-    this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
+    this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
 
     // cent comm configuration for executors
     this.centCommContextConf = centCommConfProvider.getContextConfiguration();
@@ -176,6 +178,7 @@ public final class DolphinMaster {
   }
 
   private static TableConfiguration buildWorkerTableConf(final Injector workerInjector,
+                                                         final int numTotalBlocks,
                                                          final Configuration userParamConf) throws InjectionException {
     final Codec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
     final Codec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
@@ -188,6 +191,7 @@ public final class DolphinMaster {
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setNumTotalBlocks(numTotalBlocks)
         .setIsMutableTable(false)
         .setIsOrderedTable(true)
         .setFilePath(inputPath)
@@ -197,6 +201,7 @@ public final class DolphinMaster {
   }
 
   private static TableConfiguration buildServerTableConf(final Injector serverInjector,
+                                                         final int numTotalBlocks,
                                                          final Configuration userParamConf) throws InjectionException {
     final Codec keyCodec = serverInjector.getNamedInstance(KeyCodec.class);
     final Codec valueCodec = serverInjector.getNamedInstance(ValueCodec.class);
@@ -209,6 +214,7 @@ public final class DolphinMaster {
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(updateValueCodec.getClass())
         .setUpdateFunctionClass(updateFunction.getClass())
+        .setNumTotalBlocks(numTotalBlocks)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .setUserParamConf(userParamConf)

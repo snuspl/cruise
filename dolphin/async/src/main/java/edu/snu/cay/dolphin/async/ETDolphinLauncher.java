@@ -73,7 +73,7 @@ public final class ETDolphinLauncher {
   }
 
   @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  public final class SerializedWorkerConf implements Name<String> {
+  final class SerializedWorkerConf implements Name<String> {
   }
 
   @NamedParameter(doc = "configuration for server class, serialized as a string")
@@ -117,6 +117,7 @@ public final class ETDolphinLauncher {
               .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
               .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
+//              .bindNamedParameter(NumTotalBlocks.class, dolphinConf.getNumModelTableBlocks())
               .build());
 
       // worker conf
@@ -129,6 +130,7 @@ public final class ETDolphinLauncher {
               .bindImplementation(ModelAccessor.class, ETModelAccessor.class)
               .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
+//              .bindNamedParameter(NumTotalBlocks.class, dolphinConf.getNumInputTableBlocks())
               .build());
 
       final Injector clientParameterInjector = Tang.Factory.getTang().newInjector(clientParamConf);
@@ -184,11 +186,14 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // generic params
         NumServers.class, ServerMemSize.class, NumServerCores.class,
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+
+        // ET-specific params
         NumServerHandlerThreads.class, NumServerSenderThreads.class,
         ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
         WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
+        NumServerBlocks.class, NumWorkerBlocks.class,
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,

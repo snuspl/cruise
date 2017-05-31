@@ -15,108 +15,63 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import com.google.common.collect.Iterators;
+import edu.snu.cay.services.et.evaluator.api.Block;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tablet;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.tang.annotations.Parameter;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Provides the training data to process in mini-batches, taking subset of training data no more than
- * {@link DolphinParameters.MiniBatchSize} instances.
- * This class is designed to handle Trainer threads' concurrent accesses to the training data.
+ * Provides the training data to process in mini-batches, taking a block for each mini-batch.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
 @TaskSide
-@ThreadSafe
 public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(ETTrainingDataProvider.class.getName());
   public static final String TRAINING_DATA_TABLE_ID = "training_data_table";
 
-  private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
+  private volatile Iterator<Block<K, V, ?>> blockIterator = Iterators.emptyIterator();
 
-  private final int miniBatchSize;
-
-  private final Table<K, V, ?> trainingDataTable;
+  private final Table<K, V, Object> trainingDataTable;
 
   @Inject
-  private ETTrainingDataProvider(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                               final TableAccessor tableAccessor) throws TableNotExistException {
+  private ETTrainingDataProvider(final TableAccessor tableAccessor) throws TableNotExistException {
     this.trainingDataTable = tableAccessor.getTable(TRAINING_DATA_TABLE_ID);
-    this.miniBatchSize = miniBatchSize;
-  }
-
-  @Override
-  public void loadData() {
-    // data are already loaded into table when it was initialized
   }
 
   @Override
   public void prepareDataForEpoch() {
-    synchronized (trainingDataKeys) {
-      trainingDataKeys.addAll(trainingDataTable.getLocalTablet().getDataMap().keySet());
-      Collections.shuffle(trainingDataKeys);
-      LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
-    }
+    final Tablet tablet = trainingDataTable.getLocalTablet();
+
+    LOG.log(Level.INFO, "Number of blocks: {0}, data items: {1}",
+        new Object[]{tablet.getNumBlocks(), tablet.getNumDataItems()});
+
+    blockIterator = tablet.getBlockIterator();
+
+//    synchronized (trainingDataKeys) {
+//      trainingDataKeys.addAll(trainingDataTable.getLocalTablet().getDataMap().keySet());
+//      Collections.shuffle(trainingDataKeys);
+//      LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
+//    }
   }
 
-  /**
-   * Provides the training data instances to compute in the next mini-batch.
-   * @return a map of training data instances, which can be an empty Map if all data has been processed.
-   */
   @Override
   public Map<K, V> getNextBatchData() {
-    final List<K> nextTrainingDataKeyList;
-    synchronized (trainingDataKeys) {
-      if (trainingDataKeys.isEmpty()) {
-        LOG.log(Level.INFO, "no more training data for current epoch");
-        return Collections.emptyMap();
-      }
-
-      final int nextBatchSize = Math.min(miniBatchSize, trainingDataKeys.size());
-      final List<K> keysToTrain = trainingDataKeys.subList(0, nextBatchSize);
-      nextTrainingDataKeyList = new ArrayList<>(keysToTrain);
-      keysToTrain.clear();
+    if (blockIterator.hasNext()) {
+      final Map<K, V> batchData = blockIterator.next().getAll();
+      LOG.log(Level.INFO, "Size of training data for next mini-batch: {0}", batchData.size());
+      return batchData;
     }
 
-    final Map<K, V> nextTrainingData = new HashMap<>();
-    for (final K key : nextTrainingDataKeyList) {
-      final Future<V> future = trainingDataTable.get(key);
-
-      V value;
-      while (true) {
-        try {
-          value = future.get();
-          break;
-        } catch (InterruptedException e) {
-          // ignore and keep waiting
-        } catch (ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      }
-
-      if (value == null) {
-        continue;
-      }
-      nextTrainingData.put(key, value);
-    }
-
-    LOG.log(Level.INFO, "Size of training data for next mini-batch: {0}", nextTrainingData.size());
-    if (nextTrainingDataKeyList.size() != nextTrainingData.size()) {
-      LOG.log(Level.INFO, "The number of assigned data keys for next mini-batch is {0}," +
-              " but ths size of actually prepared training data is {1}",
-          new Object[]{nextTrainingDataKeyList.size(), nextTrainingData.size()});
-    }
-
-    return nextTrainingData;
+    LOG.log(Level.INFO, "no more training data for current epoch");
+    return Collections.emptyMap();
   }
 
   @Override

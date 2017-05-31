@@ -80,7 +80,6 @@ final class ETWorkerTask<K, V> implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
 
-    trainingDataProvider.loadData();
     final List<V> testData = testDataProvider.getTestData();
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
