@@ -15,10 +15,13 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.List;
 import java.util.Map;
 
 /**
- * Provides the training data to process during epoch, in mini-batches.
+ * Provides the training data to process during epoch, for mini-batches.
  * @param <K> type of the key of training data
  */
 public interface TrainingDataProvider<K, V> {
@@ -30,9 +33,9 @@ public interface TrainingDataProvider<K, V> {
 
   /**
    * Provides the training data instances to compute in the next mini-batch.
-   * @return a map of training data instances, which can be an empty Map if all data has been processed.
+   * @return a list of key-value data pairs, which can be an empty list if all data has been processed.
    */
-  Map<K, V> getNextBatchData();
+  List<Pair<K, V>> getNextBatchData();
 
   /**
    * Provides the training data for this epoch.

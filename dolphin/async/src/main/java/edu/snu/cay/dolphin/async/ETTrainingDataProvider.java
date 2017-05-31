@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.evaluator.api.Tablet;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import javax.inject.Inject;
@@ -54,24 +55,25 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
         new Object[]{tablet.getNumBlocks(), tablet.getNumDataItems()});
 
     blockIterator = tablet.getBlockIterator();
-
-//    synchronized (trainingDataKeys) {
-//      trainingDataKeys.addAll(trainingDataTable.getLocalTablet().getDataMap().keySet());
-//      Collections.shuffle(trainingDataKeys);
-//      LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
-//    }
   }
 
   @Override
-  public Map<K, V> getNextBatchData() {
+  public List<Pair<K, V>> getNextBatchData() {
     if (blockIterator.hasNext()) {
       final Map<K, V> batchData = blockIterator.next().getAll();
+      final List<K> keyList = new ArrayList<>(batchData.keySet());
+
+      Collections.shuffle(keyList); // shuffle to avoid bias
+
+      final List<Pair<K, V>> kvPairList = new ArrayList<>(batchData.size());
+      keyList.forEach(key -> kvPairList.add(Pair.of(key, batchData.get(key))));
+
       LOG.log(Level.INFO, "Size of training data for next mini-batch: {0}", batchData.size());
-      return batchData;
+      return kvPairList;
     }
 
     LOG.log(Level.INFO, "no more training data for current epoch");
-    return Collections.emptyMap();
+    return Collections.emptyList();
   }
 
   @Override
