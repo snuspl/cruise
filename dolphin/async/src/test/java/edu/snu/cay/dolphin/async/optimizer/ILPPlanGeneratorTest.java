@@ -33,7 +33,7 @@ import java.util.List;
 public final class ILPPlanGeneratorTest {
 
   private ILPPlanGenerator ilpPlanGenerator;
-  private int[] oldRole, newRole, oldD, newD, oldM, newM;
+  private int[] oldRole, newRole, oldDataBlockNum, newDataBlockNum, oldModelBlockNum, newModelBlockNum;
 
   @Before
   public void setup() throws InjectionException {
@@ -48,16 +48,17 @@ public final class ILPPlanGeneratorTest {
     final int[] initNewM = {0, 0, 27, 39, 19, 0};
     oldRole = initOldRole;
     newRole = initNewRole;
-    oldD = initOldD;
-    newD = initNewD;
-    oldM = initOldM;
-    newM = initNewM;
+    oldDataBlockNum = initOldD;
+    newDataBlockNum = initNewD;
+    oldModelBlockNum = initOldM;
+    newModelBlockNum = initNewM;
   }
 
   @Test
   public void testILPPlanGeneration() {
     final ILPPlanDescriptor ilpPlanDescriptor =
-        ilpPlanGenerator.generatePlanDescriptor(oldRole, oldD, oldM, newRole, newD, newM);
+        ilpPlanGenerator.generatePlanDescriptor(oldRole, oldDataBlockNum, oldModelBlockNum, newRole, newDataBlockNum,
+            newModelBlockNum);
     final List<Integer> serverEvaluatorToAdd = ilpPlanDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
     final List<Integer> workerEvaluatorToAdd = ilpPlanDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
     final List<Integer> serverEvaluatorToDelete = ilpPlanDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
