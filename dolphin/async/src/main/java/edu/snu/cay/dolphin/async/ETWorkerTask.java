@@ -101,7 +101,7 @@ final class ETWorkerTask<K, V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
+        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
