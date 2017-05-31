@@ -42,6 +42,7 @@ public final class ILPPlanGeneratorTest {
 
   private ILPPlanGenerator ilpPlanGenerator;
   private int[] oldRole, newRole, oldDataBlockNum, newDataBlockNum, oldModelBlockNum, newModelBlockNum;
+  
   @Before
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
