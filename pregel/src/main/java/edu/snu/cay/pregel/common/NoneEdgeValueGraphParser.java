@@ -21,7 +21,7 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.DefaultVertex;
 import edu.snu.cay.pregel.graph.impl.NoneValueEdge;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
-import org.apache.reef.io.network.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public final class NoneEdgeValueGraphParser implements DataParser<Pair<Long, Ver
           map(id -> new NoneValueEdge(Long.parseLong(id))).collect(Collectors.toList());
       final Vertex<Double> vertex = new DefaultVertex<>();
       vertex.initialize(vertexId, adjacentIds);
-      parsedList.add(new Pair<>(vertexId, vertex));
+      parsedList.add(Pair.of(vertexId, vertex));
     }
 
     return parsedList;

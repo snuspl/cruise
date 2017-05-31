@@ -64,10 +64,6 @@ public final class PregelLauncher {
     final String tableInputPath = Tang.Factory.getTang().newInjector(clConf)
         .getNamedInstance(TableInputPath.class);
 
-    if (tableInputPath.equals(TableInputPath.EMPTY)) {
-      throw new IllegalArgumentException("User should set a input file");
-    }
-
     final LauncherStatus status = launch(tableInputPath);
     LOG.log(Level.INFO, "Pregel job completed: {0}", status);
   }
