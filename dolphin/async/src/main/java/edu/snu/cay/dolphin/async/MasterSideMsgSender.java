@@ -48,8 +48,8 @@ public final class MasterSideMsgSender {
   }
 
   /**
-   *
-   * @param workerId
+   * Send a release msg to {@code workerId}.
+   * @param workerId an identifier of worker
    */
   public void sendReleaseMsg(final String workerId) {
     try {
