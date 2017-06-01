@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.api;
 
-import edu.snu.cay.dolphin.async.optimizer.impl.ILPPlanGenerator;
+import edu.snu.cay.dolphin.async.optimizer.impl.ilp.ILPPlanGenerator;
 
 import java.util.List;
 

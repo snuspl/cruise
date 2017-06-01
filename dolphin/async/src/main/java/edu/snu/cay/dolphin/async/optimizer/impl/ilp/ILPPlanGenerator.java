@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.impl;
+package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
+import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.impl.ILPPlanDescriptor;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
