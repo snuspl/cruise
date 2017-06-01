@@ -37,6 +37,19 @@
 },
 
 {
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "DolphinMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
+        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
+    {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
+    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null}
+  ]
+},
+
+{
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
   "name": "BatchMetrics",

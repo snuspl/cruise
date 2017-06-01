@@ -40,6 +40,7 @@ import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
@@ -120,6 +121,7 @@ public final class DolphinMaster {
                         @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
                         @Parameter(NumServerBlocks.class) final int numServerBlocks,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
+                        @Parameter(JobIdentifier.class) final String jobId,
                         @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                         @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
@@ -153,7 +155,10 @@ public final class DolphinMaster {
 
     // cent comm configuration for executors
     this.centCommContextConf = centCommConfProvider.getContextConfiguration();
-    this.centCommServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
+    this.centCommServiceConf = Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(JobIdentifier.class, jobId) // use it as a client id
+            .build());
 
     optimizationOrchestrator.start();
   }

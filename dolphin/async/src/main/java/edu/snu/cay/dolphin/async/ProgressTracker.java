@@ -15,15 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.ProgressProvider;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -41,10 +37,8 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @ThreadSafe
-@Unit
 public final class ProgressTracker implements ProgressProvider {
   private static final Logger LOG = Logger.getLogger(ProgressTracker.class.getName());
-  static final String CENT_COMM_CLIENT_NAME = ProgressTracker.class.getName();
 
   private final int maxNumEpochs;
   private final int numWorkers;
@@ -113,51 +107,41 @@ public final class ProgressTracker implements ProgressProvider {
   }
 
   /**
-   * A message handler that handles progress messages from workers.
+   * Handles progress messages from workers.
+   * {@link ProgressTracker} is thread-safe, because this method is synchronized
+   * and all mutable states of {@link ProgressTracker} are updated in this method.
    */
-  public final class MessageHandler implements EventHandler<CentCommMsg> {
+  synchronized void onProgressMsg(final ProgressMsg progressMsg) {
+    final String workerId = progressMsg.getExecutorId().toString();
+    final int epochProgress = progressMsg.getEpochIdx();
+    LOG.log(Level.INFO, "Epoch progress reported by {0}: {1}", new Object[]{workerId, epochProgress});
 
-    /**
-     * {@link ProgressTracker} is thread-safe, because this method is synchronized
-     * and all mutable states of {@link ProgressTracker} are updated in this method.
-     */
-    @Override
-    public synchronized void onNext(final CentCommMsg centCommMsg) {
-      final byte[] data = centCommMsg.getData().array();
+    final Integer prevEpochProgress = workerIdToEpochIdx.put(workerId, epochProgress);
 
-      final ProgressMsg progressMsg = AvroUtils.fromBytes(data, ProgressMsg.class);
-
-      final String workerId = progressMsg.getExecutorId().toString();
-      final int epochProgress = progressMsg.getEpochIdx();
-      LOG.log(Level.INFO, "Epoch progress reported by {0}: {1}", new Object[]{workerId, epochProgress});
-
-      final Integer prevEpochProgress = workerIdToEpochIdx.put(workerId, epochProgress);
-
-      if (prevEpochProgress != null) {
-        epochProgressToWorkerIds.compute(prevEpochProgress, (k, v) -> {
-          v.remove(workerId);
-          return v.isEmpty() ? null : v;
-        });
-      }
-
-      epochProgressToWorkerIds.compute(epochProgress, (k, v) -> {
-        final Set<String> workers = v == null ? Collections.newSetFromMap(new ConcurrentHashMap<>()) : v;
-        workers.add(workerId);
-        return workers;
+    if (prevEpochProgress != null) {
+      epochProgressToWorkerIds.compute(prevEpochProgress, (k, v) -> {
+        v.remove(workerId);
+        return v.isEmpty() ? null : v;
       });
+    }
 
-      if (stateMachine.getCurrentState().equals(State.INIT)) {
-        if (workerIdToEpochIdx.size() == numWorkers) {
-          LOG.log(Level.INFO, "State Transition: {0} -> {1}", new Object[]{State.INIT, State.RUN});
-          stateMachine.setState(State.RUN);
-          updateGlobalMinEpochIdx(0);
-        }
-      }
+    epochProgressToWorkerIds.compute(epochProgress, (k, v) -> {
+      final Set<String> workers = v == null ? Collections.newSetFromMap(new ConcurrentHashMap<>()) : v;
+      workers.add(workerId);
+      return workers;
+    });
 
-      final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
-      if (newMinEpochIdx > globalMinEpochIdx) {
-        updateGlobalMinEpochIdx(newMinEpochIdx);
+    if (stateMachine.getCurrentState().equals(State.INIT)) {
+      if (workerIdToEpochIdx.size() == numWorkers) {
+        LOG.log(Level.INFO, "State Transition: {0} -> {1}", new Object[]{State.INIT, State.RUN});
+        stateMachine.setState(State.RUN);
+        updateGlobalMinEpochIdx(0);
       }
+    }
+
+    final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
+    if (newMinEpochIdx > globalMinEpochIdx) {
+      updateGlobalMinEpochIdx(newMinEpochIdx);
     }
   }
 }
