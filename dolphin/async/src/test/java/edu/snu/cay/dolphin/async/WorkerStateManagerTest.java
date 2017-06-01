@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -48,8 +49,10 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class})
+@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class, ProgressTracker.class})
 public class WorkerStateManagerTest {
+  private static final String JOB_ID = WorkerStateManagerTest.class.getName();
+
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
 
@@ -74,13 +77,15 @@ public class WorkerStateManagerTest {
   private void setupDriver(final int numWorkers) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
+    injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
 
     final MasterSideCentCommMsgSender mockedMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
     injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockedMasterSideCentCommMsgSender);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
-    final EventHandler<CentCommMsg> driverSideMsgHandler =
-        injector.getInstance(WorkerStateManager.MessageHandler.class);
+
+    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
+    final EventHandler<CentCommMsg> driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
 
     driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
 
@@ -110,13 +115,13 @@ public class WorkerStateManagerTest {
   private void setupWorker(final String workerId) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(ExecutorIdentifier.class, workerId);
+    injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
 
     final SlaveSideCentCommMsgSender mockedSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
     injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockedSlaveSideCentCommMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final EventHandler<CentCommMsg> workerSideMsgHandler =
-        injector.getInstance(WorkerGlobalBarrier.MessageHandler.class);
+    final EventHandler<CentCommMsg> workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
         new Tuple3<>(workerGlobalBarrier, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));

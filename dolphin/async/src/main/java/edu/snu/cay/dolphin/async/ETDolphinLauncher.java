@@ -312,12 +312,7 @@ public final class ETDolphinLauncher {
         .build();
 
     final CentCommConf centCommServiceConf = CentCommConf.newBuilder()
-        .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
-            WorkerStateManager.MessageHandler.class,
-            WorkerGlobalBarrier.MessageHandler.class)
-        .addCentCommClient(ProgressTracker.CENT_COMM_CLIENT_NAME,
-            ProgressTracker.MessageHandler.class,
-            ProgressReporter.DummyMessageHandler.class)
+        .addCentCommClient(jobName, MasterSideMsgHandler.class, WorkerSideMsgHandler.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();

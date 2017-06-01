@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.AvroUtils;
@@ -23,9 +22,8 @@ import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
@@ -39,7 +37,6 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @NotThreadSafe
-@Unit
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
@@ -48,16 +45,19 @@ final class WorkerGlobalBarrier {
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
   private final String executorId;
+  private final String jobId;
 
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SerializableCodec<State> codec;
 
   @Inject
   private WorkerGlobalBarrier(@Parameter(ExecutorIdentifier.class) final String executorId,
+                              @Parameter(JobIdentifier.class) final String jobId,
                               final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                               final SerializableCodec<State> codec) {
     this.stateMachine = initStateMachine();
     this.executorId = executorId;
+    this.jobId = jobId;
     this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
   }
@@ -88,8 +88,13 @@ final class WorkerGlobalBarrier {
         .setSerializedState(ByteBuffer.wrap(serializedState))
         .build();
 
-    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME,
-        AvroUtils.toBytes(syncMsg, SyncMsg.class));
+    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setType(dolphinMsgType.SyncMsg)
+        .setSyncMsg(syncMsg)
+        .build();
+
+    slaveSideCentCommMsgSender.send(jobId,
+        AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
   }
 
   /**
@@ -139,14 +144,13 @@ final class WorkerGlobalBarrier {
     }
   }
 
-  final class MessageHandler implements EventHandler<CentCommMsg> {
+  /**
+   * Handles release msgs from driver.
+   */
+  synchronized void onReleaseMsg() {
+    LOG.log(Level.FINE, "Received a response message from the driver");
 
-    @Override
-    public synchronized void onNext(final CentCommMsg centCommMsg) {
-      LOG.log(Level.FINE, "Received a response message from the driver");
-
-      transitToNextState();
-      countDownLatch.countDown();
-    }
+    transitToNextState();
+    countDownLatch.countDown();
   }
 }
