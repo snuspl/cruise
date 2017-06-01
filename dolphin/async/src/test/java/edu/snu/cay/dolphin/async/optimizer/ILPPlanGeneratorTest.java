@@ -48,18 +48,12 @@ public final class ILPPlanGeneratorTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     ilpPlanGenerator = injector.getInstance(ILPPlanGenerator.class);
 
-    final int[] initOldRole = {0, 0, 0, 1, 1, 1};
-    final int[] initNewRole = {0, 0, 1, 1, 1, 0};
-    final int[] initOldD = {83, 61, 45, 0, 0, 0};
-    final int[] initNewD = {52, 47, 0, 0, 0, 90};
-    final int[] initOldM = {0, 0, 0, 32, 11, 42};
-    final int[] initNewM = {0, 0, 27, 39, 19, 0};
-    oldRole = initOldRole;
-    newRole = initNewRole;
-    oldDataBlockNum = initOldD;
-    newDataBlockNum = initNewD;
-    oldModelBlockNum = initOldM;
-    newModelBlockNum = initNewM;
+    oldRole = new int[] {0, 0, 0, 1, 1, 1};
+    newRole = new int[] {0, 0, 1, 1, 1, 0};
+    oldDataBlockNum = new int[] {83, 61, 45, 0, 0, 0};
+    newDataBlockNum = new int[] {52, 47, 0, 0, 0, 90};
+    oldModelBlockNum = new int[] {0, 0, 0, 32, 11, 42};
+    newModelBlockNum = new int[] {0, 0, 27, 39, 19, 0};
   }
 
   @Test
