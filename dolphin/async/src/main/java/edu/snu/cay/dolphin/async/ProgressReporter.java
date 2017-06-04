@@ -35,7 +35,7 @@ public final class ProgressReporter {
    * Report its progress to {@link ProgressTracker}.
    * @param epochIdx a current processing epoch index
    */
-  public void report(final int epochIdx) {
+  void report(final int epochIdx) {
     msgSender.sendProgressMsg(epochIdx);
   }
 }

@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
  * Worker-side message sender.
  */
 @EvaluatorSide
-public final class WorkerSideMsgSender {
+final class WorkerSideMsgSender {
 
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final String jobId;
@@ -54,7 +54,7 @@ public final class WorkerSideMsgSender {
    * Send {@link ProgressMsg} to master-side.
    * @param epochIdx a current processing epoch index
    */
-  public void sendProgressMsg(final int epochIdx) {
+  void sendProgressMsg(final int epochIdx) {
     final ProgressMsg progressMsg = ProgressMsg.newBuilder()
         .setExecutorId(executorId)
         .setEpochIdx(epochIdx)
@@ -72,7 +72,7 @@ public final class WorkerSideMsgSender {
    * Send {@link SyncMsg} to master-side.
    * @param state a current state
    */
-  public void sendSyncMsg(final WorkerGlobalBarrier.State state) {
+  void sendSyncMsg(final WorkerGlobalBarrier.State state) {
     final byte[] serializedState = codec.encode(state);
 
     final SyncMsg syncMsg = SyncMsg.newBuilder()

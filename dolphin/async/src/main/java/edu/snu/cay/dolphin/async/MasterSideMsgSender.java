@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  * Master-side message sender.
  */
 @DriverSide
-public final class MasterSideMsgSender {
+final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
   private static final byte[] RELEASE_MSG = AvroUtils.toBytes(
@@ -51,7 +51,7 @@ public final class MasterSideMsgSender {
    * Send a release msg to {@code workerId}.
    * @param workerId an identifier of worker
    */
-  public void sendReleaseMsg(final String workerId) {
+  void sendReleaseMsg(final String workerId) {
     try {
       masterSideCentCommMsgSender.send(jobId, workerId, RELEASE_MSG);
     } catch (NetworkException e) {
