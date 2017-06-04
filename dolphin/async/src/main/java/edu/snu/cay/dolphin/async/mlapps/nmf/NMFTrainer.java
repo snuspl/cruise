@@ -71,7 +71,7 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private final int numTrainerThreads;
 
-  private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
+  private final TrainingDataProvider<NMFData> trainingDataProvider;
 
   @Inject
   private NMFTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
@@ -85,7 +85,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
-                     final TrainingDataProvider<Long, NMFData> trainingDataProvider) {
+                     final TrainingDataProvider<NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
     this.vectorFactory = vectorFactory;
     this.rank = rank;
@@ -196,8 +196,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       return;
     }
     // print L matrix
-    final Map<Long, NMFData> workloadMap = trainingDataProvider.getEpochData();
-    final Collection<NMFData> workload = workloadMap.values();
+    final Collection<NMFData> workload = trainingDataProvider.getEpochData();
 
     final StringBuilder lsb = new StringBuilder();
     for (final NMFData datum : workload) {

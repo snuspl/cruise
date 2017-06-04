@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 /**
  * REEF Task for running Dolphin trainers on ET.
  */
-final class ETWorkerTask<K, V> implements Task {
+final class ETWorkerTask<V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
@@ -41,7 +41,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
-  private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final TrainingDataProvider<V> trainingDataProvider;
   private final ModelAccessor modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
@@ -59,7 +59,7 @@ final class ETWorkerTask<K, V> implements Task {
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
-                       final TrainingDataProvider<K, V> trainingDataProvider,
+                       final TrainingDataProvider<V> trainingDataProvider,
                        final ModelAccessor modelAccessor,
                        final TestDataProvider<V> testDataProvider,
                        final Trainer<V> trainer,
@@ -80,7 +80,6 @@ final class ETWorkerTask<K, V> implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
 
-    trainingDataProvider.loadData();
     final List<V> testData = testDataProvider.getTestData();
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
@@ -102,7 +101,7 @@ final class ETWorkerTask<K, V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
+        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
