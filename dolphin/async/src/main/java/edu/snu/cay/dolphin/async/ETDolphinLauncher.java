@@ -117,7 +117,6 @@ public final class ETDolphinLauncher {
               .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
               .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
-//              .bindNamedParameter(NumTotalBlocks.class, dolphinConf.getNumModelTableBlocks())
               .build());
 
       // worker conf
@@ -130,7 +129,6 @@ public final class ETDolphinLauncher {
               .bindImplementation(ModelAccessor.class, ETModelAccessor.class)
               .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
-//              .bindNamedParameter(NumTotalBlocks.class, dolphinConf.getNumInputTableBlocks())
               .build());
 
       final Injector clientParameterInjector = Tang.Factory.getTang().newInjector(clientParamConf);
