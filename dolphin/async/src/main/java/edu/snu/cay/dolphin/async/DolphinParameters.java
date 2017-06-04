@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -34,6 +35,16 @@ public final class DolphinParameters {
   @NamedParameter(doc = "Mini-batch size in number of training data instances",
       short_name = "mini_batch_size")
   public final class MiniBatchSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The total number of blocks for worker table",
+      short_name = "num_worker_blocks", default_value = NumTotalBlocks.DEFAULT_VALUE_STR)
+  public final class NumWorkerBlocks implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The total number of blocks for server table",
+      short_name = "num_server_blocks", default_value = NumTotalBlocks.DEFAULT_VALUE_STR)
+  public final class NumServerBlocks implements Name<Integer> {
   }
 
   @NamedParameter(doc = "Number of threads to run Trainer with",

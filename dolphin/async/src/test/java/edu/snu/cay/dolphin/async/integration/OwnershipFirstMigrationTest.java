@@ -39,11 +39,11 @@ public final class OwnershipFirstMigrationTest {
 
   @Test
   public void testOwnershipFirstMigrationByDeletingOneServer() {
-    final List<String> defaultArgList = getDefaultArguments();
-
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers;
+
+    final List<String> defaultArgList = getDefaultArguments(numWorkers);
 
     final List<String> argListForDeletingOneServer = Arrays.asList(
         "-num_workers", Integer.toString(numWorkers),
@@ -63,11 +63,11 @@ public final class OwnershipFirstMigrationTest {
 
   @Test
   public void testOwnershipFirstMigrationByAddingOneServer() {
-    final List<String> defaultArgList = getDefaultArguments();
-
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers + SampleOptimizers.MAX_CALLS_TO_MAKE;
+
+    final List<String> defaultArgList = getDefaultArguments(numWorkers);
 
     final List<String> argListForAddingOneServer = Arrays.asList(
         "-num_workers", Integer.toString(numWorkers),
@@ -85,11 +85,16 @@ public final class OwnershipFirstMigrationTest {
     assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorET.runAddVector(args));
   }
 
-  private List<String> getDefaultArguments() {
+  private List<String> getDefaultArguments(final int numWorkers) {
+    final int miniBatchSize = 10;
+    final int numWorkerBlocks = numWorkers * 10;
+    final int numTotalTrainingData = miniBatchSize * numWorkerBlocks;
+
     return Arrays.asList(
         "-max_num_epochs", Integer.toString(5),
-        "-mini_batch_size", Integer.toString(10),
-        "-num_training_data", Integer.toString(100),
+        "-mini_batch_size", Integer.toString(miniBatchSize),
+        "-num_worker_blocks", Integer.toString(numWorkerBlocks),
+        "-num_training_data", Integer.toString(numTotalTrainingData / numWorkers), // number of data per worker
         "-num_test_data", Integer.toString(10),
         "-delta", Integer.toString(4),
         "-num_keys", Integer.toString(50),
