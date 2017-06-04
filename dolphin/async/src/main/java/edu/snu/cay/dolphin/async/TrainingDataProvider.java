@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async;
 
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Provides the training data to process during epoch, for mini-batches.
@@ -31,13 +30,13 @@ public interface TrainingDataProvider<V> {
 
   /**
    * Provides the training data instances to compute in the next mini-batch.
-   * @return a list of training data instances, which can be an empty list if all data has been processed.
+   * @return a collection of training data instances, which can be an empty list if all data has been processed.
    */
-  List<V> getNextBatchData();
+  Collection<V> getNextBatchData();
 
   /**
    * Provides the training data for this epoch.
-   * @return a map of training data instances for epoch
+   * @return a collection of training data instances for epoch
    */
   Collection<V> getEpochData();
 }

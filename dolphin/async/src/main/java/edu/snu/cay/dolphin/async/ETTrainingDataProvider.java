@@ -57,7 +57,7 @@ public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> 
   }
 
   @Override
-  public List<V> getNextBatchData() {
+  public Collection<V> getNextBatchData() {
     if (blockIterator.hasNext()) {
       final Map<?, V> batchData = blockIterator.next().getAll();
       final List<V> valueList = new ArrayList<>(batchData.values());
