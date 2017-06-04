@@ -15,15 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -47,14 +43,9 @@ import java.util.logging.Logger;
 public final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
 
-  private static final byte[] RELEASE_MSG = AvroUtils.toBytes(
-      DolphinMsg.newBuilder().setType(dolphinMsgType.ReleaseMsg).build(), DolphinMsg.class);
-
-  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
+  private final MasterSideMsgSender msgSender;
 
   private final Codec<WorkerGlobalBarrier.State> codec;
-
-  private final String jobId;
 
   /**
    * The total number of workers.
@@ -93,12 +84,10 @@ public final class WorkerStateManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private WorkerStateManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
-                             @Parameter(JobIdentifier.class) final String jobId,
+  private WorkerStateManager(final MasterSideMsgSender msgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
-    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
-    this.jobId = jobId;
+    this.msgSender = msgSender;
     this.numWorkers = numWorkers;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -255,16 +244,12 @@ public final class WorkerStateManager {
   }
 
   private void sendResponseMessage(final String workerId) {
-    try {
-      final String networkId = workerIdToNetworkId.get(workerId);
-      if (networkId == null) {
-        throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
-      }
-
-      masterSideCentCommMsgSender.send(jobId, networkId, RELEASE_MSG);
-    } catch (final NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
+    final String networkId = workerIdToNetworkId.get(workerId);
+    if (networkId == null) {
+      throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
     }
+
+    msgSender.sendReleaseMsg(networkId);
   }
 
   /**

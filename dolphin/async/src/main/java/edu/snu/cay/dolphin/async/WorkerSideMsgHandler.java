@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -24,6 +25,7 @@ import javax.inject.Inject;
 /**
  * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
+@EvaluatorSide
 public final class WorkerSideMsgHandler implements EventHandler<CentCommMsg> {
   private final WorkerGlobalBarrier workerGlobalBarrier;
 
