@@ -15,10 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
-import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
-import edu.snu.cay.common.dataloader.HdfsSplitInfo;
-import edu.snu.cay.common.dataloader.HdfsSplitManager;
-import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
@@ -31,13 +27,9 @@ import edu.snu.cay.dolphin.async.plan.impl.EmptyPlan;
 import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
@@ -64,14 +56,12 @@ public final class HeterogeneousOptimizer implements Optimizer {
   @Inject
   private HeterogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                                  @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
-                                 @Parameter(Parameters.HostToBandwidthFilePath.class)
-                                   final String hostBandwidthFilePath,
-                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
-                                 final double optBenefitThreshold) {
+                                 @Parameter(Parameters.OptimizationBenefitThreshold.class) final double optBenefitThreshold,
+                                 final BandwidthInfoParser bandwidthInfoParser) {
     this.numTotalMiniBatches = numTotalMiniBatches;
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
-    this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
+    this.hostnameToBandwidth = bandwidthInfoParser.parseBandwidthInfo();
     LOG.log(Level.INFO, "Hostname to bandwidth (bps): {0}", hostnameToBandwidth);
   }
 
@@ -524,40 +514,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
     }
   }
 
-  /**
-   * @param hostnameToBandwidthFilePath path of the file that consists of (hostname, bandwidth) information.
-   * @return the mapping between the hostname and bandwidth of machines
-   */
-  private Map<String, Double> parseBandwidthInfo(final String hostnameToBandwidthFilePath) {
-    if (hostnameToBandwidthFilePath.equals(Parameters.HostToBandwidthFilePath.NONE)) {
-      return Collections.emptyMap();
-    }
-
-    final Map<String, Double> mapping = new HashMap<>();
-
-    final HdfsSplitInfo[] infoArr =
-        HdfsSplitManager.getSplits(hostnameToBandwidthFilePath, TextInputFormat.class.getName(), 1);
-
-    assert infoArr.length == 1; // infoArr's length is always 1(NUM_SPLIT == 1).
-    final HdfsSplitInfo info = infoArr[0];
-    try {
-      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
-      while (iterator.hasNext()) {
-        final String text = iterator.next().getValue().toString().trim();
-        if (!text.startsWith("#") && text.length() != 0) { // comments and empty lines
-          final String[] split = text.split("\\s+");
-          assert split.length == 2;
-          final String hostname = split[0];
-          final double bandwidth = Double.parseDouble(split[1]);
-          mapping.put(hostname, bandwidth);
-        }
-      }
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return mapping;
-  }
 
   /**
    * @param param EvaluatorParameter that consists of metrics

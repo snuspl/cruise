@@ -15,10 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
-import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
-import edu.snu.cay.common.dataloader.HdfsSplitInfo;
-import edu.snu.cay.common.dataloader.HdfsSplitManager;
-import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
@@ -30,17 +26,12 @@ import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.dolphin.async.plan.impl.ILPPlanDescriptor;
 import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import gurobi.GRBException;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 
 /**
- * Created by yunseong on 5/28/17.
  */
 public final class ILPOptimizer implements Optimizer {
   private static final int NUM_EMPTY_BLOCK = 0;
@@ -64,7 +55,7 @@ public final class ILPOptimizer implements Optimizer {
     this.numTotalModelBlocks = 1024; // FIXME
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
-    hostToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
+//    hostToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
     this.ilpSolver = ilpSolver;
     this.ilpPlanGenerator = ilpPlanGenerator;
   }
@@ -77,38 +68,41 @@ public final class ILPOptimizer implements Optimizer {
     final Map<String, MachineDescriptor> hostnameToMachineDescriptors = new HashMap<>();
 
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
-    processServerParameters(serverParams, hostnameToMachineDescriptors);
+    final List<MachineDescriptor> serverDescriptors = processServerParameters(serverParams);
 
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
-    processWorkerParameters(workerParams, hostnameToMachineDescriptors);
+    final List<MachineDescriptor> workerDescriptors = processWorkerParameters(workerParams);
 
-    // Specify which machines become (un)available in the dynamic resource availability
-    final int[] d = new int[evalParamsMap.size()]; // The number of blocks per worker
-    final int[] m = new int[evalParamsMap.size()]; // The number of blocks per server
-    final int[] w = new int[evalParamsMap.size()]; // Whether the machines are worker
-    final int[] s = new int[evalParamsMap.size()]; // Whether the machines are server
+    assert availableEvaluators == evalParamsMap.size(); // We don't consider dynamic availability for now.
 
-    /////////////////////////////
-    /////     Constants     /////
-    /////////////////////////////
-    final int n = 10; // Number of total machines
-    final int dTotal = 100; // Number of total blocks (batches)
-    final int mTotal = 20; // Number of total partitions
-    final int p = 1000; // Bytes per each partition
-    final double[] cWProc = new double[n];
-    final double[] bandwidth = new double[n];
-    for (int i = 0; i < n; i++) {
-      cWProc[i] = 10.0; // Cost (in time) to compute a batch in machine i
-      bandwidth[i] = 200.0; // Bandwidth of machine i
+    final int p = 1000; // Bytes per each partition FIXME
+
+    final int n = evalParamsMap.size();
+    final int[] dOld = new int[n];
+    final int[] mOld = new int[n];
+    final int[] sOld = new int[n];
+    final int[] wOld = new int[n];
+    final int[] cWProc = new int[n];
+    final double[] bandwidth = new double[n]; // find cWProc
+
+    int idx = 0;
+    for (final MachineDescriptor serverDescriptor : serverDescriptors) {
+      dOld[idx] = serverDescriptor.getNumTrainingDataBlocks();
+      mOld[idx] = serverDescriptor.getNumModelBlocks();
+      sOld[idx] = serverDescriptor.getMachineType() == MachineDescriptor.MachineType.SERVER ? 1 : 0;
+      wOld[idx] = serverDescriptor.getMachineType() == MachineDescriptor.MachineType.WORKER? 1 : 0;
+      bandwidth[idx] = serverDescriptor.getBandwidth();
+      idx++;
     }
 
-    try {
 
-      ilpSolver.optimize(n, dTotal, mTotal, p, cWProc, bandwidth);
+    try {
+      final ConfDescriptor optConfDescriptor =
+          ilpSolver.optimize(n, numTotalDataBlocks, numTotalModelBlocks, p, cWProc, bandwidth);
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
       // roleOpt[], dOpt[], mOpt[]
-      final ILPPlanDescriptor planDescriptor = ilpPlanGenerator.generatePlanDescriptor(null, null, null, null, null, null);
+      final ILPPlanDescriptor planDescriptor = ilpPlanGenerator.generatePlanDescriptor(roleOld, null, null, null, null, null);
       final List<Integer> workerEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
       final List<Integer> serverEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
       planBuilder.addEvaluatorsToAdd(Constants.NAMESPACE_WORKER, null);
@@ -131,63 +125,32 @@ public final class ILPOptimizer implements Optimizer {
     }
   }
 
-  private void processWorkerParameters(final List<EvaluatorParameters> evalParamsList,
-                                       final Map<String, MachineDescriptor> hostnameToMachineDescriptors) {
+  private List<MachineDescriptor> processWorkerParameters(final List<EvaluatorParameters> evalParamsList) {
+    final List<MachineDescriptor> machineDescriptors = new ArrayList<>(evalParamsList.size());
      for (final EvaluatorParameters evalParams : evalParamsList) {
       final WorkerEvaluatorParameters workerEvalParams = (WorkerEvaluatorParameters) evalParams;
       final String id = workerEvalParams.getId();
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
-      final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth);
-      hostnameToMachineDescriptors.put(hostname, new MachineDescriptor(id, bandwidth, MachineDescriptor.MachineType.WORKER, numDataBlocks, NUM_EMPTY_BLOCK));
+       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth);
+//       workerEvalParams.getMetrics().get
+       machineDescriptors.add(new MachineDescriptor(id, bandwidth, MachineDescriptor.MachineType.SERVER, numDataBlocks, NUM_EMPTY_BLOCK));
+     }
+    return machineDescriptors;
     }
   }
 
-  private void processServerParameters(final List<EvaluatorParameters> evalParamsList,
-                                       final Map<String, MachineDescriptor> hostnameToMachineDescriptors) {
+  private List<MachineDescriptor> processServerParameters(final List<EvaluatorParameters> evalParamsList) {
+    final List<MachineDescriptor> machineDescriptors = new ArrayList<>(evalParamsList.size());
     for (final EvaluatorParameters evalParams : evalParamsList) {
       final ServerEvaluatorParameters serverEvalParams = (ServerEvaluatorParameters) evalParams;
       final String id = serverEvalParams.getId();
       final int numModelBlocks = serverEvalParams.getDataInfo().getNumBlocks();
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth);
-      hostnameToMachineDescriptors.put(hostname, new MachineDescriptor(id, bandwidth, MachineDescriptor.MachineType.SERVER, NUM_EMPTY_BLOCK, numModelBlocks));
+      machineDescriptors.add(new MachineDescriptor(id, bandwidth, MachineDescriptor.MachineType.SERVER, NUM_EMPTY_BLOCK, numModelBlocks));
     }
-  }
-
-  /**
-   * @param hostnameToBandwidthFilePath path of the file that consists of (hostname, bandwidth) information.
-   * @return the mapping between the hostname and bandwidth of machines
-   */
-  private Map<String, Double> parseBandwidthInfo(final String hostnameToBandwidthFilePath) {
-    if (hostnameToBandwidthFilePath.equals(Parameters.HostToBandwidthFilePath.NONE)) {
-      return Collections.emptyMap();
-    }
-
-    final Map<String, Double> mapping = new HashMap<>();
-
-    final HdfsSplitInfo[] infoArr =
-        HdfsSplitManager.getSplits(hostnameToBandwidthFilePath, TextInputFormat.class.getName(), 1);
-
-    assert infoArr.length == 1; // infoArr's length is always 1(NUM_SPLIT == 1).
-    final HdfsSplitInfo info = infoArr[0];
-    try {
-      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
-      while (iterator.hasNext()) {
-        final String text = iterator.next().getValue().toString().trim();
-        if (!text.startsWith("#") && text.length() != 0) { // comments and empty lines
-          final String[] split = text.split("\\s+");
-          assert split.length == 2;
-          final String hostname = split[0];
-          final double bandwidth = Double.parseDouble(split[1]);
-          mapping.put(hostname, bandwidth);
-        }
-      }
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return mapping;
+    return machineDescriptors;
   }
 
   private static class MachineDescriptor {
@@ -217,5 +180,39 @@ public final class ILPOptimizer implements Optimizer {
       this.numTrainingDataBlocks = numTrainingDataBlocks;
       this.numModelBlocks = numModelDataBlocks;
     }
+
+    String getId() {
+      return id;
+    }
+
+    double getBandwidth() {
+      return bandwidth;
+    }
+
+    MachineType getMachineType() {
+      return machineType;
+    }
+
+    int getNumTrainingDataBlocks() {
+      return numTrainingDataBlocks;
+    }
+
+    int getNumModelBlocks() {
+      return numModelBlocks;
+    }
   }
+
+enum EvaluatorRole {
+  WORKER(0), SERVER(1);
+
+  private final int value;
+
+  EvaluatorRole(final int value) {
+    this.value = value;
+  }
+
+  private int getValue() {
+    return value;
+  }
+}
 }

@@ -140,17 +140,5 @@ public final class ILPPlanGenerator {
   private static final Comparator<BlockDelta> NUM_BLOCKS_TO_MOVE_COMPARATOR =
       (o1, o2) -> o2.getNumBlocksToMove() - o1.getNumBlocksToMove();
 
-  private enum EvaluatorRole {
-    WORKER(0), SERVER(1);
 
-    private final int value;
-
-    EvaluatorRole(final int value) {
-      this.value = value;
-    }
-
-    private int getValue() {
-      return value;
-    }
-  }
 }

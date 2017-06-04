@@ -21,7 +21,7 @@ import gurobi.*;
  * Computes Dolphin's optimal cost and configuration (w.r.t. w, s, d, m).
  */
 final class ILPSolver {
-  void optimize(final int n, final int dTotal, final int mTotal,
+  ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
                 final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final GRBEnv env = new GRBEnv("dolphin_solver.log");
     final GRBModel model = new GRBModel(env);
@@ -187,6 +187,11 @@ final class ILPSolver {
       System.out.println();
     }
 
+    final int[] wInt = convertToIntArray(w);
+    final int[] dInt = convertToIntArray(d);
+    final int[] sInt = convertToIntArray(s);
+    final int[] mInt = convertToIntArray(m);
+
     System.out.println("============================================================");
     System.out.println("     Cost: " + model.get(GRB.DoubleAttr.ObjVal));
     System.out.println("============================================================");
@@ -197,6 +202,16 @@ final class ILPSolver {
     // Dispose of model and environment
     model.dispose();
     env.dispose();
+
+    return new ConfDescriptor(dInt, mInt, wInt, sInt);
+  }
+
+  private int[] convertToIntArray(final GRBVar[] vars) throws GRBException {
+    final int[] result = new int[vars.length];
+    for (int i = 0; i < vars.length; i++) {
+      result[i] = (int) Math.round(vars[i].get(GRB.DoubleAttr.X));
+    }
+    return result;
   }
 
   /**
