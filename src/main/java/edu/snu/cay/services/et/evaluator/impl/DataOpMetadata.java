@@ -17,16 +17,15 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.OpType;
 
-import javax.annotation.Nullable;
-import java.util.Optional;
-
 /**
- * A metadata of each access to a table.
+ * An abstract class of metadata which are stored in {@link RemoteDataOp}.
+ * Depending on the number of keys and values, {@link SingleKeyDataOpMetadata} or
+ * {@link MultiKeyDataOpMetadata} inherits this class.
  */
-class DataOpMetadata<K, V, U> {
+abstract class DataOpMetadata {
 
   /**
-   * Metadata of the operation.
+   * A common metadata of the operation for both single-key and multi-key version.
    */
   private final String origExecutorId;
   private final long operationId;
@@ -34,10 +33,12 @@ class DataOpMetadata<K, V, U> {
   private final boolean replyRequired;
   private final String tableId;
   private final int blockId;
-  private final K dataKey;
-  private final EncodedKey<K> encodedKey;
-  private final V dataValue;
-  private final U updateValue;
+
+  /**
+   * A boolean to represent this operation is single-key version or multi-key version.
+   * Users can cast an object  figure out which concrete class
+   */
+  private final boolean singleKey;
 
   /**
    * A constructor for an operation.
@@ -45,69 +46,22 @@ class DataOpMetadata<K, V, U> {
    * @param operationId an id of operation
    * @param operationType a type of operation
    * @param replyRequired a boolean representing that the operation requires reply or not
+   * @param singleKey a boolean representing that the operation is for single key or multi-key
    * @param tableId an id of table
    * @param blockId an id of block
-   * @param dataKey a key of data
-   * @param dataValue a value of data. It is null when the operation is one of GET or REMOVE.
-   * @param updateValue a value to be used in {@link edu.snu.cay.services.et.evaluator.api.UpdateFunction},
-   *                    which is not null only when UPDATE.
    */
   DataOpMetadata(final String origExecutorId,
                  final long operationId, final OpType operationType,
                  final boolean replyRequired,
-                 final String tableId, final int blockId,
-                 final K dataKey,
-                 @Nullable final V dataValue,
-                 @Nullable final U updateValue) {
+                 final boolean singleKey,
+                 final String tableId, final int blockId) {
     this.origExecutorId = origExecutorId;
     this.operationId = operationId;
     this.operationType = operationType;
     this.replyRequired = replyRequired;
+    this.singleKey = singleKey;
     this.tableId = tableId;
     this.blockId = blockId;
-    this.dataKey = dataKey;
-    this.encodedKey = null;
-    this.dataValue = dataValue;
-    this.updateValue = updateValue;
-  }
-
-  /**
-   * A constructor for an operation with {@link EncodedKey}. MessageSenders use the encoded key instead of a raw key,
-   * because they reuse the encoded key multiple times (e.g., sending a request that embeds a encoded key,
-   * distributing operations evenly to threads, resolving a corresponding block if it's for hashed table).
-   * Otherwise serialization happens multiple times.
-   * MessageHandlers, on the other hand, do not maintain encoded key
-   * (i.e., the other constructor without EncodedKey will be used),
-   * because they do not reuse the encoded key (i.e., their reply messages do not include keys).
-   *
-   * @param origExecutorId an id of the original evaluator where the operation is generated.
-   * @param operationId an id of operation
-   * @param operationType a type of operation
-   * @param replyRequired a boolean representing that the operation requires reply or not
-   * @param tableId an id of table
-   * @param blockId an id of block
-   * @param encodedKey an {@link EncodedKey} of a data key
-   * @param dataValue a value of data. It is null when the operation is one of GET or REMOVE.
-   * @param updateValue a value to be used in {@link edu.snu.cay.services.et.evaluator.api.UpdateFunction},
-   *                    which is not null only when UPDATE.
-   */
-  DataOpMetadata(final String origExecutorId,
-                 final long operationId, final OpType operationType,
-                 final boolean replyRequired,
-                 final String tableId, final int blockId,
-                 final EncodedKey<K> encodedKey,
-                 @Nullable final V dataValue,
-                 @Nullable final U updateValue) {
-    this.origExecutorId = origExecutorId;
-    this.operationId = operationId;
-    this.operationType = operationType;
-    this.replyRequired = replyRequired;
-    this.tableId = tableId;
-    this.blockId = blockId;
-    this.dataKey = encodedKey.getKey();
-    this.encodedKey = encodedKey;
-    this.dataValue = dataValue;
-    this.updateValue = updateValue;
   }
 
   /**
@@ -131,8 +85,18 @@ class DataOpMetadata<K, V, U> {
     return operationType;
   }
 
+  /**
+   * @return true if it requires reply
+   */
   boolean isReplyRequired() {
     return replyRequired;
+  }
+
+  /**
+   * @return true if it is for single-key, not multi-key
+   */
+  boolean isSingleKey() {
+    return singleKey;
   }
 
   /**
@@ -149,31 +113,4 @@ class DataOpMetadata<K, V, U> {
     return blockId;
   }
 
-  /**
-   * @return a key of data
-   */
-  K getKey() {
-    return dataKey;
-  }
-
-  /**
-   * @return an {@link Optional} with an {@link EncodedKey} of data key.
-   */
-  Optional<EncodedKey<K>> getEncodedKey() {
-    return Optional.ofNullable(encodedKey);
-  }
-
-  /**
-   * @return an Optional with value of data. It's empty when the type of operation is not PUT or PUT_IF_ABSENT
-   */
-  Optional<V> getValue() {
-    return Optional.ofNullable(dataValue);
-  }
-
-  /**
-   * @return an Optional with update value. It's empty when the type of operation is not UPDATE
-   */
-  Optional<U> getUpdateValue() {
-    return Optional.ofNullable(updateValue);
-  }
 }

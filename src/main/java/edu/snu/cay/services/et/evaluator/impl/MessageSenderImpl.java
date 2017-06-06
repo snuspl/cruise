@@ -78,9 +78,36 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendTableAccessReqMsg(final String origId, final String destId,
+                                    final long opId, final String tableId,
+                                    final OpType opType, final boolean replyRequired,
+                                    final DataKeys dataKeys, final DataValues dataValues) throws NetworkException {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableAccessMsg)
+        .setTableAccessMsg(
+            TableAccessMsg.newBuilder()
+                .setType(TableAccessMsgType.TableAccessReqMsg)
+                .setOperationId(opId)
+                .setTableAccessReqMsg(
+                    TableAccessReqMsg.newBuilder()
+                        .setOrigId(origId)
+                        .setTableId(tableId)
+                        .setOpType(opType)
+                        .setReplyRequired(replyRequired)
+                        .setIsSingleKey(false)
+                        .setDataKeys(dataKeys)
+                        .setDataValues(dataValues)
+                        .build()
+                ).build()
+        ).build();
+
+    networkConnection.send(destId, msg);
+
+  }
+
+  @Override
   public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
-                                    @Nullable final DataValue dataValue, final boolean isSuccess)
-      throws NetworkException {
+                                    final DataValue dataValue, final boolean isSuccess) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -98,6 +125,31 @@ public final class MessageSenderImpl implements MessageSender {
 
     networkConnection.send(destId, msg);
   }
+
+  @Override
+  public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
+                                    final DataKeys dataKeys, final DataValues dataValues, final boolean isSuccess)
+      throws NetworkException {
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableAccessMsg)
+        .setTableAccessMsg(
+            TableAccessMsg.newBuilder()
+                .setType(TableAccessMsgType.TableAccessResMsg)
+                .setOperationId(opId)
+                .setTableAccessResMsg(
+                    TableAccessResMsg.newBuilder()
+                        .setIsSuccess(isSuccess)
+                        .setDataKeys(dataKeys)
+                        .setDataValues(dataValues)
+                        .setTableId(tableId)
+                        .build()
+                ).build()
+        ).build();
+
+    networkConnection.send(destId, msg);
+  }
+
 
   @Override
   public void sendTableInitAckMsg(final long opId, final String tableId) throws NetworkException {

@@ -130,8 +130,9 @@ public class RemoteAccessOpSenderTest {
 
     final int blockId = 0; // block id means nothing here, so just set it as 0
 
-    final DataOpResult<Integer> opResult = remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId,
-            new EncodedKey<>(key, keyCodec), value, null, RECEIVER_ID, true);
+    final DataOpResult<Integer> opResult = new SingleKeyDataOpResult<>();
+    remoteAccessOpSender.sendSingleKeyOpToRemote(OpType.PUT, TABLE_ID, blockId,
+        key, value, null, RECEIVER_ID, true, opResult);
 
     try {
       assertEquals("output value should be same with input value",

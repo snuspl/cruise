@@ -16,8 +16,11 @@
 package edu.snu.cay.services.et.evaluator.api;
 
 import edu.snu.cay.services.et.evaluator.impl.TableImpl;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 /**
@@ -66,6 +69,18 @@ public interface Table<K, V, U> {
    * @param value value to be associated with the specified key
    */
   void putIfAbsentNoReply(K key, V value);
+
+  /**
+   * It is a multi-key version of {@link #put}.
+   * Associates multiple key-value pairs.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param kvList a key-value pair list
+   * @return {@link Future} that will provide the map of specified keys and values that
+   *         each key has previously associated value. If there are no previous values,
+   *         map will be empty
+   */
+  Future<Map<K, V>> multiPut(List<Pair<K, V>> kvList);
 
   /**
    * Retrieves the value to which the specified key is associated,

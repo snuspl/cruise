@@ -46,11 +46,24 @@ public interface MessageSender {
                              DataKey dataKey, @Nullable DataValue dataValue) throws NetworkException;
 
   /**
+   * Sends a TableAccessReqMsg of the multi-key version.
+   */
+  void sendTableAccessReqMsg(String origId, String destId, long opId,
+                             String tableId, OpType opType, boolean replyRequired,
+                             DataKeys dataKeys, @Nullable DataValues dataValues) throws NetworkException;
+
+  /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation.
    * The operation should be given a unique {@code opId}.
    */
   void sendTableAccessResMsg(String destId, long opId, String tableId,
                              @Nullable DataValue dataValue, boolean isSuccess) throws NetworkException;
+
+  /**
+   * Sends a TableAccessResMsg of the multi-key version.
+   */
+  void sendTableAccessResMsg(String destId, long opId, String tableId, DataKeys dataKeys,
+                             DataValues dataValues, boolean isSuccess) throws NetworkException;
 
   /**
    * Sends a TableInitAckMsg that responds to TableInitMsg.

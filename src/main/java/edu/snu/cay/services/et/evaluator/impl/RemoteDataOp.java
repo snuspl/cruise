@@ -18,6 +18,8 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.avro.OpType;
 
 import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
 
 /**
  * An abstraction of each access to a remote table.
@@ -31,12 +33,12 @@ final class RemoteDataOp<K, V, U> {
   /**
    * Metadata of operation.
    */
-  private final DataOpMetadata<K, V, U> dataOpMetadata;
+  private final DataOpMetadata dataOpMetadata;
 
   /**
    * Result of the operation.
    */
-  private final DataOpResult<V> dataOpResult;
+  private final DataOpResult<?> dataOpResult;
 
   /**
    * A constructor for an operation.
@@ -47,7 +49,6 @@ final class RemoteDataOp<K, V, U> {
    * @param replyRequired a boolean representing whether this operation requires reply or not
    * @param tableId an id of table
    * @param blockId an id of block
-   * @param encodedKey an {@link EncodedKey} of a data key
    * @param dataValue a value of data. It is null when the operation is one of GET, UPDATE, or REMOVE.
    * @param updateValue a value of data. It is not null only when the operation is UPDATE.
    */
@@ -55,11 +56,23 @@ final class RemoteDataOp<K, V, U> {
                final long operationId, final OpType operationType,
                final boolean replyRequired,
                final String tableId, final int blockId,
-               final EncodedKey<K> encodedKey, @Nullable final V dataValue, @Nullable final U updateValue) {
+               final K dataKey, @Nullable final V dataValue, @Nullable final U updateValue,
+               final DataOpResult<V> dataOpResult) {
     this.targetId = targetId;
-    this.dataOpMetadata = new DataOpMetadata<>(origExecutorId, operationId, operationType, replyRequired,
-        tableId, blockId, encodedKey, dataValue, updateValue);
-    this.dataOpResult = new DataOpResult<>();
+    this.dataOpMetadata = new SingleKeyDataOpMetadata<>(origExecutorId, operationId, operationType, replyRequired,
+        tableId, blockId, dataKey, dataValue, updateValue);
+    this.dataOpResult = dataOpResult;
+  }
+
+  RemoteDataOp(final String origExecutorId, final String targetId,
+               final long operationId, final OpType operationType,
+               final boolean replyRequired,
+               final String tableId, final int blockId, final List<K> keyList, final List<V> valueList,
+               final List<U> updateValueList, final DataOpResult<Map<K, V>> aggregateDataOpResult) {
+    this.targetId = targetId;
+    this.dataOpMetadata = new MultiKeyDataOpMetadata<>(origExecutorId, operationId, operationType, replyRequired,
+        tableId, blockId, keyList, valueList, updateValueList);
+    this.dataOpResult = aggregateDataOpResult;
   }
 
   /**
@@ -70,16 +83,16 @@ final class RemoteDataOp<K, V, U> {
   }
 
   /**
-   * @return a {@link DataOpMetadata}
+   * @return a {@link SingleKeyDataOpMetadata}
    */
-  DataOpMetadata<K, V, U> getMetadata() {
+  DataOpMetadata getMetadata() {
     return dataOpMetadata;
   }
 
   /**
    * @return a {@link DataOpResult}
    */
-  DataOpResult<V> getDataOpResult() {
+  DataOpResult<?> getDataOpResult() {
     return dataOpResult;
   }
 }

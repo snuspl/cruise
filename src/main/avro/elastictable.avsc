@@ -15,7 +15,7 @@
  */
 [
 /**
- * An avro message format for representing a data key.
+ * An avro message format for representing a data key, which is for single-key operation.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -28,7 +28,7 @@
 },
 
 /**
- * An avro message format for representing a data value.
+ * An avro message format for representing a data value, which is for single-key operation.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -41,8 +41,35 @@
 },
 
 /**
+ * An avro message format for representing data keys, which is for multi-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataKeys",
+  "fields":
+  [
+    {"name": "keys", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
+/**
+ * An avro message format for representing data values, which is for multi-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataValues",
+  "fields":
+  [
+    {"name": "values", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
+/**
  * An avro message format for sending a data operation to remote executor.
  * {@code dataValue} is used only for PUT and UPDATE operations.
+ * It's used for both single-key and multi-key operations.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -54,14 +81,18 @@
     {"name": "opType", "type": {"type": "enum",
         "name": "OpType", "symbols": ["PUT", "PUT_IF_ABSENT", "GET", "GET_OR_INIT", "REMOVE", "UPDATE"]}},
     {"name": "tableId", "type": "string"},
-    {"name": "dataKey", "type": "DataKey"},
-    {"name": "dataValue", "type": ["null", "DataValue"]},
-    {"name": "replyRequired", "type": "boolean", "default": true}
+    {"name": "dataKey", "type": ["null", "DataKey"], "default": null},
+    {"name": "dataValue", "type": ["null", "DataValue"], "default": null},
+    {"name": "dataKeys", "type": ["null", "DataKeys"], "default": null},
+    {"name": "dataValues", "type": ["null", "DataValues"], "default": null},
+    {"name": "replyRequired", "type": "boolean", "default": true},
+    {"name": "isSingleKey", "type": "boolean", "default": true}
   ]
 },
 
 /**
  * An avro message format for sending a result of data operation to the source executor.
+ * It's used for both single-key and multi-key operations.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -71,7 +102,9 @@
   [
     {"name": "isSuccess", "type": "boolean"},
     {"name": "tableId", "type": "string"},
-    {"name": "dataValue", "type": ["null", "DataValue"]}
+    {"name": "dataValue", "type": ["null", "DataValue"], "default": null},
+    {"name": "dataKeys", "type": ["null", "DataKeys"], "default": null},
+    {"name": "dataValues", "type": ["null", "DataValues"], "default": null}
   ]
 },
 

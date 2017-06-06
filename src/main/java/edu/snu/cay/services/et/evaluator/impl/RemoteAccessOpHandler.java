@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.HandlerQueueSize;
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOpsHandlerThreads;
+import edu.snu.cay.services.et.evaluator.api.Block;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
@@ -160,12 +161,13 @@ final class RemoteAccessOpHandler {
       }
     }
 
-    private <K, V, U> void processOp(final DataOpMetadata<K, V, U> operation) {
-      final String tableId = operation.getTableId();
-      final int blockId = operation.getBlockId();
+    @SuppressWarnings("unchecked")
+    private <K, V, U> void processOp(final DataOpMetadata opMetaData) {
+      final String tableId = opMetaData.getTableId();
+      final int blockId = opMetaData.getBlockId();
 
       LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, tableId: {2}, blockId: {3}]]",
-          new Object[]{operation.getOpId(), operation.getOrigId(), tableId, blockId});
+          new Object[]{opMetaData.getOpId(), opMetaData.getOrigId(), tableId, blockId});
 
       try {
         final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -174,62 +176,113 @@ final class RemoteAccessOpHandler {
 
         final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
         try {
-          final V output;
-          boolean isSuccess = true;
-
           final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
           final boolean isLocal = !remoteEvalIdOptional.isPresent();
           if (isLocal) {
             try {
-              final BlockImpl<K, V, U> block = (BlockImpl<K, V, U>) blockStore.get(blockId);
+              final Block<K, V, U> block = blockStore.get(blockId);
 
-              final OpType opType = operation.getOpType();
-              switch (opType) {
-              case PUT:
-                output = block.put(operation.getKey(), operation.getValue().get());
-                break;
-              case PUT_IF_ABSENT:
-                output = block.putIfAbsent(operation.getKey(), operation.getValue().get());
-                break;
-              case GET:
-                output = block.get(operation.getKey());
-                break;
-              case GET_OR_INIT:
-                output = block.getOrInit(operation.getKey());
-                break;
-              case REMOVE:
-                output = block.remove(operation.getKey());
-                break;
-              case UPDATE:
-                output = block.update(operation.getKey(), operation.getUpdateValue().get());
-                break;
-              default:
-                LOG.log(Level.WARNING, "Undefined type of operation.");
-                output = null;
-                isSuccess = false;
+              if (opMetaData.isSingleKey()) {
+                final boolean[] isSuccess = {true};
+                final V singleKeyOutput =
+                    (V) processSingleKeyOp(block, (SingleKeyDataOpMetadata) opMetaData, isSuccess);
+
+                if (opMetaData.isReplyRequired()) {
+                  sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
+                      singleKeyOutput, Collections.emptyList(), isSuccess[0]);
+                }
+              } else {
+                final boolean[] isSuccess = {true};
+                final List<Pair<K, V>> multiKeyOutputs =
+                    (List<Pair<K, V>>) processMultiKeyOp(block, (MultiKeyDataOpMetadata) opMetaData, isSuccess);
+
+                if (opMetaData.isReplyRequired()) {
+                  sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
+                      null, multiKeyOutputs, isSuccess[0]);
+                }
               }
             } catch (final BlockNotExistsException e) {
               throw new RuntimeException(e);
             }
 
-            if (operation.isReplyRequired()) {
-              sendResultToOrigin(operation, output, isSuccess);
-            }
-
           } else {
             // a case that operation comes to this executor based on wrong or stale ownership info
-            redirect(operation, remoteEvalIdOptional.get());
+            redirect(opMetaData, tableComponents, remoteEvalIdOptional.get());
           }
         } finally {
           final Lock ownershipLock = remoteEvalIdWithLock.getValue();
           ownershipLock.unlock();
         }
 
-        deregisterOp(tableId, operation.getOpId(), operation.getOrigId());
+        deregisterOp(tableId, opMetaData.getOpId(), opMetaData.getOrigId());
 
       } catch (final TableNotExistException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    private <K, V, U> V processSingleKeyOp(final Block<K, V, U> block,
+                                           final SingleKeyDataOpMetadata<K, V, U> opMetadata,
+                                           final boolean[] isSuccess) {
+      final V output;
+      final OpType opType = opMetadata.getOpType();
+      switch (opType) {
+      case PUT:
+        output = block.put(opMetadata.getKey(), opMetadata.getValue().get());
+        isSuccess[0] = true;
+        break;
+      case PUT_IF_ABSENT:
+        output = block.putIfAbsent(opMetadata.getKey(), opMetadata.getValue().get());
+        isSuccess[0] = true;
+        break;
+      case GET:
+        output = block.get(opMetadata.getKey());
+        isSuccess[0] = true;
+        break;
+      case GET_OR_INIT:
+        output = block.getOrInit(opMetadata.getKey());
+        isSuccess[0] = true;
+        break;
+      case REMOVE:
+        output = block.remove(opMetadata.getKey());
+        isSuccess[0] = true;
+        break;
+      case UPDATE:
+        output = block.update(opMetadata.getKey(), opMetadata.getUpdateValue().get());
+        isSuccess[0] = true;
+        break;
+      default:
+        LOG.log(Level.WARNING, "Undefined type of opMetaData.");
+        output = null;
+        isSuccess[0] = false;
+        break;
+      }
+      return output;
+    }
+
+    private <K, V, U> List<Pair<K, V>> processMultiKeyOp(final Block<K, V, U> block,
+                                                         final MultiKeyDataOpMetadata<K, V, U> opMetadata,
+                                                         final boolean[] isSuccess) {
+      final List<Pair<K, V>> outputs = new ArrayList<>();
+      final OpType opType = opMetadata.getOpType();
+      switch (opType) {
+      case PUT:
+        for (int index = 0; index < opMetadata.getKeys().size(); index++) {
+          final K key = opMetadata.getKeys().get(index);
+          final V localOutput = block.put(key, opMetadata.getValues().get(index));
+          if (localOutput != null) {
+            outputs.add(Pair.of(key, localOutput));
+          }
+        }
+        isSuccess[0] = true;
+        break;
+        //TODO #176: support multi-key versions of other op types (e.g., update, get)
+      default:
+        LOG.log(Level.WARNING, "Undefined type of opMetaData.");
+        isSuccess[0] = false;
+        break;
+      }
+      return outputs;
     }
 
     /**
@@ -250,21 +303,15 @@ final class RemoteAccessOpHandler {
     }
   }
 
- /**
+  /**
    * Redirects an operation to the target executor.
    */
-  private <K, V, U> void redirect(final DataOpMetadata<K, V, U> opMetadata, final String targetId) {
-    try {
-      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(opMetadata.getTableId());
-
-      LOG.log(Level.FINE, "Redirect Op for TableId: {0} / key: {1} to {2}",
-          new Object[]{opMetadata.getTableId(), opMetadata.getKey(), targetId});
-      RemoteAccessOpSender.encodeAndSendRequestMsg(opMetadata, targetId, executorId,
-          tableComponents, msgSenderFuture.get());
-
-    } catch (TableNotExistException e) {
-      throw new RuntimeException(e);
-    }
+  private <K, V, U> void redirect(final DataOpMetadata opMetadata, final TableComponents<K, V, U> tableComponents,
+                                  final String targetId) {
+    LOG.log(Level.FINE, "Redirect Op for TableId: {0} to {2}",
+        new Object[]{opMetadata.getTableId(), targetId});
+    RemoteAccessOpSender.encodeAndSendRequestMsg(opMetadata, targetId, executorId,
+        tableComponents, msgSenderFuture.get());
   }
 
   /**
@@ -275,8 +322,6 @@ final class RemoteAccessOpHandler {
     final OpType opType = msg.getOpType();
     final boolean replyRequired = msg.getReplyRequired();
     final String tableId = msg.getTableId();
-    final DataKey dataKey = msg.getDataKey();
-    final DataValue dataValue = msg.getDataValue();
 
     try {
       final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -290,32 +335,59 @@ final class RemoteAccessOpHandler {
       final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
       final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
-      final EncodedKey<K> encodedKey = new EncodedKey<>(dataKey.getKey().array(), keyCodec);
+      if (msg.getIsSingleKey()) {
 
-      // decode data keys
-      final K decodedKey = encodedKey.getKey();
+        final DataKey dataKey = msg.getDataKey();
+        final DataValue dataValue = msg.getDataValue();
+        final K decodedKey = keyCodec.decode(dataKey.getKey().array());
 
-      // decode data values
-      final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
-          valueCodec.decode(dataValue.getValue().array()) : null;
+        // decode data values
+        final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
+            valueCodec.decode(dataValue.getValue().array()) : null;
 
-      // decode update data value
-      final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
-          updateValueCodec.decode(dataValue.getValue().array()) : null;
+        // decode update data value
+        final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
+            updateValueCodec.decode(dataValue.getValue().array()) : null;
 
-      final int blockId = blockPartitioner.getBlockId(encodedKey);
-      final DataOpMetadata<K, V, U> operation = new DataOpMetadata<>(origEvalId,
-          opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
+        final int blockId = blockPartitioner.getBlockId(decodedKey);
+        final SingleKeyDataOpMetadata<K, V, U> operation = new SingleKeyDataOpMetadata<>(origEvalId,
+            opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
 
-      final int threadIdx = getThreadIdx(encodedKey.getHash());
-      handlerThreads.get(threadIdx).enqueue(operation);
+        final int threadIdx = getThreadIdx(blockId);
+        handlerThreads.get(threadIdx).enqueue(operation);
+
+      } else {
+        final DataKeys dataKeys = msg.getDataKeys();
+        final DataValues dataValues = msg.getDataValues();
+        final List<K> keyList = new ArrayList<>();
+        dataKeys.getKeys().forEach(key -> {
+          final K decodedKey = keyCodec.decode(key.array());
+          keyList.add(decodedKey);
+        });
+
+        final List<V> valueList = new ArrayList<>();
+        dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
+
+        // All keys match to same block id
+        final int blockId = blockPartitioner.getBlockId(keyList.get(0));
+        final MultiKeyDataOpMetadata<K, V, ?> operation = new MultiKeyDataOpMetadata<>(origEvalId,
+            opId, opType, replyRequired, tableId, blockId, keyList, valueList, Collections.emptyList());
+
+        final int threadIdx = getThreadIdx(blockId);
+        handlerThreads.get(threadIdx).enqueue(operation);
+      }
 
     } catch (final TableNotExistException e) {
       try {
         LOG.log(Level.WARNING, "The table access request (Table: {0}, opId: {1}) has failed." +
             " Will redirect the message to the Driver for fallback.", new Object[] {tableId, opId});
-        msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
-            dataKey, dataValue);
+        if (msg.getIsSingleKey()) {
+          msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
+              msg.getDataKey(), msg.getDataValue());
+        } else {
+          msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
+              msg.getDataKeys(), msg.getDataValues());
+        }
       } catch (NetworkException e1) {
         throw new RuntimeException(e1);
       }
@@ -329,32 +401,45 @@ final class RemoteAccessOpHandler {
   /**
    * Sends the result to the original executor.
    */
-  private <K, V> void sendResultToOrigin(final DataOpMetadata<K, V, ?> operation,
+  private <K, V> void sendResultToOrigin(final DataOpMetadata opMetadata,
+                                         final KVUSerializer<K, V, ?> kvuSerializer,
                                          @Nullable final V localOutput,
+                                         final List<Pair<K, V>> localOutputs,
                                          final boolean isSuccess) {
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
-        new Object[]{operation.getOpId(), operation.getOrigId()});
+        new Object[]{opMetadata.getOpId(), opMetadata.getOrigId()});
 
-    final String tableId = operation.getTableId();
-    final String origEvalId = operation.getOrigId();
+    final String tableId = opMetadata.getTableId();
+    final String origEvalId = opMetadata.getOrigId();
 
-    final TableComponents<K, V, ?> tableComponents;
     try {
-      tableComponents = tablesFuture.get().getTableComponents(tableId);
-
-      final Codec<V> valueCodec = tableComponents.getSerializer().getValueCodec();
-
-      final DataValue dataValue;
-      if (localOutput != null) {
-        dataValue = new DataValue(ByteBuffer.wrap(valueCodec.encode(localOutput)));
+      final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
+      final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+      if (opMetadata.isSingleKey()) {
+        final DataValue dataValue;
+        if (localOutput != null) {
+          dataValue = new DataValue();
+          dataValue.setValue(ByteBuffer.wrap(valueCodec.encode(localOutput)));
+        } else {
+          dataValue = null;
+        }
+        msgSenderFuture.get().sendTableAccessResMsg(origEvalId, opMetadata.getOpId(), tableId, dataValue, isSuccess);
       } else {
-        dataValue = null;
+        final DataKeys dataKeys = new DataKeys();
+        final DataValues dataValues = new DataValues();
+        final List<ByteBuffer> encodedKeyList = new ArrayList<>(localOutputs.size());
+        final List<ByteBuffer> encodedValueList = new ArrayList<>(localOutputs.size());
+
+        localOutputs.forEach(pair -> {
+          encodedKeyList.add(ByteBuffer.wrap(keyCodec.encode(pair.getKey())));
+          encodedValueList.add(ByteBuffer.wrap(valueCodec.encode(pair.getValue())));
+        });
+        dataKeys.setKeys(encodedKeyList);
+        dataValues.setValues(encodedValueList);
+        msgSenderFuture.get().sendTableAccessResMsg(origEvalId, opMetadata.getOpId(),
+            tableId, dataKeys, dataValues, isSuccess);
       }
 
-      msgSenderFuture.get().sendTableAccessResMsg(origEvalId, operation.getOpId(), tableId, dataValue, isSuccess);
-
-    } catch (final TableNotExistException e) {
-      throw new RuntimeException(e);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, "The origin {0} has been removed, so the message is just discarded", origEvalId);
     }

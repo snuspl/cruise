@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.tableaccess;
 
+import com.google.common.collect.Lists;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
@@ -24,7 +25,7 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecut
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
-import org.apache.reef.io.network.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
@@ -49,6 +50,7 @@ public final class TableAccessSingleThreadTask implements Task {
 
   // Tests with all block access pattern will access each block exactly once
   private static final int NUM_OPERATIONS = NUM_BLOCKS;
+  private static final int NUM_MULTI_OPERATIONS = 10;
 
   // block id to access in ONE_BLOCK access test
   private static final int BLOCK_ID_ACCESS = 0;
@@ -109,6 +111,7 @@ public final class TableAccessSingleThreadTask implements Task {
     runTest(new PutTest(table, false, false));
     // gets data from table (value is existed)
     runTest(new GetTest(table, false, false));
+    runTest(new MultiPutTest(table, false, false));
 
     // 2. update test
     runTest(new UpdateTest(table));
@@ -123,7 +126,7 @@ public final class TableAccessSingleThreadTask implements Task {
     runTest(new GetTest(table, false, true));
 
     final long endTime = System.currentTimeMillis();
-    testNameToTimeList.add(new Pair<>("Total test time", endTime - startTime));
+    testNameToTimeList.add(Pair.of("Total test time", endTime - startTime));
     printResult();
     return null;
   }
@@ -139,7 +142,7 @@ public final class TableAccessSingleThreadTask implements Task {
     final long endTime = System.currentTimeMillis();
     LOG.log(Level.INFO, "Test end: {0} in test no. {1}",
         new Object[]{test.toString(), testIndex});
-    testNameToTimeList.add(new Pair<>(test.toString(), endTime - startTime));
+    testNameToTimeList.add(Pair.of(test.toString(), endTime - startTime));
 
     executorSynchronizer.sync();
   }
@@ -147,7 +150,7 @@ public final class TableAccessSingleThreadTask implements Task {
   private void printResult() {
     for (final Pair<String, Long> testNameToTime : testNameToTimeList) {
       LOG.log(Level.INFO, "Time elapsed: {0} ms - in {1}",
-          new Object[]{testNameToTime.getSecond(), testNameToTime.getFirst()});
+          new Object[]{testNameToTime.getRight(), testNameToTime.getLeft()});
     }
   }
 
@@ -235,6 +238,72 @@ public final class TableAccessSingleThreadTask implements Task {
           } else if (prevValue == null || !prevValue.equals(expectedValue)) {
             LOG.log(Level.SEVERE, "For key {2}, expected value is {0}, but the result value is {1}.",
                 new Object[]{expectedValue, prevValue, key});
+          }
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("There is unexpected exception in this method\n" + e);
+      }
+    }
+  }
+
+  /**
+   * Multi-Put method test class.
+   */
+  private final class MultiPutTest implements Runnable {
+
+    private final Table<Long, String, String> table;
+    private final boolean isUpdated;
+    private final boolean isNullTest;
+    // it will call multiput method 10 times.
+
+    private MultiPutTest(final Table<Long, String, String> table,
+                         final boolean isUpdated,
+                         final boolean isNullTest) {
+      this.table = table;
+      this.isUpdated = isUpdated;
+      this.isNullTest = isNullTest;
+    }
+
+    @Override
+    public void run() {
+      try {
+        // initialize the list which index and value are equal
+        final List<Integer> indexList = new ArrayList<>(NUM_OPERATIONS);
+        for (int index = 0; index < NUM_OPERATIONS; index++) {
+          indexList.add(index);
+        }
+
+        // partition the index list to call multi put methods
+        final int keySizePerOperation = NUM_OPERATIONS / NUM_MULTI_OPERATIONS;
+        final List<List<Integer>> subIndexLists = Lists.partition(indexList, keySizePerOperation);
+        for (final List<Integer> subIndexList : subIndexLists) {
+          final List<Pair<Long, String>> kvPairList = new ArrayList<>(subIndexList.size());
+          final Map<Long, String> expectedValueMap = new HashMap<>(subIndexList.size());
+
+          for (final int index : subIndexList) {
+            final long key = getKeyByTestType(index);
+            final String value = String.valueOf(key);
+            final String expectedValue = getExpectedValue(key, isUpdated, isNullTest);
+            kvPairList.add(Pair.of(key, value));
+            expectedValueMap.put(key, expectedValue);
+          }
+
+          final Map<Long, String> prevValueMap = table.multiPut(kvPairList).get();
+          if (isNullTest) {
+            for (final String prevValue : prevValueMap.values()) {
+              if (prevValue != null) {
+                LOG.log(Level.SEVERE, "Expected value {0}, Result value {1}",
+                    new Object[]{null, prevValue});
+                throw new RuntimeException("The result is different from the expectation");
+              }
+            }
+          } else {
+            prevValueMap.forEach((key, prevValue) -> {
+              if (!expectedValueMap.get(key).equals(prevValue)) {
+                LOG.log(Level.SEVERE, "ExpectedValueSet doesn't contain the Result value {0}", prevValue);
+                throw new RuntimeException("The result is different from the expectation");
+              }
+            });
           }
         }
       } catch (Exception e) {
@@ -361,4 +430,3 @@ public final class TableAccessSingleThreadTask implements Task {
     }
   }
 }
-

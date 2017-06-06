@@ -273,10 +273,16 @@ public final class RemoteAccessOpHandlerTest {
   private <K, V> Pair<DataKey, DataValue> getDataPair(final K key, final V value,
                                                       final Codec<K> keyCodec,
                                                       final Codec<V> valueCodec) {
-    final DataKey dataKey = new DataKey(ByteBuffer.wrap(keyCodec.encode(key)));
-    final DataValue dataValue = value == null ? null :
-        new DataValue(ByteBuffer.wrap(valueCodec.encode(value)));
+    final DataKey dataKey = new DataKey();
+    dataKey.setKey(ByteBuffer.wrap(keyCodec.encode(key)));
 
+    final DataValue dataValue;
+    if (value != null) {
+      dataValue = new DataValue();
+      dataValue.setValue(ByteBuffer.wrap(valueCodec.encode(value)));
+    } else {
+      dataValue = null;
+    }
     return Pair.of(dataKey, dataValue);
   }
 }
