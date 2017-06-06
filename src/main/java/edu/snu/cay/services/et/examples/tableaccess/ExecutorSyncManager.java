@@ -40,14 +40,14 @@ final class ExecutorSyncManager implements EventHandler<CentCommMsg> {
   private static final byte[] EMPTY_DATA = new byte[0];
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
-  private CountDownLatch msgCountDown;
+  private volatile CountDownLatch msgCountDownLatch;
   private final Set<String> executorIds;
 
   @Inject
   private ExecutorSyncManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
-    this.msgCountDown = new CountDownLatch(TableAccessETDriver.NUM_EXECUTORS);
-    this.executorIds = Collections.synchronizedSet(new HashSet<String>(TableAccessETDriver.NUM_EXECUTORS));
+    this.msgCountDownLatch = new CountDownLatch(TableAccessETDriver.NUM_EXECUTORS);
+    this.executorIds = Collections.synchronizedSet(new HashSet<>(TableAccessETDriver.NUM_EXECUTORS));
     initSyncThread();
   }
 
@@ -66,16 +66,14 @@ final class ExecutorSyncManager implements EventHandler<CentCommMsg> {
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final CentCommMsg message) {
+  public synchronized void onNext(final CentCommMsg message) {
     final String executorId = message.getSourceId().toString();
     LOG.log(Level.INFO, "Received CentComm message {0} from {1}", new Object[]{message, executorId});
 
-    // collect executor ids in the first sync round
-    if (!executorIds.contains(executorId)) {
-      executorIds.add(executorId);
-    }
+    // collect executor ids
+    executorIds.add(executorId);
 
-    msgCountDown.countDown();
+    msgCountDownLatch.countDown();
   }
 
   /**
@@ -87,15 +85,19 @@ final class ExecutorSyncManager implements EventHandler<CentCommMsg> {
     @Override
     public void run() {
       while (true) {
-        // wait until all executors send a message
-        try {
-          msgCountDown.await();
 
-          // reset for next iteration
-          msgCountDown = new CountDownLatch(TableAccessETDriver.NUM_EXECUTORS);
-        } catch (final InterruptedException e) {
-          throw new RuntimeException(e);
+        // wait until all executors send a message
+        while (true) {
+          try {
+            msgCountDownLatch.await();
+            break;
+          } catch (final InterruptedException e) {
+            // ignore and keep waiting
+          }
         }
+
+        // reset for next iteration
+        msgCountDownLatch = new CountDownLatch(TableAccessETDriver.NUM_EXECUTORS);
 
         // send response message to all executors
         sendResponseToExecutors();
@@ -103,8 +105,10 @@ final class ExecutorSyncManager implements EventHandler<CentCommMsg> {
     }
 
     private void sendResponseToExecutors() {
+      final Set<String> executorsToRelease = new HashSet<>(executorIds);
+      executorIds.clear();
 
-      for (final String executorId : executorIds) {
+      for (final String executorId : executorsToRelease) {
         LOG.log(Level.INFO, "Sending a message to {0}", executorId);
         try {
           masterSideCentCommMsgSender.send(TableAccessETDriver.CENTCOMM_CLIENT_ID, executorId, EMPTY_DATA);

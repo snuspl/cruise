@@ -53,7 +53,7 @@ final class ExecutorSynchronizer implements EventHandler<CentCommMsg> {
    * Synchronize with other executors.
    * It sends a message to master and waits a response message.
    */
-  void sync() {
+  synchronized void sync() {
     centCommMsgSender.send(TableAccessETDriver.CENTCOMM_CLIENT_ID, EMPTY_DATA);
 
     try {

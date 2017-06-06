@@ -47,7 +47,11 @@ import static edu.snu.cay.services.et.examples.tableaccess.PrefixUpdateFunction.
 public final class TableAccessSingleThreadTask implements Task {
   private static final Logger LOG = Logger.getLogger(TableAccessSingleThreadTask.class.getName());
 
+  // Tests with all block access pattern will access each block exactly once
   private static final int NUM_OPERATIONS = NUM_BLOCKS;
+
+  // block id to access in ONE_BLOCK access test
+  private static final int BLOCK_ID_ACCESS = 0;
 
   private final ExecutorSynchronizer executorSynchronizer;
   private final TableAccessor tableAccessor;
@@ -55,7 +59,7 @@ public final class TableAccessSingleThreadTask implements Task {
 
   private final String elasticTableId;
   private final String executorId;
-  private final String tableType;
+  private final String tableId;
   private final String blockAccessType;
   private final int keyOffsetByExecutor;
   private final int numExecutorsToRunTask;
@@ -71,7 +75,7 @@ public final class TableAccessSingleThreadTask implements Task {
                                       final OrderingBasedBlockPartitioner orderingBasedBlockPartitioner,
                                       @Parameter(ETIdentifier.class) final String elasticTableId,
                                       @Parameter(ExecutorIdentifier.class) final String executorId,
-                                      @Parameter(TableIdentifier.class) final String tableType,
+                                      @Parameter(TableIdentifier.class) final String tableId,
                                       @Parameter(BlockAccessType.class) final String blockAccessType,
                                       @Parameter(KeyOffsetByExecutor.class) final int keyOffsetByExecutor,
                                       @Parameter(NumExecutorsToRunTask.class) final int numExecutorsToRunTask) {
@@ -81,40 +85,40 @@ public final class TableAccessSingleThreadTask implements Task {
     this.orderingBasedBlockPartitioner = orderingBasedBlockPartitioner;
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
-    this.tableType = tableType;
+    this.tableId = tableId;
     this.blockAccessType = blockAccessType;
     this.keyOffsetByExecutor = keyOffsetByExecutor;
     this.numExecutorsToRunTask = numExecutorsToRunTask;
-    this.randomKeyArray = getRandomizedArray();
+    this.randomKeyArray = getRandomizedKeyArray();
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
 
-    final Table<Long, String, String> table = tableAccessor.getTable(tableType);
-    LOG.log(Level.INFO, "Table id: {0}", tableType);
+    final Table<Long, String, String> table = tableAccessor.getTable(tableId);
+    LOG.log(Level.INFO, "Table id: {0}", tableId);
 
     final long startTime = System.currentTimeMillis();
-    // standard put, get test
-    // gets data from table (empty tables)
+    // 1. put, get test
+    // gets data from table (it should be empty)
     runTest(new GetTest(table, false, true));
-    // puts data in table (initial value is null)
+    // puts data in table (puts will succeed and return values would be null)
     runTest(new PutTest(table, false, true));
-    // puts data in table (value is existed)
+    // puts data in table (overwrite table, return values are the ones that put by previous puts)
     runTest(new PutTest(table, false, false));
     // gets data from table (value is existed)
     runTest(new GetTest(table, false, false));
 
-    // update test
+    // 2. update test
     runTest(new UpdateTest(table));
-    // gets data from table (value is updated)
+    // gets data from table (whether to check the value is updated)
     runTest(new GetTest(table, true, false));
     // puts data in table (value is back to init put data)
     runTest(new PutTest(table, true, false));
     runTest(new GetTest(table, false, false));
 
-    // remove test
+    // 3. remove test
     runTest(new RemoveTest(table, false, false));
     runTest(new GetTest(table, false, true));
 
@@ -127,13 +131,13 @@ public final class TableAccessSingleThreadTask implements Task {
   private void runTest(final Runnable test) {
     final long startTime = System.currentTimeMillis();
     final int testIndex = testCounter.getAndIncrement();
-    LOG.log(Level.INFO, "Test start: {0} in test count {1}",
+    LOG.log(Level.INFO, "Test start: {0} in test no. {1}",
         new Object[]{test.toString(), testIndex});
 
     test.run();
 
     final long endTime = System.currentTimeMillis();
-    LOG.log(Level.INFO, "Test end: {0} in test count {1}",
+    LOG.log(Level.INFO, "Test end: {0} in test no. {1}",
         new Object[]{test.toString(), testIndex});
     testNameToTimeList.add(new Pair<>(test.toString(), endTime - startTime));
 
@@ -164,11 +168,12 @@ public final class TableAccessSingleThreadTask implements Task {
       return randomKeyArray[operationIdx];
 
     case ALL_BLOCKS_ACCESS:
+      // the minimum key of block + key-offset
       return orderingBasedBlockPartitioner.getKeySpace(operationIdx).getLeft() + keyOffsetByExecutor;
 
     case ONE_BLOCK_ACCESS:
-      final long rightIdx = orderingBasedBlockPartitioner.getKeySpace(0).getRight();
-      final long leftIdx = orderingBasedBlockPartitioner.getKeySpace(0).getLeft();
+      final long rightIdx = orderingBasedBlockPartitioner.getKeySpace(BLOCK_ID_ACCESS).getRight();
+      final long leftIdx = orderingBasedBlockPartitioner.getKeySpace(BLOCK_ID_ACCESS).getLeft();
       return (rightIdx - leftIdx) / NUM_OPERATIONS * operationIdx + keyOffsetByExecutor;
 
     default:
@@ -176,7 +181,7 @@ public final class TableAccessSingleThreadTask implements Task {
     }
   }
 
-  private Long[] getRandomizedArray() {
+  private Long[] getRandomizedKeyArray() {
 
     int count = 0;
     final Set<Long> randomizedKeySet = new HashSet<>(NUM_OPERATIONS);
@@ -223,13 +228,13 @@ public final class TableAccessSingleThreadTask implements Task {
 
           if (isNullTest) {
             if (prevValue != null) {
-              LOG.log(Level.SEVERE, "Expected value {0}, Result value {1} in key {2}",
-                  new Object[]{null, prevValue, key});
+              LOG.log(Level.SEVERE, "For key {2}, expected value is null, but the result value is {1}.",
+                  new Object[]{prevValue, key});
               throw new RuntimeException("The result is different from the expectation");
             }
           } else if (prevValue == null || !prevValue.equals(expectedValue)) {
-            LOG.log(Level.SEVERE, "Expected value {0}, Result value {1} in key {2}",
-                new Object[]{null, prevValue, key});
+            LOG.log(Level.SEVERE, "For key {2}, expected value is {0}, but the result value is {1}.",
+                new Object[]{expectedValue, prevValue, key});
           }
         }
       } catch (Exception e) {
@@ -344,7 +349,7 @@ public final class TableAccessSingleThreadTask implements Task {
                   new Object[]{null, prevValue, key});
               throw new RuntimeException("The result is different from the expectation");
             }
-          } else if (prevValue == null | !prevValue.equals(expectedValue)) {
+          } else if (prevValue == null || !prevValue.equals(expectedValue)) {
             LOG.log(Level.SEVERE, "Expected value : {0}, result value : {1}",
                 new Object[]{expectedValue, prevValue});
             throw new RuntimeException("The result is different from the expectation");

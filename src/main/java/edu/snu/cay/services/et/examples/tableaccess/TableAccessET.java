@@ -39,6 +39,8 @@ import static edu.snu.cay.services.et.examples.tableaccess.TableAccessETDriver.N
 
 /**
  * Client code for table access example.
+ * It tests table accesses from associators and subscribers.
+ * Accesses by subscribers are all remote access, but accesses by associators include local access, too.
  */
 public final class TableAccessET {
   private static final Logger LOG = Logger.getLogger(TableAccessET.class.getName());

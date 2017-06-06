@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.examples.tableaccess;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
+import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -24,7 +25,6 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
@@ -49,30 +49,21 @@ import java.util.concurrent.Future;
 /**
  * Driver code for table access example.
  *
- * It submits test task to executors upon the following criteria.
+ * It submits a test task to executors upon the following criteria.
  * - Where executors the task runs in : associator vs subscriber.
  * - Which table the task uses : hashed based table vs ordering based table
  * - Which access pattern the task has : Random vs All blocks vs One blocks
  */
 @Unit
 final class TableAccessETDriver {
-  private static final String SUB_HASH_RAND_TEST = "Subscriber_Hashed_Random_Test";
-  private static final String ASS_HASH_RAND_TEST = "Associator_Hashed_Random_Test";
-  private static final String SUB_ORD_RAND_TEST = "Subscriber_Ordered_Random_Test";
-  private static final String ASS_ORD_RAND_TEST = "Associator_Ordered_Random_Test";
-  private static final String SUB_ORD_ALL_TEST = "Subscriber_Ordered_All_Blocks_Test";
-  private static final String ASS_ORD_ALL_TEST = "Associator_Ordered_All_Blocks_Test";
-  private static final String SUB_ORD_ONE_TEST = "Subscriber_Ordered_One_Block_Test";
-  private static final String ASS_ORD_ONE_TEST = "Associator_Ordered_One_Block_Test";
-
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
   static final int NUM_EXECUTORS = 3; // the number of executors for each associators and subscribers
   static final int NUM_BLOCKS = 1024;
 
   // access patterns
-  static final String RANDOM_ACCESS = "random-access";
-  static final String ONE_BLOCK_ACCESS = "one-block-access";
-  static final String ALL_BLOCKS_ACCESS = "all-blocks-access";
+  static final String RANDOM_ACCESS = "RAND"; // random-access
+  static final String ONE_BLOCK_ACCESS = "ONE"; // one-block-access
+  static final String ALL_BLOCKS_ACCESS = "ALL"; // all-blocks-access
 
   private final ExecutorConfiguration executorConf;
   private final ETMaster etMaster;
@@ -132,25 +123,25 @@ final class TableAccessETDriver {
         Executors.newSingleThreadExecutor().submit(() -> {
 
           // Single thread test.
-          // Run TableAccess ET tasks in random block access type.
-          // case 1. subscribers access an ordering based table with random access pattern
-          runTest(SUB_ORD_RAND_TEST, RANDOM_ACCESS, true, associators, subscribers, subscribers);
-          // case 2. subscribers access an hash based table with random access pattern
-          runTest(SUB_HASH_RAND_TEST, RANDOM_ACCESS, false, associators, subscribers, subscribers);
-          // case 3. associators access an ordering based table with random access pattern
-          runTest(ASS_ORD_RAND_TEST, RANDOM_ACCESS, true, associators, subscribers, associators);
-          // case 4. associators access an hash based table with random access pattern
-          runTest(ASS_HASH_RAND_TEST, RANDOM_ACCESS, false, associators, subscribers, associators);
+          // 1. Run TableAccess ET tasks with random block access type.
+          // case 1-1. subscribers access an ordering based table with random access pattern
+          runTest(RANDOM_ACCESS, true, associators, subscribers, false);
+          // case 1-2. subscribers access an hash based table with random access pattern
+          runTest(RANDOM_ACCESS, false, associators, subscribers, false);
+          // case 1-3. associators access an ordering based table with random access pattern
+          runTest(RANDOM_ACCESS, true, associators, subscribers, true);
+          // case 1-4. associators access an hash based table with random access pattern
+          runTest(RANDOM_ACCESS, false, associators, subscribers, true);
 
-          // Run TableAccess ET tasks in one block and all blocks access type. (only ordered table works).
-          // case 5. subscribers access only one block of an ordering based table
-          runTest(SUB_ORD_ONE_TEST, ONE_BLOCK_ACCESS, true, associators, subscribers, subscribers);
-          // case 6. associators access only one block of an ordering based table
-          runTest(ASS_ORD_ONE_TEST, ONE_BLOCK_ACCESS, true, associators, subscribers, associators);
-          // case 7. subscribers access all blocks of an ordering based table
-          runTest(SUB_ORD_ALL_TEST, ALL_BLOCKS_ACCESS, true, associators, subscribers, subscribers);
-          // case 8. associators access all blocks of an ordering based table
-          runTest(ASS_ORD_ALL_TEST, ALL_BLOCKS_ACCESS, true, associators, subscribers, associators);
+          // 2. Run TableAccess ET tasks with one block and all blocks access type. (applicable only to ordered table).
+          // case 2-1. subscribers access only one block of an ordering based table
+          runTest(ONE_BLOCK_ACCESS, true, associators, subscribers, false);
+          // case 2-2. associators access only one block of an ordering based table
+          runTest(ONE_BLOCK_ACCESS, true, associators, subscribers, true);
+          // case 2-3. subscribers access all blocks of an ordering based table
+          runTest(ALL_BLOCKS_ACCESS, true, associators, subscribers, false);
+          // case 2-4. associators access all blocks of an ordering based table
+          runTest(ALL_BLOCKS_ACCESS, true, associators, subscribers, true);
 
           // close executors
           subscribers.forEach(AllocatedExecutor::close);
@@ -167,27 +158,35 @@ final class TableAccessETDriver {
    * Runs a single-thread table access test.
    * At first, it creates a table that tasks will use.
    * Then for each test executor, it submits a task with corresponding parameter configuration.
-   * @param testId the identifier of test
    * @param tableAccessType the type of table access pattern
    * @param isOrderedTable whether the table is ordering-based or not.
    * @param associators associators of a table
    * @param subscribers subscribers of a table
-   * @param executorsToSubmitTask a set of executors that access a table for testing
+   * @param taskOnAssociators whether to submit tasks to associators or subscribers
    */
-  private void runTest(final String testId,
-                       final String tableAccessType,
+  private void runTest(final String tableAccessType,
                        final boolean isOrderedTable,
                        final List<AllocatedExecutor> associators,
                        final List<AllocatedExecutor> subscribers,
-                       final List<AllocatedExecutor> executorsToSubmitTask) {
+                       final boolean taskOnAssociators) {
     try {
+      // build test Id based on the test type
+      // For example: ASSOCIATORS access ORDERING-based tables with RANDOM access pattern  ASSO_ORDE_RAND
+      final String testId =
+          (taskOnAssociators ? "ASSO_" : "SUBS_") + (isOrderedTable ? "ORDE_" : "HASH_") + isOrderedTable;
+
       sendMessageToClient("Start a table access test. TestId: " + testId);
 
       final String tableId = testId; // use table ID by test ID
-      final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
+
+      final List<AllocatedExecutor> executorsToSubmitTask = taskOnAssociators ? associators : subscribers;
+
+      // create a table to use
       final AllocatedTable table = etMaster.createTable(buildTableConf(tableId, isOrderedTable), associators).get();
       table.subscribe(subscribers).get();
 
+      // launch tasks to executors
+      final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
       int taskIdx = 0;
       for (final AllocatedExecutor testExecutor : executorsToSubmitTask) {
         final Configuration taskParamsConf = getTaskParamsConf(taskIdx, tableId,
@@ -197,7 +196,8 @@ final class TableAccessETDriver {
         taskIdx++;
       }
 
-      waitAndCheckTaskResult(taskFutureList);
+      // wait and check the result
+      TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
       table.drop().get();
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
@@ -223,20 +223,6 @@ final class TableAccessETDriver {
         .set(TaskConfiguration.IDENTIFIER, testId + "-" + taskIdx)
         .set(TaskConfiguration.TASK, TableAccessSingleThreadTask.class)
         .build();
-  }
-
-  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList) {
-    taskFutureList.forEach(taskFuture -> {
-      try {
-        final TaskResult taskResult = taskFuture.get().getTaskResult();
-        if (!taskResult.isSuccess()) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
   }
 
   private void sendMessageToClient(final String message) {
