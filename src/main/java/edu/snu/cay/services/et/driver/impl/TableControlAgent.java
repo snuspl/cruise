@@ -46,6 +46,7 @@ final class TableControlAgent {
   private final MessageSender msgSender;
 
   private final Map<Long, AggregateFuture<Void>> pendingInit = new ConcurrentHashMap<>();
+  private final Map<Long, AggregateFuture<Void>> pendingLoad = new ConcurrentHashMap<>();
   private final Map<Long, AggregateFuture<Void>> pendingDrop = new ConcurrentHashMap<>();
   private final Map<Long, AggregateFuture<Void>> pendingSync = new ConcurrentHashMap<>();
 
@@ -56,43 +57,23 @@ final class TableControlAgent {
 
   /**
    * Initializes a table in executors by providing table metadata.
-   * For initial associators of a table, setting {@code loadFile} as true will load a file into executors
-   * by assigning a split for each executor.
    * It's a blocking call so that waits until all executors setup the table.
    * @param tableConf a configuration of table
    * @param executorIds a set of executor ids
    * @param ownershipStatus a list of owner of each block
-   * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
   ListenableFuture<?> initTable(final TableConfiguration tableConf,
                                 final Set<String> executorIds,
-                                final List<String> ownershipStatus,
-                                final boolean loadFile) {
+                                final List<String> ownershipStatus) {
     final long opId = operationIdCounter.getAndIncrement();
     LOG.log(Level.INFO, "Initialize table {0} in executors: {1}. opId: {2}",
         new Object[]{tableConf.getId(), executorIds, opId});
-
-    final Iterator<HdfsSplitInfo> splitIterator;
-
-    final Optional<String> filePathOptional = tableConf.getFilePath();
-    if (loadFile && filePathOptional.isPresent()) {
-      final String filePath = filePathOptional.get();
-
-      // let's assume that tables always use this TextInputFormat class
-      final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(filePath,
-          TextInputFormat.class.getName(), executorIds.size());
-
-      splitIterator = Arrays.asList(fileSplits).iterator();
-    } else {
-      splitIterator = Collections.emptyIterator();
-    }
 
     final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIds.size());
     pendingInit.put(opId, resultFuture);
 
     executorIds.forEach(executorId ->
-        msgSender.sendTableInitMsg(opId, executorId, tableConf, ownershipStatus,
-            splitIterator.hasNext() ? splitIterator.next() : null));
+        msgSender.sendTableInitMsg(opId, executorId, tableConf, ownershipStatus));
 
     return resultFuture;
   }
@@ -116,6 +97,58 @@ final class TableControlAgent {
 
     if (resultFuture.isDone()) {
       pendingInit.remove(opId);
+    }
+  }
+
+  /**
+   * Loads data in a file to a table, by assigning a file split to each executor.
+   * Executors will read data from a given split and put into the table.
+   * @param tableId a identifier of a table
+   * @param executorIds a set of executor id
+   * @param inputPath a file path the data are located
+   */
+  ListenableFuture<?> load(final String tableId,
+                           final Set<String> executorIds,
+                           final String inputPath) {
+    final long opId = operationIdCounter.getAndIncrement();
+    LOG.log(Level.INFO, "Load table data {0} in executors: {1}. opId: {2}",
+        new Object[]{tableId, executorIds, opId});
+
+    // let's assume that tables always use this TextInputFormat class,
+    // which always returns the exact number of splits as requested
+    final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(inputPath,
+        TextInputFormat.class.getName(), executorIds.size());
+    LOG.log(Level.INFO, "The number of data splits : {0}", fileSplits.length);
+
+    final Iterator<HdfsSplitInfo> splitIterator = Arrays.asList(fileSplits).iterator();
+
+    final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIds.size());
+    pendingLoad.put(opId, resultFuture);
+
+    executorIds.forEach(executorId -> msgSender.sendTableLoadMsg(opId, executorId, tableId, splitIterator.next()));
+
+    return resultFuture;
+  }
+
+  /**
+   * Marks that a table load started by {@link #load} has been done in an executor.
+   * @param tableId an identifier of table
+   * @param executorId and identifier of executor
+   */
+  synchronized void onTableLoadAck(final long opId, final String tableId, final String executorId) {
+    LOG.log(Level.INFO, "Table {0} in executor {1} loaded data.",
+        new Object[]{tableId, executorId});
+    final AggregateFuture<Void> resultFuture = pendingLoad.get(opId);
+    if (resultFuture == null) {
+      throw new RuntimeException("There's no ongoing load data of table. opId: " + opId);
+    } else if (resultFuture.isDone()) {
+      throw new RuntimeException("The load operation was already handled. opId: " + opId);
+    }
+
+    resultFuture.onCompleted(null);
+
+    if (resultFuture.isDone()) {
+      pendingLoad.remove(opId);
     }
   }
 

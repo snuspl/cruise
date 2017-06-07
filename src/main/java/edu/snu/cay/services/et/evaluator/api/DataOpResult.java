@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.impl;
 
+package edu.snu.cay.services.et.evaluator.api;
 
 import javax.annotation.Nullable;
-import java.util.concurrent.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A class representing the result of table data operation.
@@ -33,4 +34,3 @@ public interface DataOpResult<V> extends Future<V> {
    */
   void onCompleted(@Nullable V result, boolean isSuccess);
 }
-

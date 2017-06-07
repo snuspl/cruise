@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.exceptions.DataAccessFailedException;
 
 import java.util.Map;

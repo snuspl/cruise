@@ -23,7 +23,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -36,12 +35,17 @@ public interface MessageSender {
   /**
    * Sends a TableInitMsg that initializes {@link edu.snu.cay.services.et.evaluator.api.Table} in an executor.
    * It includes metadata for initializing a table.
-   * If {@code fileSplit} is present, the executor will load file into initialized local blocks.
    */
   void sendTableInitMsg(long opId, String executorId,
                         TableConfiguration tableConf,
-                        List<String> blockOwnerList,
-                        @Nullable HdfsSplitInfo fileSplit);
+                        List<String> blockOwnerList);
+
+  /**
+   * Sends a TableLoadMsg that lets an executor loads a given file split into a table.
+   */
+  void sendTableLoadMsg(long opId, String executorId,
+                        String tableId,
+                        HdfsSplitInfo hdfsSplitInfo);
 
   /**
    * Sends a TableDropMsg that deletes the table from the executor.

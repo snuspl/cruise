@@ -93,7 +93,6 @@ final class SimpleETDriver {
         .setIsOrderedTable(isOrderedTable);
 
     if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {
-      tableConfBuilder.setFilePath(inputPath);
       tableConfBuilder.setDataParserClass(DefaultDataParser.class);
     }
 

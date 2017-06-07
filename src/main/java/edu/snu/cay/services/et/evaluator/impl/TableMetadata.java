@@ -15,14 +15,12 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
-import edu.snu.cay.services.et.configuration.parameters.FilePath;
 import edu.snu.cay.services.et.configuration.parameters.IsMutableTable;
 import edu.snu.cay.services.et.configuration.parameters.IsOrderedTable;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Optional;
 
 /**
  * A metadata of a table.
@@ -31,17 +29,14 @@ public final class TableMetadata {
   private final int numTotalBlocks;
   private final boolean isMutableTable;
   private final boolean isOrderedTable;
-  private final Optional<String> filePathOptional;
 
   @Inject
   private TableMetadata(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                         @Parameter(IsMutableTable.class) final boolean isMutableTable,
-                        @Parameter(IsOrderedTable.class) final boolean isOrderedTable,
-                        @Parameter(FilePath.class) final String filePath) {
+                        @Parameter(IsOrderedTable.class) final boolean isOrderedTable) {
     this.numTotalBlocks = numTotalBlocks;
     this.isMutableTable = isMutableTable;
     this.isOrderedTable = isOrderedTable;
-    this.filePathOptional = filePath.equals(FilePath.EMPTY) ? Optional.empty() : Optional.of(filePath);
   }
 
   /**
@@ -65,10 +60,4 @@ public final class TableMetadata {
     return isOrderedTable;
   }
 
-  /**
-   * @return an optional with file path, it's empty when this table has no initial file data
-   */
-  public Optional<String> getFilePathOptional() {
-    return filePathOptional;
-  }
 }

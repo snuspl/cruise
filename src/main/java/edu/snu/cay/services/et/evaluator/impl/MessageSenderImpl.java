@@ -81,7 +81,8 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTableAccessReqMsg(final String origId, final String destId,
                                     final long opId, final String tableId,
                                     final OpType opType, final boolean replyRequired,
-                                    final DataKeys dataKeys, final DataValues dataValues) throws NetworkException {
+                                    final DataKeys dataKeys, @Nullable final DataValues dataValues)
+      throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -107,7 +108,8 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
-                                    final DataValue dataValue, final boolean isSuccess) throws NetworkException {
+                                    @Nullable final DataValue dataValue, final boolean isSuccess)
+      throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -161,6 +163,25 @@ public final class MessageSenderImpl implements MessageSender {
                 .setOperationId(opId)
                 .setTableInitAckMsg(
                     TableInitAckMsg.newBuilder()
+                        .setExecutorId(executorId)
+                        .setTableId(tableId)
+                        .build()
+                ).build()
+        ).build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
+  public void sendTableLoadAckMsg(final long opId, final String tableId) throws NetworkException {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setTableControlMsg(
+            TableControlMsg.newBuilder()
+                .setType(TableControlMsgType.TableLoadAckMsg)
+                .setOperationId(opId)
+                .setTableLoadAckMsg(
+                    TableLoadAckMsg.newBuilder()
                         .setExecutorId(executorId)
                         .setTableId(tableId)
                         .build()

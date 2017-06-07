@@ -13,14 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.common.api;
-
-import edu.snu.cay.services.et.avro.ETMsg;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.wake.EventHandler;
 
 /**
- * Interface to handle {@link ETMsg}.
+ * A bulk data load example.
  */
-public interface MessageHandler extends EventHandler<Message<ETMsg>> {
-}
+package edu.snu.cay.services.et.examples.load;

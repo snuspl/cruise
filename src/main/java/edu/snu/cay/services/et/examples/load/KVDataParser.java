@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.impl;
+package edu.snu.cay.services.et.examples.load;
 
+import com.google.common.collect.Lists;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -23,24 +25,31 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * DataParser that just returns rawData without any processing.
+ * Data parser class for key and value which type is String.
+ * Each line has the following form:
+ *
+ * <p>Key(Long) Value(String)</p>
  */
-public final class DefaultDataParser implements DataParser<String> {
+public final class KVDataParser implements DataParser<Pair<Long, String>> {
+
   @Inject
-  private DefaultDataParser() {
+  private KVDataParser() {
+
   }
 
   @Override
-  public List<String> parse(final Collection<String> rawData) {
+  public List<Pair<Long, String>> parse(final Collection<String> rawData) {
 
-    final List<String> parsedList = new ArrayList<>();
+    final List<Pair<Long, String>> parsedList = new ArrayList<>();
     for (final String line : rawData) {
 
       if (line.startsWith("#") || line.length() == 0) {
         continue;
       }
-      parsedList.add(line);
+      final List<String> lineDataList = Lists.newArrayList(line.split(" "));
+      parsedList.add(Pair.of(Long.parseLong(lineDataList.get(0)), lineDataList.get(1)));
     }
+
     return parsedList;
   }
 }

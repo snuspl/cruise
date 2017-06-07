@@ -104,9 +104,25 @@ public final class AllocatedTable {
     blockManager.init(executorIds);
 
     final ListenableFuture<?> initResultFuture =
-        tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
+        tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus());
     initResultFuture.addListener(result -> stateMachine.setState(State.INITIALIZED));
     return initResultFuture;
+  }
+
+  /**
+   * Loads an input data into a table with executors. Note that this method must be called after table init.
+   * @param executors a list of executors which will load data
+   * @param inputPath a data file path
+   */
+  public synchronized ListenableFuture<?> load(final List<AllocatedExecutor> executors, final String inputPath) {
+
+    stateMachine.checkState(State.INITIALIZED);
+    final Set<String> executorIdSet = new HashSet<>(executors.size());
+    executors.forEach(executor -> {
+      executorIdSet.add(executor.getId());
+    });
+
+    return tableControlAgent.load(tableConf.getId(), executorIdSet, inputPath);
   }
 
   /**
@@ -119,7 +135,7 @@ public final class AllocatedTable {
     final Set<String> executorIdSet = executors.stream().map(AllocatedExecutor::getId).collect(Collectors.toSet());
 
     final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
-        blockManager.getOwnershipStatus(), false);
+        blockManager.getOwnershipStatus());
     future.addListener(o -> executorIdSet.forEach(executorId ->
         migrationManager.registerSubscription(tableConf.getId(), executorId)));
 
@@ -153,7 +169,7 @@ public final class AllocatedTable {
     stateMachine.checkState(State.INITIALIZED);
 
     final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
-        blockManager.getOwnershipStatus(), false);
+        blockManager.getOwnershipStatus());
     future.addListener(o ->
         executorIdSet.forEach(executorId -> {
           blockManager.registerExecutor(executorId);

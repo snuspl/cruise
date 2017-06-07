@@ -15,13 +15,11 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.exceptions.DataAccessFailedException;
 
 import javax.annotation.Nullable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 /**
  * A class representing the result of table data operation.

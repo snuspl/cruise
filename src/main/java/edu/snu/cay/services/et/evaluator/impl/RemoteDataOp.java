@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.OpType;
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 
 import javax.annotation.Nullable;
 import java.util.List;

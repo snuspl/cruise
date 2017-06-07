@@ -25,7 +25,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
 
@@ -47,8 +46,7 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendTableInitMsg(final long opId, final String executorId,
                                final TableConfiguration tableConf,
-                               final List<String> blockOwnerList,
-                               @Nullable final HdfsSplitInfo fileSplit) {
+                               final List<String> blockOwnerList) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
@@ -59,7 +57,6 @@ public final class MessageSenderImpl implements MessageSender {
                     TableInitMsg.newBuilder()
                         .setTableConf(confSerializer.toString(tableConf.getConfiguration()))
                         .setBlockOwners(blockOwnerList)
-                        .setFileSplit(fileSplit == null ? null : HdfsSplitInfoSerializer.serialize(fileSplit))
                         .build()
                 ).build()
         ).build();
@@ -68,6 +65,31 @@ public final class MessageSenderImpl implements MessageSender {
       networkConnection.send(executorId, msg);
     } catch (final NetworkException e) {
       throw new RuntimeException("NetworkException while sending TableInit message", e);
+    }
+  }
+
+  @Override
+  public void sendTableLoadMsg(final long opId, final String executorId,
+                               final String tableId,
+                               final HdfsSplitInfo hdfsSplitInfo) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setTableControlMsg(
+            TableControlMsg.newBuilder()
+                .setType(TableControlMsgType.TableLoadMsg)
+                .setOperationId(opId)
+                .setTableLoadMsg(
+                    TableLoadMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setFileSplit(HdfsSplitInfoSerializer.serialize(hdfsSplitInfo))
+                        .build()
+                ).build()
+        ).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TableLoad message", e);
     }
   }
 

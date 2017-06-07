@@ -17,7 +17,9 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.services.et.exceptions.KeyGenerationException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.metric.MetricCollector;
 import edu.snu.cay.services.et.metric.configuration.parameter.CustomMetricCodec;
@@ -50,9 +52,11 @@ public final class MessageHandlerImpl implements MessageHandler {
   private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
   private static final int NUM_OWNERSHIP_UPDATE_THREADS = 4;
   private static final int NUM_TABLE_DROP_THREADS = 4;
+  private static final int NUM_TABLE_LOAD_THREADS = 2;
 
   private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
   private final ExecutorService tableDropExecutor = Executors.newFixedThreadPool(NUM_TABLE_DROP_THREADS);
+  private final ExecutorService tableLoadExecutor = Executors.newFixedThreadPool(NUM_TABLE_LOAD_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
 
@@ -129,6 +133,10 @@ public final class MessageHandlerImpl implements MessageHandler {
       onTableInitMsg(opId, msg.getTableInitMsg());
       break;
 
+    case TableLoadMsg:
+      onTableLoadMsg(opId, msg.getTableLoadMsg());
+      break;
+
     case TableDropMsg:
       onTableDropMsg(opId, msg.getTableDropMsg());
       break;
@@ -150,11 +158,8 @@ public final class MessageHandlerImpl implements MessageHandler {
     try {
       final Configuration tableConf = confSerializer.fromString(msg.getTableConf());
       final List<String> blockOwners = msg.getBlockOwners();
-      final String serializedHdfsSplitInfo = msg.getFileSplit();
 
-      final String tableId = serializedHdfsSplitInfo == null ?
-          tablesFuture.get().initTable(tableConf, blockOwners) :
-          tablesFuture.get().initTable(tableConf, blockOwners, serializedHdfsSplitInfo);
+      final String tableId = tablesFuture.get().initTable(tableConf, blockOwners);
 
       LOG.log(Level.INFO, "Table {0} has been initialized. opId: {1}", new Object[]{tableId, opId});
 
@@ -165,6 +170,29 @@ public final class MessageHandlerImpl implements MessageHandler {
     } catch (final InjectionException e) {
       throw new RuntimeException("Table configuration is incomplete to initialize a table", e);
     } catch (final NetworkException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void onTableLoadMsg(final long opId, final TableLoadMsg msg) {
+    try {
+      final String serializedHdfsSplitInfo = msg.getFileSplit();
+      final String tableId = msg.getTableId();
+      final BulkDataLoader bulkDataLoader = tablesFuture.get().getTableComponents(tableId).getBulkDataLoader();
+      tableLoadExecutor.submit(() -> {
+        try {
+          bulkDataLoader.load(tableId, serializedHdfsSplitInfo);
+          LOG.log(Level.INFO, "Bulk-loading for Table {0} has been done. opId: {1}", new Object[]{tableId, opId});
+
+          msgSenderFuture.get().sendTableLoadAckMsg(opId, tableId);
+        } catch (IOException e) {
+          throw new RuntimeException("IOException while loading data", e);
+        } catch (NetworkException | TableNotExistException | KeyGenerationException e) {
+          throw new RuntimeException(e);
+        }
+      });
+
+    } catch (TableNotExistException e) {
       throw new RuntimeException(e);
     }
   }

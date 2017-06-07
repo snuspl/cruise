@@ -139,8 +139,7 @@
   "fields":
   [
     {"name": "tableConf", "type": "string"},
-    {"name": "blockOwners", "type": {"type": "array", "items": "string"}},
-    {"name": "fileSplit", "type": ["null", "string"], "default": null}
+    {"name": "blockOwners", "type": {"type": "array", "items": "string"}}
   ]
 },
 
@@ -155,6 +154,35 @@
   [
     {"name": "executorId", "type" : "string"},
     {"name": "tableId", "type" : "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to load data in executors.
+ * It includes an identifier of table and a serialized string of {@link HdfsSplitInfo} assigned to each executor.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableLoadMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"},
+    {"name": "fileSplit", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for TableLoadMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableLoadAckMsg",
+  "fields":
+  [
+    {"name": "executorId", "type": "string"},
+    {"name": "tableId", "type": "string"}
   ]
 },
 
@@ -243,11 +271,13 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "TableControlMsgType",
-        "symbols": ["TableInitMsg", "TableInitAckMsg", "TableDropMsg", "TableDropAckMsg",
-         "OwnershipUpdateMsg", "OwnershipSyncMsg", "OwnershipSyncAckMsg"]}},
+        "symbols": ["TableInitMsg", "TableInitAckMsg", "TableLoadMsg", "TableLoadAckMsg",
+         "TableDropMsg", "TableDropAckMsg", "OwnershipUpdateMsg", "OwnershipSyncMsg", "OwnershipSyncAckMsg"]}},
     {"name": "operationId", "type": ["null", "long"], "default": null},
     {"name": "tableInitMsg", "type": ["null", "TableInitMsg"], "default": null},
     {"name": "tableInitAckMsg", "type": ["null", "TableInitAckMsg"], "default": null},
+    {"name": "tableLoadMsg", "type": ["null", "TableLoadMsg"], "default": null},
+    {"name": "tableLoadAckMsg", "type": ["null", "TableLoadAckMsg"], "default": null},
     {"name": "tableDropMsg", "type": ["null", "TableDropMsg"], "default": null},
     {"name": "tableDropAckMsg", "type": ["null", "TableDropAckMsg"], "default": null},
     {"name": "ownershipUpdateMsg", "type": ["null", "OwnershipUpdateMsg"], "default": null},

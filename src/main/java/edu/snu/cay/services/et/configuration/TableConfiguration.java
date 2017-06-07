@@ -17,18 +17,15 @@ package edu.snu.cay.services.et.configuration;
 
 import edu.snu.cay.services.et.configuration.parameters.*;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
+import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
-import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
-import edu.snu.cay.services.et.evaluator.impl.HashBasedBlockPartitioner;
-import edu.snu.cay.services.et.evaluator.impl.OrderingBasedBlockPartitioner;
+import edu.snu.cay.services.et.evaluator.impl.*;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
-
-import java.util.Optional;
 
 /**
  * A configuration required for creating a table.
@@ -42,8 +39,8 @@ public final class TableConfiguration {
   private final boolean isMutableTable;
   private final boolean isOrderedTable;
   private final int numTotalBlocks;
-  private final String filePath;
   private final Class<? extends DataParser> dataParserClass;
+  private final Class<? extends BulkDataLoader> bulkDataLoaderClass;
   private final Configuration userParamConf;
 
   private Configuration configuration = null;
@@ -55,8 +52,8 @@ public final class TableConfiguration {
                              final boolean isMutableTable,
                              final boolean isOrderedTable,
                              final Integer numTotalBlocks,
-                             final String filePath,
                              final Class<? extends DataParser> dataParserClass,
+                             final Class<? extends BulkDataLoader> bulkDataLoaderClass,
                              final Configuration userParamConf) {
     this.id = id;
     this.keyCodecClass = keyCodecClass;
@@ -66,8 +63,8 @@ public final class TableConfiguration {
     this.isMutableTable = isMutableTable;
     this.isOrderedTable = isOrderedTable;
     this.numTotalBlocks = numTotalBlocks;
-    this.filePath = filePath;
     this.dataParserClass = dataParserClass;
+    this.bulkDataLoaderClass = bulkDataLoaderClass;
     this.userParamConf = userParamConf;
   }
 
@@ -128,21 +125,17 @@ public final class TableConfiguration {
   }
 
   /**
-   * @return a file path, which is optional
-   */
-  public Optional<String> getFilePath() {
-    if (filePath.equals(FilePath.EMPTY)) {
-      return Optional.empty();
-    } else {
-      return Optional.of(filePath);
-    }
-  }
-
-  /**
    * @return a data parser
    */
   public Class<? extends DataParser> getDataParserClass() {
     return dataParserClass;
+  }
+
+  /**
+   * @return a bulk data loader
+   */
+  public Class<? extends BulkDataLoader> getBulkDataLoaderClass() {
+    return bulkDataLoaderClass;
   }
 
   /**
@@ -171,8 +164,8 @@ public final class TableConfiguration {
               .bindNamedParameter(IsOrderedTable.class, Boolean.toString(isOrderedTable))
               .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
               .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
-              .bindNamedParameter(FilePath.class, filePath)
               .bindImplementation(DataParser.class, dataParserClass)
+              .bindImplementation(BulkDataLoader.class, bulkDataLoaderClass)
               .build(),
           userParamConf);
     }
@@ -205,8 +198,8 @@ public final class TableConfiguration {
      * Optional parameters.
      */
     private Integer numTotalBlocks = Integer.valueOf(NumTotalBlocks.DEFAULT_VALUE_STR);
-    private String filePath = FilePath.EMPTY;
     private Class<? extends DataParser> dataParserClass = DefaultDataParser.class;
+    private Class<? extends BulkDataLoader> bulkDataLoaderClass = NoneKeyBulkDataLoader.class;
     private Configuration userParamConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
 
     private Builder() {
@@ -252,13 +245,13 @@ public final class TableConfiguration {
       return this;
     }
 
-    public Builder setFilePath(final String filePath) {
-      this.filePath = filePath;
+    public Builder setDataParserClass(final Class<? extends DataParser> dataParserClass) {
+      this.dataParserClass = dataParserClass;
       return this;
     }
 
-    public Builder setDataParserClass(final Class<? extends DataParser> dataParserClass) {
-      this.dataParserClass = dataParserClass;
+    public Builder setBulkDataLoaderClass(final Class<? extends BulkDataLoader> bulkDataLoaderClass) {
+      this.bulkDataLoaderClass = bulkDataLoaderClass;
       return this;
     }
 
@@ -277,15 +270,8 @@ public final class TableConfiguration {
       BuilderUtils.notNull(isMutableTable);
       BuilderUtils.notNull(isOrderedTable);
 
-      if (!filePath.equals(FilePath.EMPTY)) {
-        if (!isOrderedTable) {
-          throw new IllegalArgumentException(
-              String.format("Initialization with bulk loading is not supported for hashed tables. Table Id : %s", id));
-        }
-      }
-
       return new TableConfiguration(id, keyCodecClass, valueCodecClass, updateValueCodecClass, updateFunctionClass,
-          isMutableTable, isOrderedTable, numTotalBlocks, filePath, dataParserClass, userParamConf);
+          isMutableTable, isOrderedTable, numTotalBlocks, dataParserClass, bulkDataLoaderClass, userParamConf);
     }
   }
 }

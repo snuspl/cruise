@@ -16,13 +16,10 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.configuration.parameters.FilePath;
-import edu.snu.cay.services.et.configuration.parameters.IsOrderedTable;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
-import edu.snu.cay.services.et.exceptions.KeyGenerationException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -34,7 +31,6 @@ import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -96,87 +92,9 @@ public final class Tables implements TableAccessor {
     // Create local blocks
     initEmptyBlocks(tableComponents.getBlockStore(), blockOwners);
 
-    final TableImpl table = tableInjector.getInstance(TableImpl.class);
-    tables.put(tableId, Pair.of(table, tableComponents));
-    return tableId;
-  }
-
-  /**
-   * Initialize a local table, loading data from a file specified by {@code serializedHdfsSplitInfo}.
-   * @param tableConf Tang configuration for this table
-   * @param blockOwners a blockId-to-executorId map for remote operation routing
-   * @param serializedHdfsSplitInfo resource identifier for bulk-loading
-   * @return identifier of the initialized table
-   * @throws InjectionException Table configuration is incomplete to initialize a table
-   */
-  @SuppressWarnings("unchecked")
-  public synchronized String initTable(final Configuration tableConf,
-                                       final List<String> blockOwners,
-                                       final String serializedHdfsSplitInfo) throws InjectionException {
-    final Injector tableInjector = tableBaseInjector.forkInjector(tableConf);
-    final String tableId = tableInjector.getNamedInstance(TableIdentifier.class);
-    if (tables.containsKey(tableId)) {
-      throw new RuntimeException("Table has already been initialized. tableId: " + tableId);
-    }
-
-    final String filePath = tableInjector.getNamedInstance(FilePath.class);
-    // Initialize a table
-    LOG.log(Level.INFO, "Initializing a table with file data. tableId: {0}, filePath: {1}",
-        new Object[]{tableId, filePath});
-    final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
-
-    // Initialize ownership cache
-    tableComponents.getOwnershipCache().init(blockOwners);
-
-    final boolean isOrderedTable = tableInjector.getNamedInstance(IsOrderedTable.class);
-
-    if (isOrderedTable) {
-      // Load a file into local tablet
-      final BulkDataLoader bulkDataLoader = tableInjector.getInstance(BulkDataLoader.class);
-      initBlocksWithData(tableComponents.getBlockStore(), blockOwners, bulkDataLoader, serializedHdfsSplitInfo);
-
-    } else {
-      // TODO #52: Support bulk data(file) loading for hashed tables
-      LOG.log(Level.WARNING, "File loading is not available for hashed tables. tableId: {0}", tableId);
-
-      initEmptyBlocks(tableComponents.getBlockStore(), blockOwners);
-    }
-
     final Table table = tableInjector.getInstance(Table.class);
     tables.put(tableId, Pair.of(table, tableComponents));
     return tableId;
-  }
-
-  /**
-   * Initialize block store with blocks that contain data loaded from a file.
-   */
-  @SuppressWarnings("unchecked")
-  private void initBlocksWithData(final BlockStore blockStore,
-                                  final List<String> blockOwners,
-                                  final BulkDataLoader bulkDataLoader,
-                                  final String serializedHdfsSplitInfo) {
-    try {
-      final Map<Integer, Map> blockIdToDataMap = bulkDataLoader.loadBlockData(serializedHdfsSplitInfo);
-      blockIdToDataMap.forEach((blockId, dataMap) -> {
-        try {
-          blockStore.putBlock(blockId, dataMap);
-        } catch (BlockAlreadyExistsException e) {
-          throw new RuntimeException(e);
-        }
-      });
-
-      // create empty blocks if not all local blocks have been created from a file
-      for (int blockId = 0; blockId < blockOwners.size(); blockId++) {
-        if (blockOwners.get(blockId).equals(executorId) && !blockIdToDataMap.keySet().contains(blockId)) {
-          blockStore.createEmptyBlock(blockId);
-        }
-      }
-
-    } catch (KeyGenerationException | IOException e) {
-      throw new RuntimeException("Fail to load a file into a table", e);
-    } catch (BlockAlreadyExistsException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**

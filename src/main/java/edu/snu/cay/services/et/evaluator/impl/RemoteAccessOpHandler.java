@@ -336,7 +336,6 @@ final class RemoteAccessOpHandler {
       final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
       if (msg.getIsSingleKey()) {
-
         final DataKey dataKey = msg.getDataKey();
         final DataValue dataValue = msg.getDataValue();
         final K decodedKey = keyCodec.decode(dataKey.getKey().array());

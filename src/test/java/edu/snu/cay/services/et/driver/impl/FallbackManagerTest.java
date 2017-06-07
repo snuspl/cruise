@@ -17,7 +17,6 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.configuration.parameters.FilePath;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.MessageSender;
@@ -87,7 +86,6 @@ public final class FallbackManagerTest {
     tableManager.createTable(
         TableConfiguration.newBuilder()
             .setId(TABLE_ID)
-            .setFilePath(FilePath.EMPTY)
             .setIsMutableTable(false)
             .setIsOrderedTable(false)
             .setUpdateFunctionClass(VoidUpdateFunction.class)

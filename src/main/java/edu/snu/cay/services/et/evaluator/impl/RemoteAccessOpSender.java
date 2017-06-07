@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOpsSenderThreads;
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.SenderQueueSize;
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;

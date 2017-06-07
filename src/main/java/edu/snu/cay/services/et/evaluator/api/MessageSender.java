@@ -71,6 +71,11 @@ public interface MessageSender {
   void sendTableInitAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
+   * Sends a TableLoadAckMsg that responds to TableLoadMsg.
+   */
+  void sendTableLoadAckMsg(long opId, String tableId) throws NetworkException;
+
+  /**
    * Sends a TableDropAckMsg that responds to TableDropMsg.
    */
   void sendTableDropAckMsg(long opId, String tableId) throws NetworkException;

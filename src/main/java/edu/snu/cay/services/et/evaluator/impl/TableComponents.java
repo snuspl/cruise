@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
+import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 
 import javax.inject.Inject;
@@ -50,6 +51,8 @@ final class TableComponents<K, V, U> {
    */
   private final UpdateFunction<K, V, U> updateFunction;
 
+  private final BulkDataLoader bulkDataLoader;
+
   /**
    * Partition function that resolves key into block id.
    */
@@ -61,12 +64,14 @@ final class TableComponents<K, V, U> {
                           final BlockStore<K, V, U> blockStore,
                           final KVUSerializer<K, V, U> kvuSerializer,
                           final UpdateFunction<K, V, U> updateFunction,
+                          final BulkDataLoader bulkDataLoader,
                           final BlockPartitioner<K> blockPartitioner) {
     this.tableMetadata = tableMetadata;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
     this.kvuSerializer = kvuSerializer;
     this.updateFunction = updateFunction;
+    this.bulkDataLoader = bulkDataLoader;
     this.blockPartitioner = blockPartitioner;
   }
 
@@ -92,5 +97,9 @@ final class TableComponents<K, V, U> {
 
   BlockPartitioner<K> getBlockPartitioner() {
     return blockPartitioner;
+  }
+
+  BulkDataLoader getBulkDataLoader() {
+    return bulkDataLoader;
   }
 }

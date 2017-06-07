@@ -29,7 +29,6 @@ import org.apache.reef.wake.EventHandler;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
@@ -303,7 +302,13 @@ public final class MigrationManagerTest {
 
     @Override
     public void sendTableInitMsg(final long opId, final String executorId, final TableConfiguration tableConf,
-                                 final List<String> blockOwnerList, @Nullable final HdfsSplitInfo fileSplit) {
+                                 final List<String> blockOwnerList) {
+
+    }
+
+    @Override
+    public void sendTableLoadMsg(final long opId, final String executorId, final String tableId,
+                                 final HdfsSplitInfo hdfsSplitInfo) {
 
     }
 

@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.impl.BlockManager;
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -90,7 +91,7 @@ public class RemoteAccessOpSenderTest {
     remoteAccessOpSender = evalInjector.getInstance(RemoteAccessOpSender.class);
 
     final Tables tables = evalInjector.getInstance(Tables.class);
-    tables.initTable(buildTableConf(TABLE_ID, NUM_TOTAL_BLOCKS).getConfiguration(), blockOwners, null);
+    tables.initTable(buildTableConf(TABLE_ID, NUM_TOTAL_BLOCKS).getConfiguration(), blockOwners);
     final TableComponents<String, Integer, ?> tableComponents = tables.getTableComponents(TABLE_ID);
     keyCodec = tableComponents.getSerializer().getKeyCodec();
   }
@@ -129,7 +130,6 @@ public class RemoteAccessOpSenderTest {
     final Integer value = 1;
 
     final int blockId = 0; // block id means nothing here, so just set it as 0
-
     final DataOpResult<Integer> opResult = new SingleKeyDataOpResult<>();
     remoteAccessOpSender.sendSingleKeyOpToRemote(OpType.PUT, TABLE_ID, blockId,
         key, value, null, RECEIVER_ID, true, opResult);

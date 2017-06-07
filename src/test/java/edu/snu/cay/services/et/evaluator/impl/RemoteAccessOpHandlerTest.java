@@ -96,7 +96,7 @@ public final class RemoteAccessOpHandlerTest {
     remoteAccessOpHandler = evalInjector.getInstance(RemoteAccessOpHandler.class);
 
     tables = evalInjector.getInstance(Tables.class);
-    tables.initTable(buildTableConf(TABLE_ID, NUM_TOTAL_BLOCKS).getConfiguration(), blockOwners, null);
+    tables.initTable(buildTableConf(TABLE_ID, NUM_TOTAL_BLOCKS).getConfiguration(), blockOwners);
   }
 
   private TableConfiguration buildTableConf(final String tableId, final int numTotalBlocks) {

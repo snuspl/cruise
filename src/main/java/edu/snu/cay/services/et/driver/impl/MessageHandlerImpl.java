@@ -95,6 +95,9 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TableInitAckMsg:
       onTableInitAckMsg(opId, msg.getTableInitAckMsg());
       break;
+    case TableLoadAckMsg:
+      onTableLoadAckMsg(opId, msg.getTableLoadAckMsg());
+      break;
     case TableDropAckMsg:
       onTableDropAckMsg(opId, msg.getTableDropAckMsg());
       break;
@@ -108,6 +111,10 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableInitAckMsg(final long opId, final TableInitAckMsg msg) {
     tableControlAgentFuture.get().onTableInitAck(opId, msg.getTableId(), msg.getExecutorId());
+  }
+
+  private void onTableLoadAckMsg(final long opId, final TableLoadAckMsg msg) {
+    tableControlAgentFuture.get().onTableLoadAck(opId, msg.getTableId(), msg.getExecutorId());
   }
 
   private void onTableDropAckMsg(final long opId, final TableDropAckMsg msg) {
