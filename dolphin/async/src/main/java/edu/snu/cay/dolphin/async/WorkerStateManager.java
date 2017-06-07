@@ -15,18 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -46,15 +40,10 @@ import java.util.logging.Logger;
 @DriverSide
 @ThreadSafe
 @Private
-@Unit
 public final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
 
-  private static final byte[] EMPTY_DATA = new byte[0];
-
-  static final String CENT_COMM_CLIENT_NAME = WorkerStateManager.class.getName();
-
-  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
+  private final MasterSideMsgSender msgSender;
 
   private final Codec<WorkerGlobalBarrier.State> codec;
 
@@ -95,10 +84,10 @@ public final class WorkerStateManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private WorkerStateManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
+  private WorkerStateManager(final MasterSideMsgSender msgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
-    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
+    this.msgSender = msgSender;
     this.numWorkers = numWorkers;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -255,16 +244,12 @@ public final class WorkerStateManager {
   }
 
   private void sendResponseMessage(final String workerId) {
-    try {
-      final String networkId = workerIdToNetworkId.get(workerId);
-      if (networkId == null) {
-        throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
-      }
-
-      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, networkId, EMPTY_DATA);
-    } catch (final NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
+    final String networkId = workerIdToNetworkId.get(workerId);
+    if (networkId == null) {
+      throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
     }
+
+    msgSender.sendReleaseMsg(networkId);
   }
 
   /**
@@ -356,22 +341,18 @@ public final class WorkerStateManager {
     }
   }
 
-  final class MessageHandler implements EventHandler<CentCommMsg> {
+  /**
+   * Handles {@link SyncMsg} from a worker whose network id is {@code networkId}.
+   * @param networkId a network id of the worker
+   * @param syncMsg a sync msg from the worker
+   */
+  void onSyncMsg(final String networkId, final SyncMsg syncMsg) {
+    final String workerId = syncMsg.getExecutorId().toString();
+    final WorkerGlobalBarrier.State localState = codec.decode(syncMsg.getSerializedState().array());
 
-    @Override
-    public void onNext(final CentCommMsg centCommMsg) {
-      final byte[] data = centCommMsg.getData().array();
+    workerIdToNetworkId.putIfAbsent(workerId, networkId);
 
-      final SyncMsg syncMsg = AvroUtils.fromBytes(data, SyncMsg.class);
-
-      final String networkId = centCommMsg.getSourceId().toString();
-      final String workerId = syncMsg.getExecutorId().toString();
-      final WorkerGlobalBarrier.State localState = codec.decode(syncMsg.getSerializedState().array());
-
-      workerIdToNetworkId.putIfAbsent(workerId, networkId);
-
-      LOG.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
-      onWorkerMsg(workerId, localState);
-    }
+    LOG.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
+    onWorkerMsg(workerId, localState);
   }
 }

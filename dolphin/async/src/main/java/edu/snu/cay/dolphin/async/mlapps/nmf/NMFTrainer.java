@@ -71,7 +71,7 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private final int numTrainerThreads;
 
-  private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
+  private final TrainingDataProvider<NMFData> trainingDataProvider;
 
   @Inject
   private NMFTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
@@ -85,7 +85,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
-                     final TrainingDataProvider<Long, NMFData> trainingDataProvider) {
+                     final TrainingDataProvider<NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
     this.vectorFactory = vectorFactory;
     this.rank = rank;
@@ -124,7 +124,6 @@ final class NMFTrainer implements Trainer<NMFData> {
     
     // pull data when mini-batch is started
     final List<Integer> keys = getKeys(instances);
-    LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     final NMFModel model = pullModels(keys);
 
     // collect gradients computed in each thread
@@ -133,7 +132,6 @@ final class NMFTrainer implements Trainer<NMFData> {
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
       // This way we can mitigate the slowdown from straggler threads.
       final int drainSize = Math.max(instances.size() / numTrainerThreads / numTrainerThreads, 1);
-      LOG.log(Level.INFO, "Drained {0} items", drainSize);
 
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<Map<Integer, Vector>> future = executor.submit(() -> {
@@ -198,8 +196,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       return;
     }
     // print L matrix
-    final Map<Long, NMFData> workloadMap = trainingDataProvider.getEpochData();
-    final Collection<NMFData> workload = workloadMap.values();
+    final Collection<NMFData> workload = trainingDataProvider.getEpochData();
 
     final StringBuilder lsb = new StringBuilder();
     for (final NMFData datum : workload) {
@@ -280,7 +277,6 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     // update L matrix
     modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
-    LOG.log(Level.INFO, "getValidVector");
   }
 
   /**

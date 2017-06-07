@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_lda.sh -input sample_lda -local true -num_workers 4 -number_servers 2 -num_topics 10 -num_vocabs 17935 -max_num_epochs 3 -mini_batch_size 30 -max_num_eval_local 6 -timeout 180000 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
+# ./run_lda.sh -input sample_lda -local true -num_workers 4 -number_servers 2 -num_topics 10 -num_vocabs 17935 -max_num_epochs 3 -mini_batch_size 25 -num_worker_blocks 20 -max_num_eval_local 6 -timeout 180000 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

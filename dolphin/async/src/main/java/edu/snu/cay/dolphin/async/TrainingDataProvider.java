@@ -15,19 +15,13 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import java.util.Map;
+import java.util.Collection;
 
 /**
- * Provides the training data to process in mini-batches, taking subset of training data no more than
- * {@link DolphinParameters.MiniBatchSize} instances.
- * @param <K> type of the key of training data
+ * Provides the training data to process during epoch, for mini-batches.
+ * @param <V> type of training data
  */
-public interface TrainingDataProvider<K, V> {
-
-  /**
-   * Loads the training data.
-   */
-  void loadData();
+public interface TrainingDataProvider<V> {
 
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextBatchData()}.
@@ -36,9 +30,13 @@ public interface TrainingDataProvider<K, V> {
 
   /**
    * Provides the training data instances to compute in the next mini-batch.
-   * @return a map of training data instances, which can be an empty Map if all data has been processed.
+   * @return a collection of training data instances, which can be an empty list if all data has been processed.
    */
-  Map<K, V> getNextBatchData();
+  Collection<V> getNextBatchData();
 
-  Map<K, V> getEpochData();
+  /**
+   * Provides the training data for this epoch.
+   * @return a collection of training data instances for epoch
+   */
+  Collection<V> getEpochData();
 }

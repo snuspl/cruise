@@ -17,12 +17,16 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
+import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
 
 /**
  * {@link Trainer} class for the AddIntegerREEF application.
@@ -66,20 +70,20 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ModelAccessor<Integer, Integer, Integer> modelAccessor,
+                            final TableAccessor tableAccessor,
                             @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                            @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
+                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData)
+      throws TableNotExistException {
     this.modelAccessor = modelAccessor;
     this.delta = delta;
     this.numberOfKeys = numberOfKeys;
     this.computeTime = computeTime;
-    final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
+    final int numMiniBatches = tableAccessor.getTable(TRAINING_DATA_TABLE_ID).getLocalTablet().getNumBlocks();
 
-    // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, numMiniBatches});
