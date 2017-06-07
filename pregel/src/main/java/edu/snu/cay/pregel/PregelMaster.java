@@ -42,6 +42,10 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
 
   private final Set<String> executorIds;
 
+  /**
+   * This value is updated by the results of every worker at the end of a single superstep.
+   * And it determines whether {@link PregelMaster} starts next superstep or not.
+   */
   private boolean isAllVerticesHalt;
 
   private CountDownLatch msgCountDown;

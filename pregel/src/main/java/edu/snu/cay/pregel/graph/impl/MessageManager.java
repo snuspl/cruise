@@ -48,6 +48,9 @@ public final class MessageManager<Long, M> {
     tableFlag = true;
   }
 
+  /**
+   * It switches current message table and next message table.
+   */
   public void prepareForNextSuperstep() {
     tableFlag = !tableFlag;
   }

@@ -96,6 +96,7 @@ public final class PregelWorkerTask implements Task {
       final List<List<Vertex<Double>>> vertexMapPartitions = Lists.partition(localVertexList,
           localVertexMap.size() / numThreads);
 
+      // each worker accesses only the local tablet
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
         final Callable<Integer> computationCallable =
             new ComputationCallable<>(computation, vertexMapPartitions.get(threadIdx),

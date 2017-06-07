@@ -29,6 +29,7 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
+import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -136,19 +137,34 @@ public final class PregelDriver {
         .build();
   }
 
+  /**
+   * Build a configuration of vertex table.
+   * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex} so set {@link VertexCodec} to value codec class.
+   * Note that this configuration is for Pagerank app.
+   *
+   * @param tableId an identifier of {@link TableConfiguration}
+   */
   private TableConfiguration buildVertexTableConf(final String tableId) {
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(VertexCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
-        .setUpdateFunctionClass(AddDoubleMsgFunction.class)
+        .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
         .build();
   }
+
+  /**
+   * Build a configuration of message table.
+   * Type of value is {@link Iterable<Double>} so set {@link DoubleMsgCodec} to value codec class.
+   * Note that this configuration is for Pagerank app.
+   *
+   * @param tableId an identifier of {@link TableConfiguration}
+   */
   private TableConfiguration buildMsgTableConf(final String tableId) {
     return TableConfiguration.newBuilder()
         .setId(tableId)
@@ -158,8 +174,6 @@ public final class PregelDriver {
         .setUpdateFunctionClass(AddDoubleMsgFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
-        .setDataParserClass(NoneEdgeValueGraphParser.class)
-        .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
         .build();
   }
 }

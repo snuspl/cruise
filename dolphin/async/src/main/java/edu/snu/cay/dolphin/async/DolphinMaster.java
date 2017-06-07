@@ -78,6 +78,7 @@ public final class DolphinMaster {
   private final int numWorkers;
   private final int numServers;
   private final long serverMetricFlushPeriodMs;
+  private final String inputPath;
 
   private final Configuration workerConf;
 
@@ -152,6 +153,7 @@ public final class DolphinMaster {
     this.workerRemoteAccessConf = buildRemoteAccessConf(numWorkerSenderThreads, workerSenderQueueSize,
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
+    this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     // cent comm configuration for executors
     this.centCommContextConf = centCommConfProvider.getContextConfiguration();
@@ -188,7 +190,6 @@ public final class DolphinMaster {
     final Codec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
     final Codec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
     final DataParser dataParser = workerInjector.getInstance(DataParser.class);
-    final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     return TableConfiguration.newBuilder()
         .setId(TRAINING_DATA_TABLE_ID)
@@ -292,7 +293,7 @@ public final class DolphinMaster {
           final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
 
           modelTable.get().subscribe(workers);
-          inputTable.get();
+          inputTable.get().load(workers, inputPath).get();
 
           final List<TaskResult> taskResults = taskRunner.run(workers, servers);
           checkTaskResults(taskResults);
