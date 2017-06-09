@@ -41,6 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -53,6 +55,7 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({MasterSideMsgSender.class, WorkerSideMsgSender.class, ProgressTracker.class})
 public class WorkerStateManagerTest {
+  private static final Logger LOG = Logger.getLogger(WorkerStateManagerTest.class.getName());
   private static final String JOB_ID = WorkerStateManagerTest.class.getName();
 
   private static final String WORKER_ID_PREFIX = "worker-";
@@ -96,12 +99,12 @@ public class WorkerStateManagerTest {
       final String workerId = invocation.getArgumentAt(0, String.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
           .setType(dolphinMsgType.ReleaseMsg)
-          .setSourceId(JOB_ID)
           .build();
+
+      LOG.log(Level.INFO, "sending a release msg to {0}", workerId);
 
       final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(JOB_ID),
           identifierFactory.getNewInstance(workerId), dolphinMsg);
-
 
       final MessageHandler workerSideMsgHandler =
           workerIdToWorkerComponents.get(workerId).getThird();
@@ -133,44 +136,26 @@ public class WorkerStateManagerTest {
         new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, workerSideMsgHandler));
 
     doAnswer(invocation -> {
-      final int epochIdx = invocation.getArgumentAt(0, int.class);
+      final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-          .setType(dolphinMsgType.ProgressMsg)
-          .setProgressMsg(
-              ProgressMsg.newBuilder()
-                 .setExecutorId(workerId)
-                 .setEpochIdx(epochIdx)
-                 .build()
+          .setType(dolphinMsgType.SyncMsg)
+          .setSyncMsg(
+              SyncMsg.newBuilder()
+              .setExecutorId(workerId)
+              .setSerializedState(ByteBuffer.wrap(codec.encode(state)))
+              .build()
           )
-          .setSourceId("")
           .build();
+
+      LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
+      final MessageHandler driverSideMsgHandler = driverComponents.getThird();
 
       final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
            identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
 
-      workerSideMsgHandler.onNext(msg);
+      driverSideMsgHandler.onNext(msg);
       return null;
-    }).when(mockedWorkerSideMsgSender).sendProgressMsg(anyInt());
-
-    doAnswer(invocation -> {
-
-      final SyncMsg syncMsg = SyncMsg.newBuilder()
-          .setExecutorId(workerId)
-          .setSerializedState(ByteBuffer.wrap(codec.encode(anyObject())))
-          .build();
-
-      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-          .setType(dolphinMsgType.SyncMsg)
-          .setSyncMsg(syncMsg)
-          .build();
-
-      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
-          identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
-
-      workerSideMsgHandler.onNext(msg);
-
-      return null;
-    }).when(mockedWorkerSideMsgSender).sendSyncMsg(anyObject());
+    }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }
 
   /**
