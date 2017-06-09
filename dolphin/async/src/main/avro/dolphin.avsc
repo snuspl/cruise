@@ -42,6 +42,7 @@
   "name": "DolphinMsg",
   "fields":
   [
+    {"name": "sourceId", "type": ["null", "string"], "default": null},
     {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
         "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
     {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},

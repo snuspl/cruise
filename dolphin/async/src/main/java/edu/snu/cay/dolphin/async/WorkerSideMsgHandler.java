@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.dolphin.async.network.MessageHandler;
+import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 
@@ -26,24 +27,22 @@ import javax.inject.Inject;
  * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 @EvaluatorSide
-public final class WorkerSideMsgHandler implements EventHandler<CentCommMsg> {
-  private final WorkerGlobalBarrier workerGlobalBarrier;
+public final class WorkerSideMsgHandler implements MessageHandler {
+  private final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture;
 
   @Inject
-  private WorkerSideMsgHandler(final WorkerGlobalBarrier workerGlobalBarrier) {
-    this.workerGlobalBarrier = workerGlobalBarrier;
+  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture) {
+    this.workerGlobalBarrierFuture = workerGlobalBarrierFuture;
   }
 
   @Override
-  public synchronized void onNext(final CentCommMsg centCommMsg) {
+  public synchronized void onNext(final Message<DolphinMsg> msg) {
 
-    final byte[] data = centCommMsg.getData().array();
-
-    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(data, DolphinMsg.class);
+    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
 
     switch (dolphinMsg.getType()) {
     case ReleaseMsg:
-      workerGlobalBarrier.onReleaseMsg();
+      workerGlobalBarrierFuture.get().onReleaseMsg();
       break;
     default:
       throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());

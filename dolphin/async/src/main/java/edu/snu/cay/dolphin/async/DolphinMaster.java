@@ -15,11 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
+import edu.snu.cay.dolphin.async.network.NetworkConnection;
+import edu.snu.cay.dolphin.async.network.NetworkProvider;
 import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
@@ -78,6 +79,7 @@ public final class DolphinMaster {
   private final int numWorkers;
   private final int numServers;
   private final long serverMetricFlushPeriodMs;
+  private final String inputPath;
 
   private final Configuration workerConf;
 
@@ -87,11 +89,11 @@ public final class DolphinMaster {
   private final RemoteAccessConfiguration workerRemoteAccessConf;
   private final RemoteAccessConfiguration serverRemoteAccessConf;
 
+  private final Configuration executorContextConf;
+  private final Configuration executorServiceConf;
+
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
-
-  private final Configuration centCommContextConf;
-  private final Configuration centCommServiceConf;
 
   private final AtomicInteger workerTaskIdCount = new AtomicInteger(0);
   private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
@@ -103,7 +105,8 @@ public final class DolphinMaster {
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
-                        final CentCommConfProvider centCommConfProvider,
+                        final NetworkProvider networkProvider,
+                        final NetworkConnection<DolphinMsg> networkConnection,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
                         @Parameter(NumServerCores.class) final int numServerCores,
@@ -137,7 +140,7 @@ public final class DolphinMaster {
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
 
-    // initialize server-side configurations
+    // initialize server-side configuration
     final Configuration serverConf = confSerializer.fromString(serializedServerConf);
     final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
     this.serverResourceConf = buildResourceConf(numServerCores, serverMemSize);
@@ -152,13 +155,14 @@ public final class DolphinMaster {
     this.workerRemoteAccessConf = buildRemoteAccessConf(numWorkerSenderThreads, workerSenderQueueSize,
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
+    this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     // cent comm configuration for executors
-    this.centCommContextConf = centCommConfProvider.getContextConfiguration();
-    this.centCommServiceConf = Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(JobIdentifier.class, jobId) // use it as a client id
-            .build());
+    this.executorContextConf = networkProvider.getContextConfiguration();
+    this.executorServiceConf = networkProvider.getServiceConfiguration(jobId);
+
+    // driver id is equal to job id
+    networkConnection.setup(jobId, jobId);
 
     optimizationOrchestrator.start();
   }
@@ -188,7 +192,6 @@ public final class DolphinMaster {
     final Codec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
     final Codec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
     final DataParser dataParser = workerInjector.getInstance(DataParser.class);
-    final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     return TableConfiguration.newBuilder()
         .setId(TRAINING_DATA_TABLE_ID)
@@ -199,7 +202,6 @@ public final class DolphinMaster {
         .setNumTotalBlocks(numTotalBlocks)
         .setIsMutableTable(false)
         .setIsOrderedTable(true)
-        .setFilePath(inputPath)
         .setDataParserClass(dataParser.getClass())
         .setUserParamConf(userParamConf)
         .build();
@@ -250,8 +252,8 @@ public final class DolphinMaster {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserContextConf(centCommContextConf)
-        .setUserServiceConf(centCommServiceConf)
+        .setUserContextConf(executorContextConf)
+        .setUserServiceConf(executorServiceConf)
         .build();
   }
 
@@ -259,8 +261,8 @@ public final class DolphinMaster {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
         .setRemoteAccessConf(serverRemoteAccessConf)
-        .setUserContextConf(centCommContextConf)
-        .setUserServiceConf(centCommServiceConf)
+        .setUserContextConf(executorContextConf)
+        .setUserServiceConf(executorServiceConf)
         .build();
   }
 
@@ -293,7 +295,7 @@ public final class DolphinMaster {
           final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
 
           modelTable.get().subscribe(workers);
-          inputTable.get();
+          inputTable.get().load(workers, inputPath).get();
 
           final List<TaskResult> taskResults = taskRunner.run(workers, servers);
           checkTaskResults(taskResults);

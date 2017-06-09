@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.dolphin.async.network.MessageHandler;
+import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 
@@ -26,31 +27,27 @@ import javax.inject.Inject;
  * A master-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 @DriverSide
-public final class MasterSideMsgHandler implements EventHandler<CentCommMsg> {
-  private final WorkerStateManager workerStateManager;
-  private final ProgressTracker progressTracker;
+public final class MasterSideMsgHandler implements MessageHandler {
+  private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
+  private final InjectionFuture<ProgressTracker> progressTrackerFuture;
 
   @Inject
-  private MasterSideMsgHandler(final WorkerStateManager workerStateManager,
-                               final ProgressTracker progressTracker) {
-    this.workerStateManager = workerStateManager;
-    this.progressTracker = progressTracker;
+  private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
+                               final InjectionFuture<ProgressTracker> progressTrackerFuture) {
+    this.workerStateManagerFuture = workerStateManagerFuture;
+    this.progressTrackerFuture = progressTrackerFuture;
   }
 
   @Override
-  public synchronized void onNext(final CentCommMsg centCommMsg) {
-
-    final byte[] data = centCommMsg.getData().array();
-
-    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(data, DolphinMsg.class);
-
+  public void onNext(final Message<DolphinMsg> msg) {
+    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
-      progressTracker.onProgressMsg(dolphinMsg.getProgressMsg());
+      progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
       break;
     case SyncMsg:
-      final String networkId = centCommMsg.getSourceId().toString();
-      workerStateManager.onSyncMsg(networkId, dolphinMsg.getSyncMsg());
+      final String networkId = dolphinMsg.getSourceId().toString();
+      workerStateManagerFuture.get().onSyncMsg(networkId, dolphinMsg.getSyncMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());

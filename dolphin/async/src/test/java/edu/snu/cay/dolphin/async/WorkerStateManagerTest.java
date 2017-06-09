@@ -15,18 +15,20 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
-import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.io.network.impl.NSMessage;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,7 +51,7 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class, ProgressTracker.class})
+@PrepareForTest({MasterSideMsgSender.class, WorkerSideMsgSender.class, ProgressTracker.class})
 public class WorkerStateManagerTest {
   private static final String JOB_ID = WorkerStateManagerTest.class.getName();
 
@@ -60,9 +62,9 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, MasterSideCentCommMsgSender, EventHandler<CentCommMsg>> driverComponents;
+  private Tuple3<WorkerStateManager, MasterSideMsgSender, MessageHandler> driverComponents;
 
-  private Map<String, Tuple3<WorkerGlobalBarrier, SlaveSideCentCommMsgSender, EventHandler<CentCommMsg>>>
+  private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, MessageHandler>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -79,32 +81,34 @@ public class WorkerStateManagerTest {
     injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
 
-    final MasterSideCentCommMsgSender mockedMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
-    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockedMasterSideCentCommMsgSender);
+    final MasterSideMsgSender mockedMasterSideMsgSender = mock(MasterSideMsgSender.class);
+    injector.bindVolatileInstance(MasterSideMsgSender.class, mockedMasterSideMsgSender);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
     injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
-    final EventHandler<CentCommMsg> driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
+    final MessageHandler driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
+    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
-    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
+    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideMsgSender, driverSideMsgHandler);
 
     doAnswer(invocation -> {
-      final byte[] data = invocation.getArgumentAt(2, byte[].class);
-
-      final CentCommMsg msg = CentCommMsg.newBuilder()
-          .setSourceId("")
-          .setClientClassName("")
-          .setData(ByteBuffer.wrap(data))
+      final String workerId = invocation.getArgumentAt(0, String.class);
+      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+          .setType(dolphinMsgType.ReleaseMsg)
+          .setSourceId(JOB_ID)
           .build();
 
-      final String workerId = invocation.getArgumentAt(1, String.class);
-      final EventHandler<CentCommMsg> workerSideMsgHandler =
+      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(JOB_ID),
+          identifierFactory.getNewInstance(workerId), dolphinMsg);
+
+
+      final MessageHandler workerSideMsgHandler =
           workerIdToWorkerComponents.get(workerId).getThird();
 
       workerSideMsgHandler.onNext(msg);
       return null;
-    }).when(mockedMasterSideCentCommMsgSender).send(anyString(), anyString(), any(byte[].class));
+    }).when(mockedMasterSideMsgSender).sendReleaseMsg(anyString());
   }
 
   /**
@@ -112,34 +116,61 @@ public class WorkerStateManagerTest {
    * This method should be called after {@link #setupDriver(int)}.
    * @param workerId a worker id
    */
-  private void setupWorker(final String workerId) throws InjectionException {
+  private void setupWorker(final String workerId) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(ExecutorIdentifier.class, workerId);
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
 
-    final SlaveSideCentCommMsgSender mockedSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
-    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockedSlaveSideCentCommMsgSender);
+    final WorkerSideMsgSender mockedWorkerSideMsgSender = mock(WorkerSideMsgSender.class);
+    injector.bindVolatileInstance(WorkerSideMsgSender.class, mockedWorkerSideMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final EventHandler<CentCommMsg> workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
+    final MessageHandler workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
+    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
+    final SerializableCodec<WorkerGlobalBarrier.State> codec = new SerializableCodec<>();
 
     workerIdToWorkerComponents.put(workerId,
-        new Tuple3<>(workerGlobalBarrier, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));
+        new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, workerSideMsgHandler));
 
     doAnswer(invocation -> {
-      final byte[] data = invocation.getArgumentAt(1, byte[].class);
-
-      final CentCommMsg msg = CentCommMsg.newBuilder()
-          .setSourceId(workerId)
-          .setClientClassName("")
-          .setData(ByteBuffer.wrap(data))
+      final int epochIdx = invocation.getArgumentAt(0, int.class);
+      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+          .setType(dolphinMsgType.ProgressMsg)
+          .setProgressMsg(
+              ProgressMsg.newBuilder()
+                 .setExecutorId(workerId)
+                 .setEpochIdx(epochIdx)
+                 .build()
+          )
+          .setSourceId("")
           .build();
 
-      final EventHandler<CentCommMsg> driverSideMsgHandler = driverComponents.getThird();
+      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
+           identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
 
-      driverSideMsgHandler.onNext(msg);
+      workerSideMsgHandler.onNext(msg);
       return null;
-    }).when(mockedSlaveSideCentCommMsgSender).send(anyString(), any(byte[].class));
+    }).when(mockedWorkerSideMsgSender).sendProgressMsg(anyInt());
+
+    doAnswer(invocation -> {
+
+      final SyncMsg syncMsg = SyncMsg.newBuilder()
+          .setExecutorId(workerId)
+          .setSerializedState(ByteBuffer.wrap(codec.encode(anyObject())))
+          .build();
+
+      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+          .setType(dolphinMsgType.SyncMsg)
+          .setSyncMsg(syncMsg)
+          .build();
+
+      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
+          identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
+
+      workerSideMsgHandler.onNext(msg);
+
+      return null;
+    }).when(mockedWorkerSideMsgSender).sendSyncMsg(anyObject());
   }
 
   /**
@@ -196,7 +227,11 @@ public class WorkerStateManagerTest {
     @Override
     public void run() {
       final WorkerGlobalBarrier workerGlobalBarrier = workerIdToWorkerComponents.get(workerId).getFirst();
-      workerGlobalBarrier.await();
+      try {
+        workerGlobalBarrier.await();
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
       latch.countDown();
     }
   }
