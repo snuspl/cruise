@@ -81,11 +81,9 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
     if (connectionFactory == null) {
       throw new NotConnectedException();
     }
-    msg.setSourceId(connectionFactory.getLocalEndPointId().toString());
     final Connection<DolphinMsg> connection = connectionFactory.newConnection(
         identifierFactory.getNewInstance(destId));
     connection.open();
     connection.write(msg);
-    // TODO #31: check connection leak. Currently we don't explicitly close the connection.
   }
 }

@@ -46,7 +46,7 @@ public final class MasterSideMsgHandler implements MessageHandler {
       progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
       break;
     case SyncMsg:
-      final String networkId = dolphinMsg.getSourceId().toString();
+      final String networkId = msg.getSrcId().toString();
       workerStateManagerFuture.get().onSyncMsg(networkId, dolphinMsg.getSyncMsg());
       break;
     default:
