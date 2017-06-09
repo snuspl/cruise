@@ -63,12 +63,12 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
   }
 
   @Override
-  public void setup(final String jobId, final String endPointId) {
+  public void setup(final String connectionId, final String endPointId) {
     if (connectionFactory != null) {
       throw new AlreadyConnectedException(connectionFactoryId, localEndPointId);
     }
 
-    connectionFactoryId = identifierFactory.getNewInstance(jobId);
+    connectionFactoryId = identifierFactory.getNewInstance(connectionId);
     localEndPointId = identifierFactory.getNewInstance(endPointId);
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryId, codec,
         msgHandler, networkLinkListener, localEndPointId);

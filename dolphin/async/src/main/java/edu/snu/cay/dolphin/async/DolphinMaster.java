@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
-import edu.snu.cay.dolphin.async.network.NetworkProvider;
+import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
@@ -105,7 +105,7 @@ public final class DolphinMaster {
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
-                        final NetworkProvider networkProvider,
+                        final NetworkConfProvider networkConfProvider,
                         final NetworkConnection<DolphinMsg> networkConnection,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
@@ -158,10 +158,10 @@ public final class DolphinMaster {
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     // cent comm configuration for executors
-    this.executorContextConf = networkProvider.getContextConfiguration();
-    this.executorServiceConf = networkProvider.getServiceConfiguration(jobId);
+    this.executorContextConf = networkConfProvider.getContextConfiguration();
+    this.executorServiceConf = networkConfProvider.getServiceConfiguration(jobId);
 
-    // driver id is equal to job id
+    // register master with job id
     networkConnection.setup(jobId, jobId);
 
     optimizationOrchestrator.start();

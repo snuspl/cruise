@@ -26,10 +26,10 @@ import javax.inject.Inject;
 /**
  * Created by cmslab on 6/8/17.
  */
-public final class NetworkProvider {
+public final class NetworkConfProvider {
 
   @Inject
-  private NetworkProvider() {
+  private NetworkConfProvider() {
   }
 
   public Configuration getContextConfiguration() {
