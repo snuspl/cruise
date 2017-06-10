@@ -72,8 +72,6 @@ public final class DolphinMaster {
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
-
-    // initialize worker-side configuration
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
 
     optimizationOrchestrator.start();
@@ -114,7 +112,7 @@ public final class DolphinMaster {
   /**
    * Start running a job with given executors and tables.
    * It returns after checking the result of tasks.
-   * TODO #1175: with multi-jobs, each dolphin master will use given tables
+   * TODO #1175: In multi-job mode, each dolphin master will use given tables
    */
   public void start(final List<AllocatedExecutor> servers, final List<AllocatedExecutor> workers,
                     final AllocatedTable modelTable, final AllocatedTable trainingDataTable) {
