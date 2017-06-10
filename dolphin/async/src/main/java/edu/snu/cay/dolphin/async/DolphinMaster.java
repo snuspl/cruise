@@ -90,6 +90,7 @@ public final class DolphinMaster {
 
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
+  private final String inputPath;
 
   private final Configuration centCommContextConf;
   private final Configuration centCommServiceConf;
