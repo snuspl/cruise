@@ -293,7 +293,7 @@ public final class DolphinMaster {
           final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
 
           modelTable.get().subscribe(workers);
-          inputTable.get().load(workers, inputPath);
+          inputTable.get().load(workers, inputPath).get();
 
           final List<TaskResult> taskResults = taskRunner.run(workers, servers);
           checkTaskResults(taskResults);
