@@ -78,7 +78,6 @@ public final class DolphinMaster {
   private final int numWorkers;
   private final int numServers;
   private final long serverMetricFlushPeriodMs;
-  private final String inputPath;
 
   private final Configuration workerConf;
 
