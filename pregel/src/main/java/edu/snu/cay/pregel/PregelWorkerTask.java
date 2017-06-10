@@ -85,8 +85,7 @@ public final class PregelWorkerTask implements Task {
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
-
-      // TODO #00: Support generic type of computation for other apps than page-rank
+      // TODO #1177: Support generic type of computation for other apps than page-rank
       final Computation computation =
           new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);

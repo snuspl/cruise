@@ -58,6 +58,8 @@ public final class PregelDriver {
   public static final String MSG_TABLE_2_ID = "Msg_table_2";
 
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
+
+  // TODO #1178: expose more commandline options
   static final int NUM_EXECUTORS = 3;
 
   private final ETMaster etMaster;
