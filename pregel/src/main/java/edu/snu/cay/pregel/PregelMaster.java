@@ -20,6 +20,7 @@ import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -27,6 +28,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,8 +37,9 @@ import java.util.logging.Logger;
  * A Pregel master that communicates with workers using CentComm services.
  * It synchronizes all workers in a single superstep by checking messages that all workers have sent.
  */
+@Unit
 @DriverSide
-final class PregelMaster implements EventHandler<CentCommMsg> {
+final class PregelMaster {
   private static final Logger LOG = Logger.getLogger(PregelMaster.class.getName());
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
@@ -46,9 +50,9 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
    * This value is updated by the results of every worker at the end of a single superstep.
    * And it determines whether {@link PregelMaster} starts next superstep or not.
    */
-  private boolean isAllVerticesHalt;
+  private volatile boolean isAllVerticesHalt;
 
-  private CountDownLatch msgCountDown;
+  private volatile CountDownLatch msgCountDown;
 
   @Inject
   private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
@@ -56,44 +60,15 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
     this.msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
     isAllVerticesHalt = false;
-    initThread();
+    initControlThread();
   }
 
-  private void initThread() {
-    LOG.log(Level.INFO, "Start synchronization of executors...");
-    final Thread msgManagerThread = new Thread(new MasterMsgManagerThread());
-    msgManagerThread.start();
-  }
+  private void initControlThread() {
+    LOG.log(Level.INFO, "Start a thread that controls workers...");
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-  /**
-   * CentComm message handling logic.
-   * @param message received CentComm message
-   * @throws RuntimeException if the received message is incorrect
-   */
-  @Override
-  public void onNext(final CentCommMsg message) {
-
-    final String sourceId = message.getSourceId().toString();
-
-    LOG.log(Level.INFO, "Received CentComm message {0} from {1}",
-        new Object[]{message, sourceId});
-
-    if (!executorIds.contains(sourceId)) {
-      executorIds.add(sourceId);
-    }
-
-    final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
-
-    synchronized (this) {
-      isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
-    }
-    msgCountDown.countDown();
-  }
-
-  private class MasterMsgManagerThread implements Runnable {
-
-    @Override
-    public void run() {
+    // submit a runnable that controls workers' supersteps.
+    executor.submit((Runnable) () -> {
       while (true) {
         try {
           msgCountDown.await();
@@ -123,7 +98,31 @@ final class PregelMaster implements EventHandler<CentCommMsg> {
         isAllVerticesHalt = false;
         msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
+    });
+  }
 
+  /**
+   * Handles {@link SuperstepResultMsg} from workers.
+   */
+  final class MasterMsgHandler implements EventHandler<CentCommMsg> {
+
+    @Override
+    public void onNext(final CentCommMsg message) {
+
+      final String sourceId = message.getSourceId().toString();
+
+      LOG.log(Level.INFO, "Received CentComm message {0} from {1}",
+          new Object[]{message, sourceId});
+
+      if (!executorIds.contains(sourceId)) {
+        executorIds.add(sourceId);
+      }
+
+      final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
+
+      isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
+
+      msgCountDown.countDown();
     }
   }
 }

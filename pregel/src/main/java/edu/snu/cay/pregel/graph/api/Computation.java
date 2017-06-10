@@ -20,13 +20,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * Interface for an application for computation.
- *
- * During the superstep there can be several instance of this interface,
- * each doing computation on one partition of the graph's vertices.
- *
- * Objects of this interface only live for a single superstep.
- *
+ * Interface for an application for computation for a superstep.
  * @param <V> vertex value.
  */
 public interface Computation<V, M> {
@@ -47,24 +41,25 @@ public interface Computation<V, M> {
   int getSuperstep();
 
   /**
-   * Send a message to a vertex id.
+   * Send a message to a vertex with id {@code id}.
    *
    * @param id vertex id to send the message to
-   * @param message message data to send
+   * @param message message to send
    */
   Future<?> sendMessage(Long id, M message);
 
   /**
-   * Send a messages to all adjacent vertices.
+   * Send a messages to all adjacent vertices of {@code vertex}.
    *
    * @param vertex vertex
-   * @param message message data to send
+   * @param message message to send
    */
   List<Future<?>> sendMessagesToAdjacents(Vertex<V> vertex, M message);
 
   /**
-   * Sync all non-blocking commands in a single superstep.
+   * Flushes out all messages sent by {@link #sendMessage} and {@link #sendMessagesToAdjacents}.
+   * It returns after receiving ack messages.
    */
-  void sync() throws ExecutionException, InterruptedException;
+  void flushAllMessages() throws ExecutionException, InterruptedException;
 }
 

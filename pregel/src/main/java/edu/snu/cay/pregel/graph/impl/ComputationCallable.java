@@ -19,7 +19,6 @@ import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -58,8 +57,9 @@ public class ComputationCallable<V, M> implements Callable<Integer> {
 
     verticesPartition.forEach(vertex -> {
       try {
-        computation.compute(vertex, currMessageTable.get(vertex.getId()).get());
-        currMessageTable.put(vertex.getId(), new ArrayList<>()).get();
+        final List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
+        computation.compute(vertex, msgsForVertex);
+
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }

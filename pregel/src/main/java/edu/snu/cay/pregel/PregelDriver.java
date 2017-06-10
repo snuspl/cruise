@@ -16,7 +16,7 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.pregel.common.AddDoubleMsgFunction;
+import edu.snu.cay.pregel.common.AddDoubleUpdateFunction;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
 import edu.snu.cay.pregel.common.VertexCodec;
@@ -45,15 +45,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
 /**
  * Driver code for Pregel applications.
  */
 @Unit
 public final class PregelDriver {
-
-  private static final Logger LOG = Logger.getLogger(PregelDriver.class.getName());
   private static final String WORKER_PREFIX = "Worker-";
 
   public static final String VERTEX_TABLE_ID = "Vertex_table";
@@ -72,7 +69,7 @@ public final class PregelDriver {
   private PregelDriver(final ETMaster etMaster,
                        final CentCommConfProvider centCommConfProvider,
                        final PregelMaster pregelMaster,
-                       @Parameter(PregelLauncher.TableInputPath.class) final String tableInputPath) {
+                       @Parameter(PregelLauncher.InputPath.class) final String tableInputPath) {
     this.etMaster = etMaster;
     this.tableInputPath = tableInputPath;
     this.executorConf = ExecutorConfiguration.newBuilder()
@@ -106,10 +103,8 @@ public final class PregelDriver {
 
       Executors.newSingleThreadExecutor().submit(() -> {
         try {
-          final AllocatedTable msgTable1 = etMaster.createTable(
-              buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
-          final AllocatedTable msgTable2 = etMaster.createTable(
-              buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
+          etMaster.createTable(buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
+          etMaster.createTable(buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
           final AllocatedTable vertexTable = etMaster.createTable(
               buildVertexTableConf(VERTEX_TABLE_ID), executors).get();
 
@@ -171,7 +166,7 @@ public final class PregelDriver {
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(DoubleMsgCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
-        .setUpdateFunctionClass(AddDoubleMsgFunction.class)
+        .setUpdateFunctionClass(AddDoubleUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .build();

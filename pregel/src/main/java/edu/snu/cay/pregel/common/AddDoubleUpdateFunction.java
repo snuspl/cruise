@@ -24,10 +24,10 @@ import java.util.List;
 /**
  * A simple UpdateFunction that accumulates Doubles.
  */
-public final class AddDoubleMsgFunction implements UpdateFunction<Object, List<Double>, Double> {
+public final class AddDoubleUpdateFunction implements UpdateFunction<Object, List<Double>, Double> {
 
   @Inject
-  private AddDoubleMsgFunction() {
+  private AddDoubleUpdateFunction() {
 
   }
 

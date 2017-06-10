@@ -25,15 +25,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
 public class PagerankComputation implements Computation<Double, Double> {
-
-  private static final Logger LOG = Logger.getLogger(PagerankComputation.class.getName());
-
   /**
    * Damping factor of the pagerank algorithm.
    */
@@ -53,7 +49,7 @@ public class PagerankComputation implements Computation<Double, Double> {
 
   /**
    * All table commands are added the list for sync the non-blocking methods.
-   * At the finish of a single superstep, worker task calls {@link #sync()} and gets all futures in it.
+   * At the finish of a single superstep, worker task calls {@link #flushAllMessages()} and gets all futures in it.
    * Then clear it.
    */
   private final List<Future<?>> msgFutureList = Collections.synchronizedList(Lists.newArrayList());
@@ -107,7 +103,7 @@ public class PagerankComputation implements Computation<Double, Double> {
   }
 
   @Override
-  public void sync() throws ExecutionException, InterruptedException {
+  public void flushAllMessages() throws ExecutionException, InterruptedException {
     for (final Future<?> msgFuture : msgFutureList) {
       msgFuture.get();
     }

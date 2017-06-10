@@ -28,20 +28,20 @@ import java.util.logging.Logger;
 
 /**
  * A component for an executor to synchronize with other executors.
- * By calling {@link #waitForTryNextSuperstepMsg(int)}, it sends a message to {@link PregelMaster} and waits a response.
+ * By calling {@link #waitForTryNextSuperstepMsg}, it sends a message to {@link PregelMaster} and waits a response.
+ * Master will decide whether the worker continues or not.
  */
 @EvaluatorSide
 final class WorkerMsgManager implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(WorkerMsgManager.class.getName());
 
   private final SlaveSideCentCommMsgSender centCommMsgSender;
-  private boolean goNextSuperstep = true;
-  private CountDownLatch latch;
+  private volatile boolean goNextSuperstep;
+  private volatile CountDownLatch latch;
 
   @Inject
   private WorkerMsgManager(final SlaveSideCentCommMsgSender centCommMsgSender) {
     this.centCommMsgSender = centCommMsgSender;
-    this.latch = new CountDownLatch(1);
   }
 
   @Override
@@ -64,6 +64,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
     }
     latch.countDown();
   }
+
   /**
    * Synchronize with other executors.
    * It sends a message to master and waits a response message.
@@ -72,6 +73,11 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
    */
   boolean waitForTryNextSuperstepMsg(final int numActiveVertices) {
 
+    // 1. reset state
+    this.goNextSuperstep = false;
+    this.latch = new CountDownLatch(1);
+
+    // 2. send a message
     final boolean isAllVerticesHalt = numActiveVertices == 0;
     final SuperstepResultMsg resultMsg = SuperstepResultMsg.newBuilder()
         .setIsAllVerticesHalt(isAllVerticesHalt)
@@ -79,14 +85,13 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
 
     centCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, AvroUtils.toBytes(resultMsg, SuperstepResultMsg.class));
 
+    // 3. wait for a response
     try {
       latch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
 
-    // reset for next waitForTryNextSuperstepMsg
-    latch = new CountDownLatch(1);
     return goNextSuperstep;
   }
 }
