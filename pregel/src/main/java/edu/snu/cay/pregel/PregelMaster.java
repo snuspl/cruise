@@ -52,12 +52,12 @@ final class PregelMaster {
    */
   private volatile boolean isAllVerticesHalt;
 
-  private volatile CountDownLatch msgCountDown;
+  private volatile CountDownLatch msgCountDownLatch;
 
   @Inject
   private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
-    this.msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
+    this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
     isAllVerticesHalt = false;
     initControlThread();
@@ -71,7 +71,7 @@ final class PregelMaster {
     executor.submit((Runnable) () -> {
       while (true) {
         try {
-          msgCountDown.await();
+          msgCountDownLatch.await();
         } catch (final InterruptedException e) {
           throw new RuntimeException("Unexpected exception", e);
         }
@@ -96,7 +96,7 @@ final class PregelMaster {
 
         // reset for next superstep
         isAllVerticesHalt = false;
-        msgCountDown = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
+        msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
     });
   }
@@ -122,7 +122,7 @@ final class PregelMaster {
 
       isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
 
-      msgCountDown.countDown();
+      msgCountDownLatch.countDown();
     }
   }
 }

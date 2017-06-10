@@ -36,8 +36,14 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(WorkerMsgManager.class.getName());
 
   private final SlaveSideCentCommMsgSender centCommMsgSender;
+
+  /**
+   * This value is updated by the response from master at the end of each superstep.
+   * If it's true worker stops running supersteps.
+   */
   private volatile boolean goNextSuperstep;
-  private volatile CountDownLatch latch;
+
+  private volatile CountDownLatch syncLatch;
 
   @Inject
   private WorkerMsgManager(final SlaveSideCentCommMsgSender centCommMsgSender) {
@@ -62,7 +68,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
     default:
       throw new RuntimeException("unexpected type");
     }
-    latch.countDown();
+    syncLatch.countDown();
   }
 
   /**
@@ -75,7 +81,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
 
     // 1. reset state
     this.goNextSuperstep = false;
-    this.latch = new CountDownLatch(1);
+    this.syncLatch = new CountDownLatch(1);
 
     // 2. send a message
     final boolean isAllVerticesHalt = numActiveVertices == 0;
@@ -87,7 +93,7 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
 
     // 3. wait for a response
     try {
-      latch.await();
+      syncLatch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
