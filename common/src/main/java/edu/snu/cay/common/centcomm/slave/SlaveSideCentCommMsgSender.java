@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 
 /**
  * Slave of CentComm Service.
- * Sends messages to CentComm comm.
+ * Sends messages to CentComm master.
  */
 @EvaluatorSide
 public final class SlaveSideCentCommMsgSender {
@@ -44,7 +44,7 @@ public final class SlaveSideCentCommMsgSender {
   private final InjectionFuture<CentCommNetworkSetup> centCommNetworkSetup;
 
   /**
-   * An identifier of the comm.
+   * An identifier of the master.
    */
   private final Identifier masterId;
 
@@ -57,7 +57,7 @@ public final class SlaveSideCentCommMsgSender {
   }
 
   /**
-   * Sends message to CentComm comm. The user should specify class name of the CentComm service client.
+   * Sends message to CentComm master. The user should specify class name of the CentComm service client.
    * @param clientClassName class name of the CentComm service client
    * @param data data which is encoded as a byte array
    */

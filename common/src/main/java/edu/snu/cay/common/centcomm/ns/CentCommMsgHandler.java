@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * Handler for CentCommMsg, which can be used for both comm and slaves.
+ * Handler for CentCommMsg, which can be used for both master and slaves.
  * Wraps clients' CentCommMsg handlers and routes message to right client handler.
  * Parse strings in {@link CentCommClientInfo} to route CentCommMsg to right handler.
  */
@@ -44,10 +44,10 @@ public final class CentCommMsgHandler implements EventHandler<Message<CentCommMs
 
   /**
    * Constructor for CentComm message handler.
-   * If this class is on the CentComm comm, {@code innerHandlers} are comm-side message handlers.
+   * If this class is on the CentComm master, {@code innerHandlers} are master-side message handlers.
    * Otherwise, {@code innerHandlers} are slave-side message handlers.
    * @param clientInfo a set of strings which contains class names of each CentComm client and handlers
-   * @param innerHandlers client message handlers, can be both comm-side and slave-side handlers
+   * @param innerHandlers client message handlers, can be both master-side and slave-side handlers
    */
   @Inject
   private CentCommMsgHandler(@Parameter(CentCommClientInfo.class) final Set<String> clientInfo,

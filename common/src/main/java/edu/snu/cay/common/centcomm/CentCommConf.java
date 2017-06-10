@@ -39,7 +39,7 @@ import java.util.Map;
 /**
  * Configuration class for CeneComm Service.
  * Provides configuration for REEF driver.
- * Current implementation assumes that the driver is the comm of Cent Comm Service.
+ * Current implementation assumes that the driver is the master of Cent Comm Service.
  * A client of CentComm Service is a user of this service, which is different from REEF client.
  */
 @ClientSide
@@ -115,7 +115,7 @@ public final class CentCommConf {
     /**
      * Add a new client of CentComm Service.
      * @param clientName name of CentComm Service client, used to identify messages from different clients
-     * @param masterSideMsgHandler message handler for CentComm comm
+     * @param masterSideMsgHandler message handler for CentComm master
      * @param slaveSideMsgHandler message handler for CentComm slave
      * @return Builder
      */

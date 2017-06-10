@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * This receives CentComm messages, since driver is an CentComm comm.
+ * This receives CentComm messages, since driver is an CentComm master.
  * Provides a way to check whether all messages have arrived or not via {@code validate()} method.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */

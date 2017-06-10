@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 /**
  * The CentComm slave task that runs on all Workers.
- * Sends a CentComm message to CentComm comm(driver) and waits for a message from the driver.
+ * Sends a CentComm message to CentComm master(driver) and waits for a message from the driver.
  */
 @TaskSide
 public final class CentCommSlaveTask implements Task {
