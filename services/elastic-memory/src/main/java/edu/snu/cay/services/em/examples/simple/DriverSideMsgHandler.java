@@ -35,7 +35,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver-side message handler that receives CentComm messages as a CentComm comm.
+ * Driver-side message handler that receives CentComm messages as a CentComm master.
  * In default, it synchronizes all tasks by checking all evaluators have sent the messages.
  * To make this happen, it sends response messages to all evaluators when messages from all evaluators arrive.
  * Also it runs Move between two evaluators randomly chosen when all evaluators say they are READY

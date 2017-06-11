@@ -33,7 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver-side message handler that receives CentComm messages as an CentComm comm.
+ * Driver-side message handler that receives CentComm messages as an CentComm master.
  * Provides a way to synchronize all worker tasks by checking all workers have sent the messages.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
