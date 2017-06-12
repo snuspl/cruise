@@ -25,7 +25,7 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * Created by cmslab on 6/12/17.
+ * A driver-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 public final class DriverSideMsgHandler implements MessageHandler {
 

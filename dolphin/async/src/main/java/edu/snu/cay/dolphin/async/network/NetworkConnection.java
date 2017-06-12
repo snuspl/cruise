@@ -26,6 +26,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  */
 @DefaultImplementation(NetworkConnectionImpl.class)
 public interface NetworkConnection<T> {
+
   /**
    * Establish a connection to Dolphin network layer.
    * @throws AlreadyConnectedException when a network connection already exists

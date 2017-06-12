@@ -24,7 +24,8 @@ import org.apache.reef.tang.Tang;
 import javax.inject.Inject;
 
 /**
- * Created by cmslab on 6/8/17.
+ * Configuration provider for network service of Dolphin.
+ * Provides methods for getting driver, context and service configurations.
  */
 public final class NetworkConfProvider {
 
@@ -32,18 +33,27 @@ public final class NetworkConfProvider {
   private NetworkConfProvider() {
   }
 
+  /**
+   * Returns {@link MessageHandler} related configuration to be used in driver.
+   */
   public static Configuration getDriverConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MessageHandler.class, DriverSideMsgHandler.class)
         .build();
   }
 
+  /**
+   * Returns {@link MessageHandler} related context configuration to be used in executor.
+   */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, ContextStartHandler.class)
         .build();
   }
 
+  /**
+   * Returns {@link MessageHandler} related service configuration to be used in executor.
+   */
   public Configuration getServiceConfiguration(final String jobId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobIdentifier.class, jobId)

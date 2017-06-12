@@ -80,7 +80,6 @@ public final class DolphinMaster {
   private final int numWorkers;
   private final int numServers;
   private final long serverMetricFlushPeriodMs;
-  private final String inputPath;
 
   private final Configuration workerConf;
 
@@ -162,7 +161,7 @@ public final class DolphinMaster {
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
-    // cent comm configuration for executors
+    // network configuration for executors
     this.executorContextConf = networkConfProvider.getContextConfiguration();
     this.executorServiceConf = networkConfProvider.getServiceConfiguration(jobId);
 

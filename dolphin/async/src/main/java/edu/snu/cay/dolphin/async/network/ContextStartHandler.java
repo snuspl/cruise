@@ -29,7 +29,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 /**
- * Handles initial setup of executor.
+ * Handles initial network setup of a executor.
  */
 @Private
 @EvaluatorSide
