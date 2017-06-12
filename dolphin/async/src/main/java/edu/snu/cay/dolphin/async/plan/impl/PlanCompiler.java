@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.impl;
 
+import edu.snu.cay.dolphin.async.DolphinDriver;
 import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
@@ -43,10 +44,13 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
 public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
 
+  private final InjectionFuture<DolphinDriver> dolphinDriverFuture;
   private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
 
   @Inject
-  private PlanCompiler(final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+  private PlanCompiler(final InjectionFuture<DolphinDriver> dolphinDriverFuture,
+                       final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+    this.dolphinDriverFuture = dolphinDriverFuture;
     this.dolphinMasterFuture = dolphinMasterFuture;
   }
 
@@ -346,7 +350,7 @@ public final class PlanCompiler {
       final Collection<String> evalsToAdd = entry.getValue();
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
-          dolphinMasterFuture.get().getWorkerExecutorConf() : dolphinMasterFuture.get().getServerExecutorConf();
+          dolphinDriverFuture.get().getWorkerExecutorConf() : dolphinDriverFuture.get().getServerExecutorConf();
       final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
 
       for (final String evalToAdd : evalsToAdd) {
