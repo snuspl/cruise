@@ -19,8 +19,7 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
-import edu.snu.cay.dolphin.async.network.DriverSideMsgHandler;
-import edu.snu.cay.dolphin.async.network.MessageHandler;
+import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
@@ -315,9 +314,7 @@ public final class ETDolphinLauncher {
         .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
         .build();
 
-    final Configuration driverNetworkConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageHandler.class, DriverSideMsgHandler.class)
-        .build();
+    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 

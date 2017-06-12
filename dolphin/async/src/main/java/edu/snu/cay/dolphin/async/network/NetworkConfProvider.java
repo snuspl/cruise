@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.network;
 
+import edu.snu.cay.dolphin.async.MasterSideMsgHandler;
 import edu.snu.cay.dolphin.async.WorkerSideMsgHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
@@ -26,10 +27,16 @@ import javax.inject.Inject;
 /**
  * Created by cmslab on 6/8/17.
  */
-public final class NetworkProvider {
+public final class NetworkConfProvider {
 
   @Inject
-  private NetworkProvider() {
+  private NetworkConfProvider() {
+  }
+
+  public static Configuration getDriverConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MessageHandler.class, DriverSideMsgHandler.class)
+        .build();
   }
 
   public Configuration getContextConfiguration() {
