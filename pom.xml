@@ -68,6 +68,7 @@
     <module>services/evaluator-manager</module>
     <module>utils</module>
     <module>common</module>
+    <module>pregel</module>
   </modules>
 
   <dependencyManagement>
