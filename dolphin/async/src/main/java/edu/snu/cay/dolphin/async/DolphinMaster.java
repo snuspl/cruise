@@ -95,6 +95,7 @@ public final class DolphinMaster {
 
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
+  private final String inputPath;
 
   private final AtomicInteger workerTaskIdCount = new AtomicInteger(0);
   private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
