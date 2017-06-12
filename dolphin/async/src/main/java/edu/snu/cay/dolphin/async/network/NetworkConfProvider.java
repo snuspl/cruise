@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.network;
 
-import edu.snu.cay.dolphin.async.MasterSideMsgHandler;
 import edu.snu.cay.dolphin.async.WorkerSideMsgHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;

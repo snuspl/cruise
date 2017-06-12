@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.network.DriverSideMsgHandler;
 import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.ThreadUtils;
@@ -29,7 +28,6 @@ import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,7 +65,7 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, MasterSideMsgSender, EventHandler<DolphinMsg>> driverComponents;
+  private Tuple3<WorkerStateManager, MasterSideMsgSender, MasterSideMsgHandler> driverComponents;
 
   private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, MessageHandler>>
       workerIdToWorkerComponents = new HashMap<>();
@@ -92,7 +90,7 @@ public class WorkerStateManagerTest {
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
     injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
-    final EventHandler<DolphinMsg> masterSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
+    final MasterSideMsgHandler masterSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
     final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
     driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideMsgSender, masterSideMsgHandler);
@@ -131,8 +129,8 @@ public class WorkerStateManagerTest {
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
     final MessageHandler workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
-    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
     final SerializableCodec<WorkerGlobalBarrier.State> codec = new SerializableCodec<>();
+    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
     workerIdToWorkerComponents.put(workerId,
         new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, workerSideMsgHandler));
@@ -150,12 +148,11 @@ public class WorkerStateManagerTest {
           .build();
 
       LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
-      final MessageHandler driverSideMsgHandler = driverComponents.getThird();
+      final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getThird();
 
       final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
-           identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
-
-      driverSideMsgHandler.onNext(msg);
+          identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
+      masterSideMsgHandler.onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
       return null;
     }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }

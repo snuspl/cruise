@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
@@ -25,7 +24,7 @@ import javax.inject.Inject;
  * A master-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 @DriverSide
-public final class MasterSideMsgHandler implements EventHandler<DolphinMsg> {
+public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
 
@@ -36,16 +35,13 @@ public final class MasterSideMsgHandler implements EventHandler<DolphinMsg> {
     this.progressTrackerFuture = progressTrackerFuture;
   }
 
-  @Override
-  public void onNext(final DolphinMsg dolphinMsg) {
-
+  public void onDolphinMsg(final String srcId, final DolphinMsg dolphinMsg) {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
       progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
       break;
     case SyncMsg:
-      final String networkId = dolphinMsg.getSourceId().toString();
-      workerStateManagerFuture.get().onSyncMsg(networkId, dolphinMsg.getSyncMsg());
+      workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());
