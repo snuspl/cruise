@@ -290,6 +290,57 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
+  public Future<Map<K, V>> multiUpdate(final List<Pair<K, U>> kuList) {
+
+    final Map<Integer, List<Pair<K, U>>> blockToPairListMap = new HashMap<>();
+    for (final Pair<K, U> kuPair : kuList) {
+      final K key = kuPair.getLeft();
+      final int blockId = blockPartitioner.getBlockId(key);
+      blockToPairListMap.putIfAbsent(blockId, new ArrayList<>());
+      blockToPairListMap.get(blockId).add(kuPair);
+    }
+
+    final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
+    blockToPairListMap.forEach((blockId, kuPairList) -> {
+      final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+      final Optional<String> remoteIdOptional;
+      remoteIdOptional = remoteIdWithLock.getKey();
+      try {
+        // execute operation in local
+        if (!remoteIdOptional.isPresent()) {
+          final Map<K, V> localResultMap = new HashMap<>();
+          for (final Pair<K, U> pair : kuPairList) {
+            final V output = tablet.update(blockId, pair.getKey(), pair.getValue());
+            if (output != null) {
+              localResultMap.put(pair.getKey(), output);
+            }
+          }
+          aggregateDataOpResult.onCompleted(localResultMap, true);
+        } else {
+
+          final List<K> keyList = new ArrayList<>(kuPairList.size());
+          final List<U> updateValueList = new ArrayList<>(kuPairList.size());
+          kuPairList.forEach(pair -> {
+            keyList.add(pair.getKey());
+            updateValueList.add(pair.getValue());
+          });
+
+          // send operation to remote
+          remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.UPDATE, tableId, blockId, keyList, Collections.emptyList(),
+              updateValueList, remoteIdOptional.get(), true, aggregateDataOpResult);
+        }
+      } catch (BlockNotExistsException e) {
+        throw new RuntimeException(e);
+      } finally {
+        final Lock ownershipLock = remoteIdWithLock.getValue();
+        ownershipLock.unlock();
+      }
+    });
+
+    return aggregateDataOpResult;
+  }
+
+  @Override
   public void updateNoReply(final K key, final U updateValue) {
     updateInternal(key, updateValue, false);
   }

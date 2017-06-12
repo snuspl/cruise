@@ -276,7 +276,15 @@ final class RemoteAccessOpHandler {
         }
         isSuccess[0] = true;
         break;
-        //TODO #176: support multi-key versions of other op types (e.g., update, get)
+      case UPDATE:
+        for (int index = 0; index < opMetadata.getKeys().size(); index++) {
+          final K key = opMetadata.getKeys().get(index);
+          final V localOutput = block.update(key, opMetadata.getUpdateValues().get(index));
+          outputs.add(Pair.of(key, localOutput));
+        }
+        isSuccess[0] = true;
+        break;
+        //TODO #176: support multi-key versions of other op types (e.g. get, remove):372
       default:
         LOG.log(Level.WARNING, "Undefined type of opMetaData.");
         isSuccess[0] = false;
@@ -358,19 +366,32 @@ final class RemoteAccessOpHandler {
       } else {
         final DataKeys dataKeys = msg.getDataKeys();
         final DataValues dataValues = msg.getDataValues();
-        final List<K> keyList = new ArrayList<>();
-        dataKeys.getKeys().forEach(key -> {
-          final K decodedKey = keyCodec.decode(key.array());
-          keyList.add(decodedKey);
-        });
 
-        final List<V> valueList = new ArrayList<>();
-        dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
+        final List<K> keyList = new ArrayList<>();
+        dataKeys.getKeys().forEach(key -> keyList.add(keyCodec.decode(key.array())));
+
+        final List<V> valueList;
+        final List<U> updateValueList;
+
+        switch (opType) {
+        case PUT:
+          valueList = new ArrayList<>();
+          updateValueList = Collections.emptyList();
+          dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
+          break;
+        case UPDATE:
+          valueList = Collections.emptyList();
+          updateValueList = new ArrayList<>();
+          dataValues.getValues().forEach(value -> updateValueList.add(updateValueCodec.decode(value.array())));
+          break;
+        default:
+          throw new RuntimeException("Undefined type of OpMetadata");
+        }
 
         // All keys match to same block id
         final int blockId = blockPartitioner.getBlockId(keyList.get(0));
         final MultiKeyDataOpMetadata<K, V, ?> operation = new MultiKeyDataOpMetadata<>(origEvalId,
-            opId, opType, replyRequired, tableId, blockId, keyList, valueList, Collections.emptyList());
+            opId, opType, replyRequired, tableId, blockId, keyList, valueList, updateValueList);
 
         final int threadIdx = getThreadIdx(blockId);
         handlerThreads.get(threadIdx).enqueue(operation);

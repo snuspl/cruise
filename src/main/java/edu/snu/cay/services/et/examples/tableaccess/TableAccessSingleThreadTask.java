@@ -120,9 +120,10 @@ public final class TableAccessSingleThreadTask implements Task {
     // puts data in table (value is back to init put data)
     runTest(new PutTest(table, true, false));
     runTest(new GetTest(table, false, false));
+    runTest(new MultiUpdateTest(table));
 
     // 3. remove test
-    runTest(new RemoveTest(table, false, false));
+    runTest(new RemoveTest(table, true, false));
     runTest(new GetTest(table, false, true));
 
     final long endTime = System.currentTimeMillis();
@@ -380,6 +381,53 @@ public final class TableAccessSingleThreadTask implements Task {
                 new Object[]{expectedValue, updatedValue});
             throw new RuntimeException("The result is different from the expectation");
           }
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("There is unexpected exception in this method\n" + e);
+      }
+    }
+  }
+
+  /**
+   * Multi-Update method test class.
+   */
+  private final class MultiUpdateTest implements Runnable {
+
+    private final Table<Long, String, String> table;
+    private MultiUpdateTest(final Table<Long, String, String> table) {
+      this.table = table;
+    }
+
+    @Override
+    public void run() {
+      try {
+        // initialize the list which index and value are equal
+        final List<Integer> indexList = new ArrayList<>(NUM_OPERATIONS);
+        for (int index = 0; index < NUM_OPERATIONS; index++) {
+          indexList.add(index);
+        }
+
+        // partition the index list to call multi update methods
+        final int keySizePerOperation = NUM_OPERATIONS / NUM_MULTI_OPERATIONS;
+        final List<List<Integer>> subIndexLists = Lists.partition(indexList, keySizePerOperation);
+        for (final List<Integer> subIndexList : subIndexLists) {
+          final List<Pair<Long, String>> kuPairList = new ArrayList<>(subIndexList.size());
+          final Map<Long, String> expectedValueMap = new HashMap<>(subIndexList.size());
+
+          for (final int index : subIndexList) {
+            final long key = getKeyByTestType(index);
+            final String expectedValue = getExpectedValue(key, true, false);
+            kuPairList.add(Pair.of(key, UPDATE_PREFIX));
+            expectedValueMap.put(key, expectedValue);
+          }
+
+          final Map<Long, String> updateValueMap = table.multiUpdate(kuPairList).get();
+          updateValueMap.forEach((key, updatedValue) -> {
+            if (!expectedValueMap.get(key).equals(updatedValue)) {
+              LOG.log(Level.SEVERE, "ExpectedValueSet doesn't contain the Result value {0}", updatedValue);
+              throw new RuntimeException("The result is different from the expectation");
+            }
+          });
         }
       } catch (Exception e) {
         throw new RuntimeException("There is unexpected exception in this method\n" + e);

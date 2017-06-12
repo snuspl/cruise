@@ -76,7 +76,7 @@ public interface Table<K, V, U> {
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
    * @param kvList a key-value pair list
-   * @return {@link Future} that will provide the map of specified keys and values that
+   * @return {@link Future} that will provide the {@link Map} of specified keys and values that
    *         each key has previously associated value. If there are no previous values,
    *         map will be empty
    */
@@ -120,6 +120,17 @@ public interface Table<K, V, U> {
    * @return {@link Future} that will provide the updated value associated with the key
    */
   Future<V> update(K key, U updateValue);
+
+  /**
+   * It is a multi-key version of {@link #update}.
+   * Update values associated with the specified keys using {@link UpdateFunction}.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result from the object when the request is complete.
+   * Note that it doesn't support updating null value to any key.
+   * @param kuList a key-updateValue pair list
+   * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
+   */
+  Future<Map<K, V>> multiUpdate(List<Pair<K, U>> kuList);
 
   /**
    * See {@link #update}.

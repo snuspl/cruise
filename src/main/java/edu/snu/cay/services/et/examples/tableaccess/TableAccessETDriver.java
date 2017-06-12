@@ -58,7 +58,7 @@ import java.util.concurrent.Future;
 final class TableAccessETDriver {
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
   static final int NUM_EXECUTORS = 3; // the number of executors for each associators and subscribers
-  static final int NUM_BLOCKS = 1024;
+  static final int NUM_BLOCKS = 256;
 
   // access patterns
   static final String RANDOM_ACCESS = "RAND"; // random-access

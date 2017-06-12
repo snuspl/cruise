@@ -345,12 +345,13 @@ final class RemoteAccessOpSender {
     final DataValues dataValues = new DataValues();
     final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
     final Codec<V> valueCodec = kvuSerializer.getValueCodec();
-    final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec(); // TODO #176: support multi-key update op
+    final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
 
     final List<ByteBuffer> encodedKeys = new ArrayList<>();
     dataOpMetadata.getKeys().forEach(key -> encodedKeys.add(ByteBuffer.wrap(keyCodec.encode(key))));
     dataKeys.setKeys(encodedKeys);
 
+    // use encodedValues for both data value and update value
     final List<ByteBuffer> encodedValues = new ArrayList<>();
     if (dataOpMetadata.getOpType().equals(OpType.PUT)) {
       if (dataOpMetadata.getValues().isEmpty()) {
@@ -358,13 +359,25 @@ final class RemoteAccessOpSender {
         throw new RuntimeException(String.format("Data value is empty for PUT(%s)",
             dataOpMetadata.getKeys().toString()));
       }
-      dataOpMetadata.getValues().forEach(value -> encodedValues.add(ByteBuffer.wrap(valueCodec.encode(value))));
+      dataOpMetadata.getValues().forEach(value ->
+          encodedValues.add(ByteBuffer.wrap(valueCodec.encode(value))));
       dataValues.setValues(encodedValues);
+
+    } else if (dataOpMetadata.getOpType().equals(OpType.UPDATE)) {
+      if (dataOpMetadata.getUpdateValues().isEmpty()) {
+        LOG.log(Level.SEVERE, "Update value is empty for UPDATE({0})", dataOpMetadata.getKeys());
+        throw new RuntimeException(String.format("Data update value is empty for UPDATE(%s)",
+            dataOpMetadata.getKeys().toString()));
+      }
+      dataOpMetadata.getUpdateValues().forEach(updateValue ->
+          encodedValues.add(ByteBuffer.wrap(updateValueCodec.encode(updateValue))));
+      dataValues.setValues(encodedValues);
+
     } else {
+      //TODO #176: support multi-key versions of other op types (e.g. get, remove):372
       LOG.log(Level.SEVERE, "This operation has wrong Op type");
       throw new RuntimeException("This operation has wrong Op type.");
     }
-
     return Pair.of(dataKeys, dataValues);
   }
 
