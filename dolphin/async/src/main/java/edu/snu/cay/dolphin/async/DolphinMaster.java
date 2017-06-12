@@ -75,6 +75,7 @@ public final class DolphinMaster {
   private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
   private final ProgressTracker progressTracker;
+  private final MasterSideMsgHandler msgHandler;
 
   private final int numWorkers;
   private final int numServers;
@@ -107,6 +108,7 @@ public final class DolphinMaster {
                         final ConfigurationSerializer confSerializer,
                         final NetworkProvider networkProvider,
                         final NetworkConnection<DolphinMsg> networkConnection,
+                        final MasterSideMsgHandler masterSideMsgHandler,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
                         @Parameter(NumServerCores.class) final int numServerCores,
@@ -133,6 +135,8 @@ public final class DolphinMaster {
     this.metricManager = metricManager;
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
+    this.msgHandler = masterSideMsgHandler;
+
     this.numWorkers = numWorkers;
     this.numServers = numServers;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
@@ -276,6 +280,10 @@ public final class DolphinMaster {
     return MetricServiceExecutorConf.newBuilder()
         .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
         .build();
+  }
+
+  public MasterSideMsgHandler getMsgHandler() {
+    return msgHandler;
   }
 
   /**

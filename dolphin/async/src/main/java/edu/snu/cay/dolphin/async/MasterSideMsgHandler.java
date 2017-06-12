@@ -15,11 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.network.MessageHandler;
-import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
@@ -27,7 +25,7 @@ import javax.inject.Inject;
  * A master-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 @DriverSide
-public final class MasterSideMsgHandler implements MessageHandler {
+public final class MasterSideMsgHandler implements EventHandler<DolphinMsg> {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
 
@@ -39,8 +37,8 @@ public final class MasterSideMsgHandler implements MessageHandler {
   }
 
   @Override
-  public void onNext(final Message<DolphinMsg> msg) {
-    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
+  public void onNext(final DolphinMsg dolphinMsg) {
+
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
       progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());

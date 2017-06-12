@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.network.DriverSideMsgHandler;
 import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.ThreadUtils;
@@ -28,6 +29,7 @@ import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,7 +64,7 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, MasterSideMsgSender, MessageHandler> driverComponents;
+  private Tuple3<WorkerStateManager, MasterSideMsgSender, EventHandler<DolphinMsg>> driverComponents;
 
   private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, MessageHandler>>
       workerIdToWorkerComponents = new HashMap<>();
@@ -87,10 +89,10 @@ public class WorkerStateManagerTest {
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
     injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
-    final MessageHandler driverSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
+    final EventHandler<DolphinMsg> masterSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
     final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
-    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideMsgSender, driverSideMsgHandler);
+    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideMsgSender, masterSideMsgHandler);
 
     doAnswer(invocation -> {
       final String workerId = invocation.getArgumentAt(0, String.class);
