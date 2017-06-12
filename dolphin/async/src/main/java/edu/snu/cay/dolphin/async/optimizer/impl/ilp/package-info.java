@@ -13,37 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
-
 /**
- * Created by yunseong on 6/4/17.
+ * Classes related to the optimizer based on Integer Linear Programming (ILP)
  */
-final class ConfDescriptor {
-  private final int[] d;
-  private final int[] m;
-  private final int[] w;
-  private final double cost;
-
-  ConfDescriptor(final int[] d, final int[] m, final int[] w, final double cost) {
-    this.d = d;
-    this.m = m;
-    this.w = w;
-    this.cost = cost;
-  }
-
-  int[] getD() {
-    return d;
-  }
-
-  int[] getM() {
-    return m;
-  }
-
-  int[] getRole() {
-    return w;
-  }
-
-  double getCost() {
-    return cost;
-  }
-}
+package edu.snu.cay.dolphin.async.optimizer.impl.ilp;

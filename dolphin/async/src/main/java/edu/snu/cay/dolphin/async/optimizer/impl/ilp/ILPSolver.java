@@ -25,20 +25,12 @@ final class ILPSolver {
                 final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final GRBEnv env = new GRBEnv("dolphin_solver.log");
     final GRBModel model = new GRBModel(env);
-
-    ////////////////////////////////////////////////////////////////////////
-    /////     Constants to bound the cost for linear approximation     /////
-    ////////////////////////////////////////////////////////////////////////
     final double maxCompCost = dTotal * findMax(cWProc); // What if the slowest worker processes all data
     final double maxCommCost =
         p * mTotal * dTotal / findMin(bandwidth); // if the slowest worker/server becomes bottleneck.
     final double maxTotalCost = maxCompCost + maxCommCost;
     System.out.println("Max compCost: " + maxCompCost + " Max commCost: " + maxCommCost);
 
-
-    /////////////////////////////////
-    //////      Variables      //////
-    /////////////////////////////////
     final GRBVar[] d = new GRBVar[n];
     final GRBVar[] m = new GRBVar[n];
     final GRBVar[] w = new GRBVar[n];
@@ -57,10 +49,6 @@ final class ILPSolver {
       costI[i] = model.addVar(0.0, maxTotalCost, 0.0, GRB.CONTINUOUS, String.format("cost[%d]", i));
     }
 
-
-    /////////////////////////////////////////////
-    /////      Constrains on variables      /////
-    /////////////////////////////////////////////
     final GRBVar numWorkers = model.addVar(1.0, n-1, 0.0, GRB.INTEGER,"W");
     final GRBLinExpr numWorkersExpr = sum(w);
     model.addConstr(numWorkers, GRB.EQUAL, numWorkersExpr, "nWorkers=sum(w[i])");
@@ -92,32 +80,8 @@ final class ILPSolver {
       final GRBQuadExpr mutexExpr = new GRBQuadExpr();
       mutexExpr.addTerm(1.0, w[i], s[i]);
       model.addQConstr(mutexExpr, GRB.EQUAL, 0.0, String.format("w[%d]*s[%d]=0", i, i));
-
-      final GRBQuadExpr nonZeroDForW = new GRBQuadExpr();
-      nonZeroDForW.addTerm(1.0, d[i], w[i]);
-      nonZeroDForW.addTerm(-1.0, w[i]);
-      model.addQConstr(nonZeroDForW, GRB.GREATER_EQUAL, 0, String.format("w[%d]*(d[%d]-1)>=0", i, i));
-
-      final GRBQuadExpr nonZeroWForD = new GRBQuadExpr();
-      nonZeroWForD.addTerm(1.0, d[i], w[i]);
-      nonZeroWForD.addTerm(-1.0, d[i]);
-      model.addQConstr(nonZeroWForD, GRB.GREATER_EQUAL, 0, String.format("(w[%d]-1)*d[%d]>=0", i, i));
-
-      final GRBQuadExpr nonZeroMForS = new GRBQuadExpr();
-      nonZeroMForS.addTerm(1.0, m[i], s[i]);
-      nonZeroMForS.addTerm(-1.0, s[i]);
-      model.addQConstr(nonZeroMForS, GRB.GREATER_EQUAL, 0, String.format("s[%d]*(m[%d]-1)>=0", i, i));
-
-      final GRBQuadExpr nonZeroSForM = new GRBQuadExpr();
-      nonZeroSForM.addTerm(1.0, m[i], s[i]);
-      nonZeroSForM.addTerm(-1.0, m[i]);
-      model.addQConstr(nonZeroSForM, GRB.GREATER_EQUAL, 0, String.format("(s[%d]-1)*m[%d]>=0", i, i));
     }
 
-
-    //////////////////////////////////
-    /////    Cost definition     /////
-    //////////////////////////////////
     final GRBVar maxCost = model.addVar(0.0, maxTotalCost, 0.0, GRB.CONTINUOUS, "maxCost");
 
     for (int i = 0; i < n; i++) {
@@ -126,29 +90,30 @@ final class ILPSolver {
       compCostExpr.addTerm(cWProc[i], d[i]);
       model.addConstr(compCost[i], GRB.EQUAL, compCostExpr, String.format("compCost[%d]=C_w_proc*d", i));
 
-      final GRBVar maxTransferTime = model.addVar(0.0, maxCommCost, 0.0, GRB.CONTINUOUS, String.format("commCostW[%d]", i));
+      final GRBVar maxTransferTime =
+          model.addVar(0.0, maxCommCost, 0.0, GRB.CONTINUOUS, String.format("commCostW[%d]", i));
 
       // max_transfer_time[i] >= p * M / BW[i] * d[i] (case1: if worker i is the bottleneck)
       final GRBLinExpr transferTimeWExpr = new GRBLinExpr();
       transferTimeWExpr.addTerm((double) p * mTotal / bandwidth[i], d[i]);
-      model.addConstr(maxTransferTime, GRB.GREATER_EQUAL, transferTimeWExpr, String.format("maxTransferTime[%d]>=p*M/BW*d[i]", i));
+      model.addConstr(maxTransferTime, GRB.GREATER_EQUAL, transferTimeWExpr,
+          String.format("maxTransferTime[%d]>=p*M/BW*d[i]", i));
 
       // max_transfer_time[i] >= p * max(m[j]/BW[i, j])) * d[i] (case2: if server j is the bottleneck)
       for (int j = 0; j < n; j++) {
-        if (i == j) {
-          continue;
-        }
-
-        final GRBVar dImJ = model.addVar(0.0, dTotal * mTotal, 0.0, GRB.CONTINUOUS, String.format("dImJ(%d->%d)", i, j));
+        final GRBVar dImJ =
+            model.addVar(0.0, dTotal * mTotal, 0.0, GRB.CONTINUOUS, String.format("dImJ(%d->%d)", i, j));
         mcCormickEnvelopes(model, dImJ, d[i], m[j],0.0, dTotal, 0.0, mTotal, "dImJ", i + "," + j);
 
         final GRBLinExpr transferTime = new GRBLinExpr();
         transferTime.addTerm((double) p / findMin(bandwidth, i, j), dImJ);
-        model.addConstr(maxTransferTime, GRB.GREATER_EQUAL, transferTime, String.format("maxTransferTimeS>=transferTime[%d->%d]", i, j));
+        model.addConstr(maxTransferTime, GRB.GREATER_EQUAL, transferTime,
+            String.format("maxTransferTimeS>=transferTime[%d->%d]", i, j));
       }
 
       // comm_cost[i] = w[i] * max_transfer_time // communication cost matters only in workers
-      commCost[i] = binaryMultVar(model, GRB.CONTINUOUS, w[i], maxTransferTime, maxCommCost, String.format("w*CommCost[%d]", i));
+      commCost[i] =
+          binaryMultVar(model, GRB.CONTINUOUS, w[i], maxTransferTime, maxCommCost, String.format("w*CommCost[%d]", i));
 
       // cost[i] = comp_cost[i] + comm_cost[i]
       final GRBLinExpr costSumExpr = new GRBLinExpr();
@@ -167,34 +132,9 @@ final class ILPSolver {
     // Optimize model
     model.optimize();
 
-    System.out.println("============================================================");
-    System.out.println("    Variables");
-    System.out.println("============================================================");
-
-    for (int i = 0; i < n; i++) {
-      final String sb = w[i].get(GRB.StringAttr.VarName) + ' ' + Math.round(w[i].get(GRB.DoubleAttr.X)) + '\t' +
-          s[i].get(GRB.StringAttr.VarName) + ' ' + Math.round(s[i].get(GRB.DoubleAttr.X));
-      System.out.println(sb);
-
-      final String sb2 = d[i].get(GRB.StringAttr.VarName) + ' ' + Math.round(d[i].get(GRB.DoubleAttr.X)) + '\t' +
-          m[i].get(GRB.StringAttr.VarName) + ' ' + Math.round(m[i].get(GRB.DoubleAttr.X));
-      System.out.println(sb2);
-
-      final String sb3 = compCost[i].get(GRB.StringAttr.VarName) + ' ' + compCost[i].get(GRB.DoubleAttr.X) + '\t' +
-          commCost[i].get(GRB.StringAttr.VarName) + ' ' + commCost[i].get(GRB.DoubleAttr.X) + '\t' +
-          costI[i].get(GRB.StringAttr.VarName) + ' ' + costI[i].get(GRB.DoubleAttr.X);
-      System.out.println(sb3);
-      System.out.println();
-    }
-
     final int[] wInt = convertToIntArray(w);
     final int[] dInt = convertToIntArray(d);
-    final int[] sInt = convertToIntArray(s);
     final int[] mInt = convertToIntArray(m);
-
-    System.out.println("============================================================");
-    System.out.println("     Cost: " + model.get(GRB.DoubleAttr.ObjVal));
-    System.out.println("============================================================");
 
     model.update();
     model.write("debug.lp");
@@ -203,7 +143,7 @@ final class ILPSolver {
     model.dispose();
     env.dispose();
 
-    return new ConfDescriptor(dInt, mInt, wInt, sInt);
+    return new ConfDescriptor(dInt, mInt, wInt, model.get(GRB.DoubleAttr.ObjVal));
   }
 
   private int[] convertToIntArray(final GRBVar[] vars) throws GRBException {
@@ -345,7 +285,7 @@ final class ILPSolver {
   /**
    * @return the minimum element between arr[i] and arr[j].
    */
-  private double findMin(double[] arr, int i, int j) {
+  private double findMin(final double[] arr, final int i, final int j) {
     return Math.min(arr[i], arr[j]);
   }
 }

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2017 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
@@ -8,6 +23,7 @@ import edu.snu.cay.common.param.Parameters;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -18,9 +34,10 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Created by yunseong on 6/4/17.
+ * Parses the bandwidth information from a file.
  */
-final class BandwidthInfoParser {
+@Private
+public final class BandwidthInfoParser {
   private final String hostnameToBandwidthFilePath;
 
   @Inject
@@ -31,7 +48,7 @@ final class BandwidthInfoParser {
   /**
    * @return the mapping between the hostname and bandwidth of machines
    */
-  private Map<String, Double> parseBandwidthInfo() {
+  public Map<String, Double> parseBandwidthInfo() {
     if (hostnameToBandwidthFilePath.equals(Parameters.HostToBandwidthFilePath.NONE)) {
       return Collections.emptyMap();
     }
