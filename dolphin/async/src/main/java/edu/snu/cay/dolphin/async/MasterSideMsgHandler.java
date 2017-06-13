@@ -35,6 +35,9 @@ public final class MasterSideMsgHandler {
     this.progressTrackerFuture = progressTrackerFuture;
   }
 
+  /**
+   * Handles dolphin msgs from workers.
+   */
   public void onDolphinMsg(final String srcId, final DolphinMsg dolphinMsg) {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:

@@ -36,6 +36,10 @@
   ]
 },
 
+/**
+ * A message format for dolphin app.
+ * With different job id, users can run multiple dolphin jobs concurrently.
+ */
 {
   "namespace": "edu.snu.cay.dolphin.async",
   "type": "record",

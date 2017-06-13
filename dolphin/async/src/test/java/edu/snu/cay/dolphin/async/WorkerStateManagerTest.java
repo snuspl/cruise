@@ -59,7 +59,6 @@ public class WorkerStateManagerTest {
   private static final Logger LOG = Logger.getLogger(WorkerStateManagerTest.class.getName());
   private static final String JOB_ID = WorkerStateManagerTest.class.getName();
   private static final String DRIVER_ID = "DRIVER";
-  private static final String DOLPHIN_JOB_ID = "DOLPHIN";
 
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
@@ -102,7 +101,7 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final String workerId = invocation.getArgumentAt(0, String.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-          .setJobId(DOLPHIN_JOB_ID)
+          .setJobId(JOB_ID)
           .setType(dolphinMsgType.ReleaseMsg)
           .build();
 
@@ -144,7 +143,7 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-          .setJobId(DOLPHIN_JOB_ID)
+          .setJobId(JOB_ID)
           .setType(dolphinMsgType.SyncMsg)
           .setSyncMsg(
               SyncMsg.newBuilder()
