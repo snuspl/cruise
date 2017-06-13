@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.impl.NSMessage;
@@ -57,6 +58,8 @@ import static org.mockito.Mockito.*;
 public class WorkerStateManagerTest {
   private static final Logger LOG = Logger.getLogger(WorkerStateManagerTest.class.getName());
   private static final String JOB_ID = WorkerStateManagerTest.class.getName();
+  private static final String DRIVER_ID = "DRIVER";
+  private static final String DOLPHIN_JOB_ID = "DOLPHIN";
 
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
@@ -83,6 +86,7 @@ public class WorkerStateManagerTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
+    injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
     final MasterSideMsgSender mockedMasterSideMsgSender = mock(MasterSideMsgSender.class);
     injector.bindVolatileInstance(MasterSideMsgSender.class, mockedMasterSideMsgSender);
@@ -98,6 +102,7 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final String workerId = invocation.getArgumentAt(0, String.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+          .setJobId(DOLPHIN_JOB_ID)
           .setType(dolphinMsgType.ReleaseMsg)
           .build();
 
@@ -123,6 +128,7 @@ public class WorkerStateManagerTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(ExecutorIdentifier.class, workerId);
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
+    injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
     final WorkerSideMsgSender mockedWorkerSideMsgSender = mock(WorkerSideMsgSender.class);
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockedWorkerSideMsgSender);
@@ -138,6 +144,7 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
       final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+          .setJobId(DOLPHIN_JOB_ID)
           .setType(dolphinMsgType.SyncMsg)
           .setSyncMsg(
               SyncMsg.newBuilder()

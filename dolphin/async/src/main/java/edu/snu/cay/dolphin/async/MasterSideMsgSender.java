@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -31,16 +33,19 @@ import java.util.logging.Logger;
 final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
-  private static final DolphinMsg RELEASE_MSG = DolphinMsg.newBuilder()
-      .setType(dolphinMsgType.ReleaseMsg)
-      .build();
+  private final DolphinMsg releaseMsg;
 
   private final NetworkConnection<DolphinMsg> networkConnection;
 
   @Inject
-  private MasterSideMsgSender(final NetworkConnection<DolphinMsg> networkConnection) {
+  private MasterSideMsgSender(@Parameter(JobIdentifier.class) final String jobId,
+                              final NetworkConnection<DolphinMsg> networkConnection) {
     LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
     this.networkConnection = networkConnection;
+    this.releaseMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
+        .setType(dolphinMsgType.ReleaseMsg)
+        .build();
   }
 
   /**
@@ -49,7 +54,7 @@ final class MasterSideMsgSender {
    */
   void sendReleaseMsg(final String workerId) {
     try {
-      networkConnection.send(workerId, RELEASE_MSG);
+      networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }

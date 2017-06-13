@@ -21,15 +21,13 @@ import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 
-import javax.inject.Inject;
-
 /**
  * Configuration provider for network service of Dolphin.
  * Provides methods for getting driver, context and service configurations.
  */
 public final class NetworkConfProvider {
 
-  @Inject
+  // Utility class should not be instantiated
   private NetworkConfProvider() {
   }
 
@@ -45,7 +43,7 @@ public final class NetworkConfProvider {
   /**
    * Returns {@link MessageHandler} related context configuration to be used in executor.
    */
-  public Configuration getContextConfiguration() {
+  public static Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, ContextStartHandler.class)
         .build();
@@ -54,7 +52,7 @@ public final class NetworkConfProvider {
   /**
    * Returns {@link MessageHandler} related service configuration to be used in executor.
    */
-  public Configuration getServiceConfiguration(final String jobId) {
+  public static Configuration getServiceConfiguration(final String jobId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobIdentifier.class, jobId)
         .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class)

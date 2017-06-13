@@ -18,8 +18,6 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
@@ -27,7 +25,6 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -69,10 +66,7 @@ public final class DolphinMaster {
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
-                        final NetworkConfProvider networkConfProvider,
-                        final NetworkConnection<DolphinMsg> networkConnection,
                         final MasterSideMsgHandler masterSideMsgHandler,
-                        @Parameter(JobIdentifier.class) final String jobId,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
@@ -80,8 +74,6 @@ public final class DolphinMaster {
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
     this.msgHandler = masterSideMsgHandler;
-    // register master with job id
-    networkConnection.setup(jobId, jobId);
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
     optimizationOrchestrator.start();
@@ -119,6 +111,11 @@ public final class DolphinMaster {
         .build();
   }
 
+  /**
+   * Returns a msg handler, which handles {@link DolphinMsg}.
+   * It should be called when {@link edu.snu.cay.dolphin.async.network.DriverSideMsgHandler} has been called.
+   * @return a master
+   */
   public MasterSideMsgHandler getMsgHandler() {
     return msgHandler;
   }
