@@ -13,39 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.dolphin.async.network;
 
-import edu.snu.cay.dolphin.async.network.MessageHandler;
+
+import edu.snu.cay.dolphin.async.DolphinMaster;
+import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 
 /**
- * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
+ * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
  */
-@EvaluatorSide
-public final class WorkerSideMsgHandler implements MessageHandler {
-  private final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture;
+public final class DriverSideMsgHandler implements MessageHandler {
+
+  private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
 
   @Inject
-  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture) {
-    this.workerGlobalBarrierFuture = workerGlobalBarrierFuture;
+  private DriverSideMsgHandler(final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+    this.dolphinMasterFuture = dolphinMasterFuture;
   }
 
   @Override
-  public synchronized void onNext(final Message<DolphinMsg> msg) {
-
+  public void onNext(final Message<DolphinMsg> msg) {
     final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
 
-    switch (dolphinMsg.getType()) {
-    case ReleaseMsg:
-      workerGlobalBarrierFuture.get().onReleaseMsg();
-      break;
-    default:
-      throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());
-    }
+    // TODO #1175: propagate the msg to the corresponding DolphinMaster based on the job id
+    final String jobId = dolphinMsg.getJobId().toString();
+    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
   }
 }

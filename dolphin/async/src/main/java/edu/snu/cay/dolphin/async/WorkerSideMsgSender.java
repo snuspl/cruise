@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
@@ -33,18 +34,21 @@ import java.nio.ByteBuffer;
 @EvaluatorSide
 final class WorkerSideMsgSender {
 
-  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
+  private final String driverId;
   private final String jobId;
   private final String executorId;
+  private final NetworkConnection<DolphinMsg> networkConnection;
 
   private final SerializableCodec<WorkerGlobalBarrier.State> codec;
 
   @Inject
-  private WorkerSideMsgSender(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
+  private WorkerSideMsgSender(final NetworkConnection<DolphinMsg> networkConnection,
                               final SerializableCodec<WorkerGlobalBarrier.State> codec,
+                              @Parameter(DriverIdentifier.class) final String driverId,
                               @Parameter(JobIdentifier.class) final String jobId,
                               @Parameter(ExecutorIdentifier.class) final String executorId) {
-    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
+    this.networkConnection = networkConnection;
+    this.driverId = driverId;
     this.jobId = jobId;
     this.executorId = executorId;
     this.codec = codec;
@@ -54,25 +58,26 @@ final class WorkerSideMsgSender {
    * Send {@link ProgressMsg} to master-side.
    * @param epochIdx a current processing epoch index
    */
-  void sendProgressMsg(final int epochIdx) {
+  void sendProgressMsg(final int epochIdx) throws NetworkException {
     final ProgressMsg progressMsg = ProgressMsg.newBuilder()
         .setExecutorId(executorId)
         .setEpochIdx(epochIdx)
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
         .setType(dolphinMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    slaveSideCentCommMsgSender.send(jobId, AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    networkConnection.send(driverId, dolphinMsg);
   }
 
   /**
    * Send {@link SyncMsg} to master-side.
    * @param state a current state
    */
-  void sendSyncMsg(final WorkerGlobalBarrier.State state) {
+  void sendSyncMsg(final WorkerGlobalBarrier.State state) throws NetworkException {
     final byte[] serializedState = codec.encode(state);
 
     final SyncMsg syncMsg = SyncMsg.newBuilder()
@@ -81,11 +86,11 @@ final class WorkerSideMsgSender {
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
         .setType(dolphinMsgType.SyncMsg)
         .setSyncMsg(syncMsg)
         .build();
 
-    slaveSideCentCommMsgSender.send(jobId,
-        AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    networkConnection.send(driverId, dolphinMsg);
   }
 }
