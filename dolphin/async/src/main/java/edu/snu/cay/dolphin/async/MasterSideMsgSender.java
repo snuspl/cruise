@@ -15,8 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
-import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
@@ -34,17 +33,19 @@ import java.util.logging.Logger;
 final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
-  private static final byte[] RELEASE_MSG = AvroUtils.toBytes(
-      DolphinMsg.newBuilder().setType(dolphinMsgType.ReleaseMsg).build(), DolphinMsg.class);
+  private final DolphinMsg releaseMsg;
 
-  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
-  private final String jobId;
+  private final NetworkConnection<DolphinMsg> networkConnection;
 
   @Inject
-  private MasterSideMsgSender(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
-                              @Parameter(JobIdentifier.class) final String jobId) {
-    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
-    this.jobId = jobId;
+  private MasterSideMsgSender(@Parameter(JobIdentifier.class) final String jobId,
+                              final NetworkConnection<DolphinMsg> networkConnection) {
+    LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
+    this.networkConnection = networkConnection;
+    this.releaseMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
+        .setType(dolphinMsgType.ReleaseMsg)
+        .build();
   }
 
   /**
@@ -53,7 +54,7 @@ final class MasterSideMsgSender {
    */
   void sendReleaseMsg(final String workerId) {
     try {
-      masterSideCentCommMsgSender.send(jobId, workerId, RELEASE_MSG);
+      networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }

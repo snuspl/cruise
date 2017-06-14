@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -69,7 +70,7 @@ final class WorkerGlobalBarrier {
    * a response message arrives from the driver.
    * After receiving the reply, this {@link WorkerGlobalBarrier} releases worker to progress.
    */
-  void await() {
+  void await() throws NetworkException {
     final State currentState = (State) stateMachine.getCurrentState();
     LOG.log(Level.INFO, "Start waiting other workers to reach barrier: {0}", currentState);
 
