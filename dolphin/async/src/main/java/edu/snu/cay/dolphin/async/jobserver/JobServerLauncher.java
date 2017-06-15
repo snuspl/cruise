@@ -71,6 +71,10 @@ import java.util.logging.Logger;
 public final class JobServerLauncher {
   private static final Logger LOG = Logger.getLogger(JobServerLauncher.class.getName());
 
+  @NamedParameter(doc = "the number of dolphin jobs to run concurrently")
+  final class NumJobs implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "configuration for dolphin job, serialized as a string")
   final class SerializedJobConf implements Name<String> {
   }
