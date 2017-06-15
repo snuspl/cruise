@@ -59,7 +59,6 @@ import org.apache.reef.wake.IdentifierFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -101,10 +100,9 @@ public final class JobServerLauncher {
 
       final Configuration clientParamConf = configurations.get(0); // only client uses this
       final Configuration driverParamConf = configurations.get(1);
-      final Configuration jobParamConf = configurations.get(2);
-      final Configuration serverParamConf = configurations.get(3);
-      final Configuration workerParamConf = configurations.get(4);
-      final Configuration userParamConf = configurations.get(5);
+      final Configuration serverParamConf = configurations.get(2);
+      final Configuration workerParamConf = configurations.get(3);
+      final Configuration userParamConf = configurations.get(4);
 
       // server conf
       final Configuration serverConf = Configurations.merge(
@@ -138,7 +136,7 @@ public final class JobServerLauncher {
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // job configuration
-      final Configuration jobConf = getJobConfiguration(jobParamConf, serverConf, workerConf, userParamConf);
+      final Configuration jobConf = getJobConfiguration(serverConf, workerConf, userParamConf);
 
       // driver configuration
       final Configuration driverConf = getDriverConfiguration(jobName,
@@ -194,29 +192,24 @@ public final class JobServerLauncher {
         // extra resource params
         NumExtraResources.class, ExtraResourcesPeriodSec.class);
 
-    // parameters for a single dolphin job
-    final List<Class<? extends Name<?>>> jobParamList = Arrays.asList(
-        // generic params
+    final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
-
-        // ET-specific params
         NumServerHandlerThreads.class, NumServerSenderThreads.class,
         ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
-        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
-        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
-        NumServerBlocks.class, NumWorkerBlocks.class);
-
-    // it's empty for now
-    final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
+        NumServerBlocks.class
+    );
 
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
-        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class);
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
+        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
+        NumWorkerBlocks.class,
+        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class
+    );
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
-    jobParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(OptimizerClass.class); // handle it separately to bind a corresponding implementation
     cl.registerShortNameOfClass(ETPlanExecutorClass.class); // handle it separately similar to OptimizerClass
     serverParamList.forEach(cl::registerShortNameOfClass);
@@ -227,7 +220,6 @@ public final class JobServerLauncher {
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
     final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
-    final Configuration jobConf = extractParameterConf(jobParamList, commandLineConf);
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
@@ -259,7 +251,7 @@ public final class JobServerLauncher {
         .bindNamedParameter(InputDir.class, processedInputPath)
         .build();
 
-    return Arrays.asList(clientConf, Configurations.merge(driverConf, optimizationConf), jobConf, serverConf,
+    return Arrays.asList(clientConf, Configurations.merge(driverConf, optimizationConf), serverConf,
         Configurations.merge(workerConf, inputPathConf), userConf);
   }
 
@@ -296,12 +288,11 @@ public final class JobServerLauncher {
         .build();
   }
 
-  private static Configuration getJobConfiguration(final Configuration jobParamConf,
-                                                   final Configuration serverConf,
+  private static Configuration getJobConfiguration(final Configuration serverConf,
                                                    final Configuration workerConf,
                                                    final Configuration userParamConf) {
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
-    return Tang.Factory.getTang().newConfigurationBuilder(jobParamConf)
+    return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
         .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
         .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))
@@ -338,9 +329,6 @@ public final class JobServerLauncher {
         driverNetworkConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
-//            .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
-//            .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
-//            .bindNamedParameter(SerializedParamConf.class, confSerializer.toString(userParamConf))
             .build());
   }
 
