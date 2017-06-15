@@ -69,15 +69,15 @@ public final class ETDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(ETDolphinLauncher.class.getName());
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
-  final class SerializedParamConf implements Name<String> {
+  public final class SerializedParamConf implements Name<String> {
   }
 
   @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  final class SerializedWorkerConf implements Name<String> {
+  public final class SerializedWorkerConf implements Name<String> {
   }
 
   @NamedParameter(doc = "configuration for server class, serialized as a string")
-  final class SerializedServerConf implements Name<String> {
+  public final class SerializedServerConf implements Name<String> {
   }
 
   /**

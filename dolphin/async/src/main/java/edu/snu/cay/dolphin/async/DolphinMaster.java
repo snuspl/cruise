@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
-import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
@@ -62,7 +62,7 @@ public final class DolphinMaster {
 
   @Inject
   private DolphinMaster(final MetricManager metricManager,
-                        final ETOptimizationOrchestrator optimizationOrchestrator,
+                        final OptimizationOrchestrator optimizationOrchestrator,
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,

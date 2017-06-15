@@ -22,8 +22,10 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
+import edu.snu.cay.dolphin.async.optimizer.impl.DummyOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
@@ -72,18 +74,6 @@ public final class JobServerLauncher {
 
   @NamedParameter(doc = "configuration for dolphin job, serialized as a string")
   final class SerializedJobConf implements Name<String> {
-  }
-
-  @NamedParameter(doc = "configuration for parameters, serialized as a string")
-  final class SerializedParamConf implements Name<String> {
-  }
-
-  @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  final class SerializedWorkerConf implements Name<String> {
-  }
-
-  @NamedParameter(doc = "configuration for server class, serialized as a string")
-  final class SerializedServerConf implements Name<String> {
   }
 
   /**
@@ -147,10 +137,12 @@ public final class JobServerLauncher {
               clientParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
+      // job configuration
+      final Configuration jobConf = getJobConfiguration(jobParamConf, serverConf, workerConf, userParamConf);
+
       // driver configuration
       final Configuration driverConf = getDriverConfiguration(jobName,
-          clientParameterInjector.getNamedInstance(DriverMemory.class), jobParamConf,
-          serverConf, workerConf, userParamConf);
+          clientParameterInjector.getNamedInstance(DriverMemory.class), jobConf);
 
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
@@ -188,7 +180,7 @@ public final class JobServerLauncher {
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
-    // parameters for driver as a job server
+    // parameters for driver (job server)
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
@@ -304,14 +296,25 @@ public final class JobServerLauncher {
         .build();
   }
 
+  private static Configuration getJobConfiguration(final Configuration jobParamConf,
+                                                   final Configuration serverConf,
+                                                   final Configuration workerConf,
+                                                   final Configuration userParamConf) {
+    final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
+    return Tang.Factory.getTang().newConfigurationBuilder(jobParamConf)
+        .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
+        .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, confSerializer.toString(userParamConf))
+        .build();
+  }
+
+
   private static Configuration getDriverConfiguration(final String jobName,
                                                       final int driverMemSize,
-                                                      final Configuration jobConf,
-                                                      final Configuration serverConf,
-                                                      final Configuration workerConf,
-                                                      final Configuration userParamConf) {
+                                                      final Configuration jobConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobServerDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
         .set(DriverConfiguration.ON_DRIVER_STARTED, JobServerDriver.StartHandler.class)
@@ -335,9 +338,9 @@ public final class JobServerLauncher {
         driverNetworkConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
-            .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
-            .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
-            .bindNamedParameter(SerializedParamConf.class, confSerializer.toString(userParamConf))
+//            .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
+//            .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
+//            .bindNamedParameter(SerializedParamConf.class, confSerializer.toString(userParamConf))
             .build());
   }
 

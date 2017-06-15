@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.WorkerStateManager;
 import edu.snu.cay.dolphin.async.ETTaskRunner;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
@@ -45,7 +46,7 @@ import java.util.logging.Logger;
 /**
  * Orchestrates the Optimization in Dolphin on ET.
  */
-public final class ETOptimizationOrchestrator {
+public final class ETOptimizationOrchestrator implements OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(ETOptimizationOrchestrator.class.getName());
 
   private final Optimizer optimizer;
@@ -121,6 +122,7 @@ public final class ETOptimizationOrchestrator {
   /**
    * Start optimization in background.
    */
+  @Override
   public void start() {
     Executors.newSingleThreadExecutor().submit(() -> {
       try {
