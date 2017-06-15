@@ -34,9 +34,9 @@ public final class NetworkConfProvider {
   /**
    * Returns {@link MessageHandler} related configuration to be used in driver.
    */
-  public static Configuration getDriverConfiguration() {
+  public static Configuration getDriverConfiguration(final Class<? extends MessageHandler> msgHandlerClass) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageHandler.class, DriverSideMsgHandler.class)
+        .bindImplementation(MessageHandler.class, msgHandlerClass)
         .build();
   }
 

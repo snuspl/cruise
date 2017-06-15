@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.network;
+package edu.snu.cay.dolphin.async.jobserver;
 
 
 import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.jobserver.JobServerDriver;
+import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
@@ -28,7 +28,7 @@ import javax.inject.Inject;
 /**
  * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
  */
-public final class DriverSideMsgHandler implements MessageHandler {
+final class DriverSideMsgHandler implements MessageHandler {
 
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 

@@ -321,7 +321,7 @@ public final class JobServerLauncher {
         .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
         .build();
 
-    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration();
+    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 

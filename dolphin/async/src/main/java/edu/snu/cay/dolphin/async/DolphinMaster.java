@@ -113,7 +113,7 @@ public final class DolphinMaster {
 
   /**
    * Returns a msg handler, which handles {@link DolphinMsg}.
-   * It should be called when {@link edu.snu.cay.dolphin.async.network.DriverSideMsgHandler} has been called.
+   * It should be called when {@link DriverSideMsgHandler} has been called.
    * @return a master
    */
   public MasterSideMsgHandler getMsgHandler() {
