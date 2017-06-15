@@ -42,7 +42,7 @@ public final class BandwidthInfoParser {
 
   @Inject
   private BandwidthInfoParser(@Parameter(Parameters.HostToBandwidthFilePath.class) final String hostBandwidthFilePath) {
-   this.hostnameToBandwidthFilePath = hostBandwidthFilePath;
+    this.hostnameToBandwidthFilePath = hostBandwidthFilePath;
   }
 
   /**

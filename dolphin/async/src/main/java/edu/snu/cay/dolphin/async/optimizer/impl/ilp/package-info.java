@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes related to the optimizer based on Integer Linear Programming (ILP)
+ * Classes related to the optimizer based on Integer Linear Programming (ILP).
  */
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
