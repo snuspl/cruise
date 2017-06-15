@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
 import gurobi.*;
 
+import javax.inject.Inject;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,9 +28,16 @@ import java.util.logging.Logger;
 final class ILPSolver {
   private static final Logger LOG = Logger.getLogger(ILPSolver.class.getName());
 
-  private void optimize(final int n, final int dTotal, final int mTotal,
-                        final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+  @Inject
+  private ILPSolver() {
+  }
+
+  ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
+                          final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
+    System.out.println("p: " + p);
+    System.out.println("cWProc: " + Arrays.toString(cWProc));
+    System.out.println("cWProc: " + Arrays.toString(bandwidth));
     final GRBEnv env = new GRBEnv(filename);
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
@@ -112,15 +121,18 @@ final class ILPSolver {
     final int status = model.get(GRB.IntAttr.Status);
     if (status == GRB.Status.INFEASIBLE) {
       onInfeasible(model);
+      return null;
     }
 
     final double cost = model.get(GRB.DoubleAttr.ObjVal);
     final int[] mVal = new int[n];
     final int[] dVal = new int[n];
+    final int[] wVal = new int[n];
 
     for (int i = 0; i < n; i++) {
       mVal[i] = (int) Math.round(m[i].get(GRB.DoubleAttr.X));
       dVal[i] = valueOf(d[i]);
+      wVal[i] = (int) Math.round(w[i].get(GRB.DoubleAttr.X));
     }
 
     printResult(startTimeMs, cost, mVal, dVal);
@@ -131,6 +143,8 @@ final class ILPSolver {
     // Dispose of model and environment
     model.dispose();
     env.dispose();
+
+    return new ConfDescriptor(dVal, mVal, wVal, cost);
   }
   
   private static int valueOf(final GRBVar[] binRep) throws GRBException {

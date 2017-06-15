@@ -32,4 +32,8 @@ public final class Constants {
   public static final String TOTAL_PULLS_PER_MINI_BATCH = "PARAMETER_WORKER_TOTAL_PULLS_PER_BATCH";
   public static final String AVG_PULL_SIZE_PER_MINI_BATCH = "PARAMETER_WORKER_AVG_PULL_SIZE_PER_MINI_BATCH";
   public static final String AVG_NUM_MINI_BATCH_PER_EPOCH = "AVG_NUM_MINI_BATCH_PER_EPOCH";
+  public static final String AVG_PULL_SIZE_PER_MODEL_BLOCK = "AVG_PULL_SIZE_PER_MODEL_BLOCK";
+  public static final String NUM_MODEL_BLOCKS = "NUM_MODEL_BLOCKS";
+  public static final String NUM_DATA_BLOCKS = "NUM_DATA_BLOCKS";
+
 }

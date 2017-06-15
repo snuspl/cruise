@@ -24,6 +24,7 @@ import edu.snu.cay.dolphin.async.optimizer.impl.WorkerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
+import edu.snu.cay.dolphin.async.plan.impl.EmptyPlan;
 import edu.snu.cay.dolphin.async.plan.impl.ILPPlanDescriptor;
 import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import gurobi.GRBException;
@@ -37,87 +38,99 @@ import java.util.*;
  */
 public final class ILPOptimizer implements Optimizer {
   private static final int NUM_EMPTY_BLOCK = 0;
-  private final int numTotalDataBlocks;
-  private final int numTotalModelBlocks;
   private final double defNetworkBandwidth;
   private final double optBenefitThreshold;
   private final Map<String, Double> hostToBandwidth;
   private final ILPSolver ilpSolver;
-  private final ILPPlanGenerator ilpPlanGenerator;
 
   @Inject
   private ILPOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                        @Parameter(Parameters.OptimizationBenefitThreshold.class) final double optBenefitThreshold,
                        final ILPSolver ilpSolver,
-                       final ILPPlanGenerator ilpPlanGenerator,
                        final BandwidthInfoParser bandwitdthInfoParser) {
-    this.numTotalDataBlocks = 1024; // FIXME
-    this.numTotalModelBlocks = 1024; // FIXME
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
     this.ilpSolver = ilpSolver;
-    this.ilpPlanGenerator = ilpPlanGenerator;
   }
 
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap,
                        final int availableEvaluators,
                        final Map<String, Double> optimizerModelParamsMap) {
+    final int numTotalDataBlocks = (int) Math.round(optimizerModelParamsMap.get(Constants.NUM_DATA_BLOCKS));
+    final int numTotalModelBlocks = (int) Math.round(optimizerModelParamsMap.get(Constants.NUM_MODEL_BLOCKS));
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<MachineDescriptor> serverDescriptors = processServerParameters(serverParams);
 
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
     final List<MachineDescriptor> workerDescriptors = processWorkerParameters(workerParams);
 
-    assert availableEvaluators == evalParamsMap.size(); // We don't consider dynamic availability for now.
+    assert availableEvaluators ==
+        evalParamsMap.get(Constants.NAMESPACE_SERVER).size() + evalParamsMap.get(Constants.NAMESPACE_WORKER).size();
+    // We don't consider dynamic availability for now.
 
-    final int p = 1000; // Bytes per each partition FIXME
+    final int p = (int) Math.round(optimizerModelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MODEL_BLOCK));
 
-    final int n = evalParamsMap.size();
+    final int n = evalParamsMap.get(Constants.NAMESPACE_SERVER).size()
+        + evalParamsMap.get(Constants.NAMESPACE_WORKER).size();
     final int[] dOld = new int[n];
     final int[] mOld = new int[n];
-    final int[] wOld = new int[n];
     final int[] roleOld = new int[n];
     final double[] cWProc = new double[n];
-    final double[] bandwidth = new double[n]; // find cWProc
+    final double[] bandwidth = new double[n];
+    final String[] evalIds = new String[n];
+
+    double avgCWProc = 0.0;
+    for (final MachineDescriptor workerDescriptor : workerDescriptors) {
+      avgCWProc += workerDescriptor.getcWProc() / workerDescriptors.size();
+    }
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
       roleOld[idx] = EvaluatorRole.SERVER.getValue();
       dOld[idx] = serverDescriptor.getNumTrainingDataBlocks();
       mOld[idx] = serverDescriptor.getNumModelBlocks();
-      wOld[idx] = serverDescriptor.getEvaluatorRole().getValue();
       bandwidth[idx] = serverDescriptor.getBandwidth();
+      evalIds[idx] = serverDescriptor.getId();
+      cWProc[idx] = avgCWProc;
       idx++;
     }
+
+    System.out.println("n: " + n + " idx: " + idx);
 
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
       roleOld[idx] = EvaluatorRole.WORKER.getValue();
       dOld[idx] = workerDescriptor.getNumTrainingDataBlocks();
       mOld[idx] = workerDescriptor.getNumModelBlocks();
-      wOld[idx] = workerDescriptor.getEvaluatorRole().getValue();
       bandwidth[idx] = workerDescriptor.getBandwidth();
+      evalIds[idx] = workerDescriptor.getId();
+      cWProc[idx] = workerDescriptor.getcWProc();
       idx++;
     }
 
     try {
       final ConfDescriptor optConfDescriptor =
           ilpSolver.optimize(n, numTotalDataBlocks, numTotalModelBlocks, p, cWProc, bandwidth);
+
+      if (optConfDescriptor == null) {
+        return new EmptyPlan();
+      }
+
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
       // roleOpt[], dOpt[], mOpt[]
-      final ILPPlanDescriptor planDescriptor = ilpPlanGenerator.generatePlanDescriptor(roleOld, dOld, mOld,
+      final ILPPlanDescriptor planDescriptor = ILPPlanGenerator.generatePlanDescriptor(evalIds, roleOld, dOld, mOld,
           optConfDescriptor.getRole(), optConfDescriptor.getD(), optConfDescriptor.getM());
-      final List<Integer> workerEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
-      final List<Integer> serverEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
-      planBuilder.addEvaluatorsToAdd(Constants.NAMESPACE_WORKER, null);
-      planBuilder.addEvaluatorsToAdd(Constants.NAMESPACE_SERVER, null);
+      final List<String> workerEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
+      final List<String> serverEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
+      planBuilder.addEvaluatorsToAdd(Constants.NAMESPACE_WORKER, workerEvalIdxsToAdd);
+      planBuilder.addEvaluatorsToAdd(Constants.NAMESPACE_SERVER, serverEvalIdxsToAdd);
 
-      final List<Integer> workerEvalIdxsToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER);
-      final List<Integer> serverEvalIdxsToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
-      planBuilder.addEvaluatorsToDelete(Constants.NAMESPACE_WORKER, null);
-      planBuilder.addEvaluatorsToDelete(Constants.NAMESPACE_SERVER, null);
+      final List<String> workerEvalIdxsToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER);
+      final List<String> serverEvalIdxsToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
+      planBuilder.addEvaluatorsToDelete(Constants.NAMESPACE_WORKER, workerEvalIdxsToDelete);
+      planBuilder.addEvaluatorsToDelete(Constants.NAMESPACE_SERVER, serverEvalIdxsToDelete);
 
       final List<TransferStep> workerTransferSteps = planDescriptor.getTransferSteps(Constants.NAMESPACE_WORKER);
       final List<TransferStep> serverTransferSteps = planDescriptor.getTransferSteps(Constants.NAMESPACE_SERVER);
@@ -139,8 +152,9 @@ public final class ILPOptimizer implements Optimizer {
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth);
+      final double wProc = workerEvalParams.getMetrics().getTotalCompTime() / numDataBlocks;
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, NUM_EMPTY_BLOCK));
+          new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, wProc, NUM_EMPTY_BLOCK));
     }
     return machineDescriptors;
   }
@@ -154,7 +168,7 @@ public final class ILPOptimizer implements Optimizer {
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth);
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, numModelBlocks));
+          new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, -1.0, numModelBlocks));
     }
     return machineDescriptors;
   }
@@ -162,6 +176,7 @@ public final class ILPOptimizer implements Optimizer {
   class MachineDescriptor {
     private String id;
     private double bandwidth;
+    private double cWProc;
     private EvaluatorRole role;
 
     private int numTrainingDataBlocks; // d
@@ -175,9 +190,11 @@ public final class ILPOptimizer implements Optimizer {
                       final double bandwidth,
                       final EvaluatorRole role,
                       final int numTrainingDataBlocks,
+                      final double cWProc,
                       final int numModelDataBlocks) {
       this.id = id;
       this.bandwidth = bandwidth;
+      this.cWProc = cWProc;
       this.role = role;
       this.numTrainingDataBlocks = numTrainingDataBlocks;
       this.numModelBlocks = numModelDataBlocks;
@@ -189,6 +206,10 @@ public final class ILPOptimizer implements Optimizer {
 
     double getBandwidth() {
       return bandwidth;
+    }
+
+    double getcWProc() {
+      return cWProc;
     }
 
     EvaluatorRole getEvaluatorRole() {

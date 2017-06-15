@@ -265,15 +265,23 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       return emptyResult;
     }
 
+    final int numModelBlocks = getNumBlocks(modelTable);
+    final int numDataBlocks = getNumBlocks(inputTable);
+
     // Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
+    final double numAvgPullSizePerModelBlock =
+        getAvgPullSizePerModelBlock(currentWorkerMiniBatchMetrics, numModelBlocks);
 
     // A map containing additional parameters for optimizer.
     final Map<String, Double> optimizerModelParams = new HashMap<>();
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
+    optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MODEL_BLOCK, numAvgPullSizePerModelBlock);
+    optimizerModelParams.put(Constants.NUM_MODEL_BLOCKS, (double) numModelBlocks);
+    optimizerModelParams.put(Constants.NUM_DATA_BLOCKS, (double) numDataBlocks);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -329,7 +337,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         namespaceToExecutorChanges.put(Constants.NAMESPACE_SERVER, Pair.of(addedServers, deletedServers));
 
         return namespaceToExecutorChanges;
-
+        
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
       }
@@ -356,6 +364,14 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private Set<String> getRunningExecutors(final AllocatedTable table) {
     return new HashSet<>(table.getPartitionInfo().keySet());
+  }
+
+  private int getNumBlocks(final AllocatedTable table) {
+    int numBlocks = 0;
+    for (final Set<Integer> blockIds : table.getPartitionInfo().values()) {
+      numBlocks += blockIds.size();
+    }
+    return numBlocks;
   }
 
   private Map<String, Integer> getValidationInfo(final Map<String, Set<Integer>> executorToBlocks) {
@@ -408,5 +424,24 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       }
     }
     return totalPullData / count;
+  }
+
+  /**
+   * Calculates the average number of bytes of pull data per mini-batch across workers.
+   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}.
+   * @return the average number of bytes of pull data per mini-batch across workers.
+   */
+  private double getAvgPullSizePerModelBlock(final Map<String, List<EvaluatorParameters>> evalParams,
+                                             final int numModelBlocks) {
+    double totalPullData = 0D;
+    for (final List<EvaluatorParameters> evalParamList : evalParams.values()) {
+      for (final EvaluatorParameters<WorkerMetrics> param : evalParamList) {
+        // do not include mini-batches which processed data less than mini-batch size
+        if ((int) param.getMetrics().getMiniBatchSize() == param.getMetrics().getProcessedDataItemCount()) {
+          totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
+        }
+      }
+    }
+    return totalPullData / numModelBlocks;
   }
 }

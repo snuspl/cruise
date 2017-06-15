@@ -20,7 +20,6 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.impl.ILPPlanDescriptor;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
 
-import javax.inject.Inject;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -28,10 +27,9 @@ import java.util.PriorityQueue;
  * Generate ILP plan with the result solved by ILP solver. Generated ILP plan is saved in {@link ILPPlanDescriptor}.
  */
 public final class ILPPlanGenerator {
-
-  @Inject
   private ILPPlanGenerator() {
   }
+
 
   /**
    * Generate {@link ILPPlanDescriptor} with solution solved by ILP solver.
@@ -47,12 +45,13 @@ public final class ILPPlanGenerator {
    * @param newModelBlockNum number of blocks of models in each evaluator after optimization is applied (for servers).
    * @return block transferring plan for optimization.
    */
-  public ILPPlanDescriptor generatePlanDescriptor(final int[] oldRole,
-                                                  final int[] oldDataBlockNum,
-                                                  final int[] oldModelBlockNum,
-                                                  final int[] newRole,
-                                                  final int[] newDataBlockNum,
-                                                  final int[] newModelBlockNum) {
+  public static ILPPlanDescriptor generatePlanDescriptor(final String[] evalIds,
+                                                         final int[] oldRole,
+                                                         final int[] oldDataBlockNum,
+                                                         final int[] oldModelBlockNum,
+                                                         final int[] newRole,
+                                                         final int[] newDataBlockNum,
+                                                         final int[] newModelBlockNum) {
     final int numTotalEval = oldRole.length;
     final ILPPlanDescriptor.Builder planBuilder = ILPPlanDescriptor.newBuilder();
     
@@ -61,12 +60,12 @@ public final class ILPPlanGenerator {
       if (oldRole[i] != newRole[i]) {
         if (oldRole[i] == EvaluatorRole.WORKER.getValue()) {
           // this evaluator is changed from worker to server
-          planBuilder.addEvaluatorToAdd(Constants.NAMESPACE_SERVER, i);
-          planBuilder.addEvaluatorToDelete(Constants.NAMESPACE_WORKER, i);
+          planBuilder.addEvaluatorToAdd(Constants.NAMESPACE_SERVER, evalIds[i]);
+          planBuilder.addEvaluatorToDelete(Constants.NAMESPACE_WORKER, evalIds[i]);
         } else if (oldRole[i] == EvaluatorRole.SERVER.getValue()) {
           // this evaluator is changed from server to worker
-          planBuilder.addEvaluatorToAdd(Constants.NAMESPACE_WORKER, i);
-          planBuilder.addEvaluatorToDelete(Constants.NAMESPACE_SERVER, i);
+          planBuilder.addEvaluatorToAdd(Constants.NAMESPACE_WORKER, evalIds[i]);
+          planBuilder.addEvaluatorToDelete(Constants.NAMESPACE_SERVER, evalIds[i]);
         } else {
           throw new RuntimeException("Evaluator's role is wrongly assigned.");
         }
@@ -92,8 +91,8 @@ public final class ILPPlanGenerator {
    * @param oldBlockNum number of blocks in each evaluator before optimization is applied.
    * @param newBlockNum number of blocks in each evaluator after optimization is applied.
    */
-  private void generateTransferPlans(final String namespace, final int[] oldBlockNum, final int[] newBlockNum,
-                                     final ILPPlanDescriptor.Builder planBuilder) {
+  private static void generateTransferPlans(final String namespace, final int[] oldBlockNum, final int[] newBlockNum,
+                                            final ILPPlanDescriptor.Builder planBuilder) {
     final int numTotalEval = oldBlockNum.length;
     final PriorityQueue<BlockDelta> senderPriorityQueue =
         new PriorityQueue<>(numTotalEval, NUM_BLOCKS_TO_MOVE_COMPARATOR);

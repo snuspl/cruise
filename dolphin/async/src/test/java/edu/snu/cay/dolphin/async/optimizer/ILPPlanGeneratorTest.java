@@ -42,7 +42,7 @@ public final class ILPPlanGeneratorTest {
 
   private ILPPlanGenerator ilpPlanGenerator;
   private int[] oldRole, newRole, oldDataBlockNum, newDataBlockNum, oldModelBlockNum, newModelBlockNum;
-  
+  private String[] evalIds;
   @Before
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
@@ -54,49 +54,49 @@ public final class ILPPlanGeneratorTest {
     newDataBlockNum = new int[] {52, 47, 0, 0, 0, 90};
     oldModelBlockNum = new int[] {0, 0, 0, 32, 11, 42};
     newModelBlockNum = new int[] {0, 0, 27, 39, 19, 0};
+    evalIds = new String[] {"0", "1", "2", "3", "4", "5"};
   }
 
   @Test
   public void testILPPlanGeneration() {
-    final ILPPlanDescriptor ilpPlanDescriptor =
-        ilpPlanGenerator.generatePlanDescriptor(oldRole, oldDataBlockNum, oldModelBlockNum, newRole, newDataBlockNum,
-            newModelBlockNum);
-    final List<Integer> serverEvaluatorToAdd = ilpPlanDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
-    final List<Integer> workerEvaluatorToAdd = ilpPlanDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
-    final List<Integer> serverEvaluatorToDelete = ilpPlanDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
-    final List<Integer> workerEvaluatorToDelete = ilpPlanDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER);
+    final ILPPlanDescriptor planDescriptor = ilpPlanGenerator.generatePlanDescriptor(evalIds, oldRole, oldDataBlockNum,
+        oldModelBlockNum, newRole, newDataBlockNum, newModelBlockNum);
+    final List<String> serverEvaluatorToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
+    final List<String> workerEvaluatorToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
+    final List<String> serverEvaluatorToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
+    final List<String> workerEvaluatorToDelete = planDescriptor.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER);
     System.out.println("Added servers");
-    for (final Integer addedServer : serverEvaluatorToAdd) {
+    for (final String addedServer : serverEvaluatorToAdd) {
       System.out.print(addedServer + "  ");
     }
     System.out.println();
 
     System.out.println("Added workers");
-    for (final Integer addedWorker : workerEvaluatorToAdd) {
+    for (final String addedWorker : workerEvaluatorToAdd) {
       System.out.print(addedWorker + "  ");
     }
     System.out.println();
 
     System.out.println("Deleted servers");
-    for (final Integer deletedServer : serverEvaluatorToDelete) {
+    for (final String deletedServer : serverEvaluatorToDelete) {
       System.out.print(deletedServer + "  ");
     }
     System.out.println();
 
     System.out.println("Deleted workers");
-    for (final Integer deletedWorkers : workerEvaluatorToDelete) {
+    for (final String deletedWorkers : workerEvaluatorToDelete) {
       System.out.print(deletedWorkers + "  ");
     }
     System.out.println();
 
     System.out.println("Server transfer plan");
-    for (final TransferStep transferStep : ilpPlanDescriptor.getTransferSteps(Constants.NAMESPACE_SERVER)) {
+    for (final TransferStep transferStep : planDescriptor.getTransferSteps(Constants.NAMESPACE_SERVER)) {
       System.out.println("From " + transferStep.getSrcId() + " to " + transferStep.getDstId() +
           " NumBlocks " + transferStep.getDataInfo().getNumBlocks());
     }
 
     System.out.println("Worker transfer plan");
-    for (final TransferStep transferStep : ilpPlanDescriptor.getTransferSteps(Constants.NAMESPACE_WORKER)) {
+    for (final TransferStep transferStep : planDescriptor.getTransferSteps(Constants.NAMESPACE_WORKER)) {
       System.out.println("From " + transferStep.getSrcId() + " to " + transferStep.getDstId() +
           " NumBlocks " + transferStep.getDataInfo().getNumBlocks());
     }
