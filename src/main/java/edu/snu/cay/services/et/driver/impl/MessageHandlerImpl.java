@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
@@ -58,22 +59,23 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Override
   public void onNext(final Message<ETMsg> msg) {
-    final ETMsg innerMsg = SingleMessageExtractor.extract(msg);
-    switch (innerMsg.getType()) {
+    final ETMsg etMsg = SingleMessageExtractor.extract(msg);
+    switch (etMsg.getType()) {
     case TableControlMsg:
-      onTableControlMsg(innerMsg.getTableControlMsg());
+      onTableControlMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableControlMsg.class));
       break;
 
     case MigrationMsg:
-      onMigrationMsg(innerMsg.getMigrationMsg());
+      onMigrationMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MigrationMsg.class));
       break;
 
     case MetricMsg:
-      onMetricMsg(msg.getSrcId().toString(), innerMsg.getMetricMsg());
+      onMetricMsg(msg.getSrcId().toString(), AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MetricMsg.class));
       break;
 
     case TableAccessMsg:
-      onTableAccessMsg(msg.getSrcId().toString(), innerMsg.getTableAccessMsg());
+      onTableAccessMsg(msg.getSrcId().toString(),
+          AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableAccessMsg.class));
       break;
 
     default:

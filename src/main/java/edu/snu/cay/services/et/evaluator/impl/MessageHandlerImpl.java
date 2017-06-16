@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.metric.MetricCollector;
 import edu.snu.cay.services.et.metric.configuration.parameter.CustomMetricCodec;
 import edu.snu.cay.services.et.metric.configuration.parameter.MetricFlushPeriodMs;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -87,22 +88,22 @@ public final class MessageHandlerImpl implements MessageHandler {
   @Override
   public void onNext(final Message<ETMsg> msg) {
 
-    final ETMsg innerMsg = SingleMessageExtractor.extract(msg);
-    switch (innerMsg.getType()) {
+    final ETMsg etMsg = SingleMessageExtractor.extract(msg);
+    switch (etMsg.getType()) {
     case TableAccessMsg:
-      onTableAccessMsg(innerMsg.getTableAccessMsg());
+      onTableAccessMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableAccessMsg.class));
       break;
 
     case TableControlMsg:
-      onTableControlMsg(innerMsg.getTableControlMsg());
+      onTableControlMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableControlMsg.class));
       break;
 
     case MigrationMsg:
-      migrationExecutorFuture.get().onNext(innerMsg.getMigrationMsg());
+      migrationExecutorFuture.get().onNext(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MigrationMsg.class));
       break;
 
     case MetricMsg:
-      onMetricMsg(innerMsg.getMetricMsg());
+      onMetricMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MetricMsg.class));
       break;
 
     default:

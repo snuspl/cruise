@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.HostnameResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -56,23 +57,25 @@ public final class MessageSenderImpl implements MessageSender {
                                     final OpType opType, final boolean replyRequired,
                                     final DataKey dataKey, @Nullable final DataValue dataValue)
       throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableAccessMsg.newBuilder()
+            .setType(TableAccessMsgType.TableAccessReqMsg)
+            .setOperationId(opId)
+            .setTableAccessReqMsg(
+                TableAccessReqMsg.newBuilder()
+                    .setOrigId(origId)
+                    .setTableId(tableId)
+                    .setOpType(opType)
+                    .setReplyRequired(replyRequired)
+                    .setDataKey(dataKey)
+                    .setDataValue(dataValue)
+                    .build())
+            .build(), TableAccessMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
-        .setTableAccessMsg(
-            TableAccessMsg.newBuilder()
-                .setType(TableAccessMsgType.TableAccessReqMsg)
-                .setOperationId(opId)
-                .setTableAccessReqMsg(
-                    TableAccessReqMsg.newBuilder()
-                        .setOrigId(origId)
-                        .setTableId(tableId)
-                        .setOpType(opType)
-                        .setReplyRequired(replyRequired)
-                        .setDataKey(dataKey)
-                        .setDataValue(dataValue)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(destId, msg);
   }
@@ -83,24 +86,26 @@ public final class MessageSenderImpl implements MessageSender {
                                     final OpType opType, final boolean replyRequired,
                                     final DataKeys dataKeys, @Nullable final DataValues dataValues)
       throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableAccessMsg.newBuilder()
+            .setType(TableAccessMsgType.TableAccessReqMsg)
+            .setOperationId(opId)
+            .setTableAccessReqMsg(
+                TableAccessReqMsg.newBuilder()
+                    .setOrigId(origId)
+                    .setTableId(tableId)
+                    .setOpType(opType)
+                    .setReplyRequired(replyRequired)
+                    .setIsSingleKey(false)
+                    .setDataKeys(dataKeys)
+                    .setDataValues(dataValues)
+                    .build())
+            .build(), TableAccessMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
-        .setTableAccessMsg(
-            TableAccessMsg.newBuilder()
-                .setType(TableAccessMsgType.TableAccessReqMsg)
-                .setOperationId(opId)
-                .setTableAccessReqMsg(
-                    TableAccessReqMsg.newBuilder()
-                        .setOrigId(origId)
-                        .setTableId(tableId)
-                        .setOpType(opType)
-                        .setReplyRequired(replyRequired)
-                        .setIsSingleKey(false)
-                        .setDataKeys(dataKeys)
-                        .setDataValues(dataValues)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(destId, msg);
 
@@ -110,20 +115,22 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
                                     @Nullable final DataValue dataValue, final boolean isSuccess)
       throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableAccessMsg.newBuilder()
+            .setType(TableAccessMsgType.TableAccessResMsg)
+            .setOperationId(opId)
+            .setTableAccessResMsg(
+                TableAccessResMsg.newBuilder()
+                    .setIsSuccess(isSuccess)
+                    .setTableId(tableId)
+                    .setDataValue(dataValue)
+                    .build())
+            .build(), TableAccessMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
-        .setTableAccessMsg(
-            TableAccessMsg.newBuilder()
-                .setType(TableAccessMsgType.TableAccessResMsg)
-                .setOperationId(opId)
-                .setTableAccessResMsg(
-                    TableAccessResMsg.newBuilder()
-                        .setIsSuccess(isSuccess)
-                        .setTableId(tableId)
-                        .setDataValue(dataValue)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(destId, msg);
   }
@@ -132,22 +139,23 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
                                     final DataKeys dataKeys, final DataValues dataValues, final boolean isSuccess)
       throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableAccessMsg.newBuilder()
+            .setType(TableAccessMsgType.TableAccessResMsg)
+            .setOperationId(opId)
+            .setTableAccessResMsg(
+                TableAccessResMsg.newBuilder()
+                    .setIsSuccess(isSuccess)
+                    .setDataKeys(dataKeys)
+                    .setDataValues(dataValues)
+                    .setTableId(tableId)
+                    .build())
+            .build(), TableAccessMsg.class);
 
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
-        .setTableAccessMsg(
-            TableAccessMsg.newBuilder()
-                .setType(TableAccessMsgType.TableAccessResMsg)
-                .setOperationId(opId)
-                .setTableAccessResMsg(
-                    TableAccessResMsg.newBuilder()
-                        .setIsSuccess(isSuccess)
-                        .setDataKeys(dataKeys)
-                        .setDataValues(dataValues)
-                        .setTableId(tableId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(destId, msg);
   }
@@ -155,57 +163,63 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendTableInitAckMsg(final long opId, final String tableId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableControlMsg.newBuilder()
+            .setType(TableControlMsgType.TableInitAckMsg)
+            .setOperationId(opId)
+            .setTableInitAckMsg(
+                TableInitAckMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTableId(tableId)
+                    .build())
+            .build(), TableControlMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
-        .setTableControlMsg(
-            TableControlMsg.newBuilder()
-                .setType(TableControlMsgType.TableInitAckMsg)
-                .setOperationId(opId)
-                .setTableInitAckMsg(
-                    TableInitAckMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setTableId(tableId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(driverId, msg);
   }
 
   @Override
   public void sendTableLoadAckMsg(final long opId, final String tableId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableControlMsg.newBuilder()
+            .setType(TableControlMsgType.TableLoadAckMsg)
+            .setOperationId(opId)
+            .setTableLoadAckMsg(
+                TableLoadAckMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTableId(tableId)
+                    .build())
+            .build(), TableControlMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
-        .setTableControlMsg(
-            TableControlMsg.newBuilder()
-                .setType(TableControlMsgType.TableLoadAckMsg)
-                .setOperationId(opId)
-                .setTableLoadAckMsg(
-                    TableLoadAckMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setTableId(tableId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(driverId, msg);
   }
 
   @Override
   public void sendTableDropAckMsg(final long opId, final String tableId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableControlMsg.newBuilder()
+            .setType(TableControlMsgType.TableDropAckMsg)
+            .setOperationId(opId)
+            .setTableDropAckMsg(
+                TableDropAckMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTableId(tableId)
+                    .build())
+            .build(), TableControlMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
-        .setTableControlMsg(
-            TableControlMsg.newBuilder()
-                .setType(TableControlMsgType.TableDropAckMsg)
-                .setOperationId(opId)
-                .setTableDropAckMsg(
-                    TableDropAckMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setTableId(tableId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(driverId, msg);
   }
@@ -213,19 +227,21 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendOwnershipSyncAckMsg(final long opId, final String tableId,
                                       final String deletedExecutorId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableControlMsg.newBuilder()
+            .setType(TableControlMsgType.OwnershipSyncAckMsg)
+            .setOperationId(opId)
+            .setOwnershipSyncAckMsg(
+                OwnershipSyncAckMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setDeletedExecutorId(executorId)
+                    .build())
+            .build(), TableControlMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
-        .setTableControlMsg(
-            TableControlMsg.newBuilder()
-                .setType(TableControlMsgType.OwnershipSyncAckMsg)
-                .setOperationId(opId)
-                .setOwnershipSyncAckMsg(
-                    OwnershipSyncAckMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setDeletedExecutorId(executorId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(driverId, msg);
   }
@@ -233,21 +249,23 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendOwnershipMsg(final long opId, final String tableId, final int blockId,
                                final String oldOwnerId, final String newOwnerId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.OwnershipMsg)
+            .setOwnershipMsg(
+                OwnershipMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .setOldOwnerId(oldOwnerId)
+                    .setNewOwnerId(newOwnerId)
+                    .build())
+            .build(), MigrationMsg.class);
+    
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.OwnershipMsg)
-                .setOwnershipMsg(
-                    OwnershipMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .setOldOwnerId(oldOwnerId)
-                        .setNewOwnerId(newOwnerId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(newOwnerId, msg);
   }
@@ -255,40 +273,44 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendOwnershipAckMsg(final long opId, final String tableId, final int blockId,
                                   final String oldOwnerId, final String newOwnerId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.OwnershipAckMsg)
+            .setOwnershipAckMsg(
+                OwnershipAckMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .setOldOwnerId(oldOwnerId)
+                    .setNewOwnerId(newOwnerId)
+                    .build())
+            .build(), MigrationMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.OwnershipAckMsg)
-                .setOwnershipAckMsg(
-                    OwnershipAckMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .setOldOwnerId(oldOwnerId)
-                        .setNewOwnerId(newOwnerId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(oldOwnerId, msg);
   }
 
   @Override
   public void sendOwnershipMovedMsg(final long opId, final String tableId, final int blockId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.OwnershipMovedMsg)
+            .setOwnershipMovedMsg(
+                OwnershipMovedMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .build())
+            .build(), MigrationMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.OwnershipMovedMsg)
-                .setOwnershipMovedMsg(
-                    OwnershipMovedMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(driverId, msg);
   }
@@ -297,22 +319,24 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendDataMsg(final long opId, final String tableId, final int blockId,
                           final List<KVPair> kvPairs,
                           final String senderId, final String receiverId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.DataMsg)
+            .setDataMsg(
+                DataMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .setKvPairs(kvPairs)
+                    .setSenderId(senderId)
+                    .setReceiverId(receiverId)
+                    .build())
+            .build(), MigrationMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.DataMsg)
-                .setDataMsg(
-                    DataMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .setKvPairs(kvPairs)
-                        .setSenderId(senderId)
-                        .setReceiverId(receiverId)
-                        .build()
-                ).build()
-        ).build();
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
 
     networkConnection.send(receiverId, msg);
   }
@@ -320,21 +344,22 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendDataAckMsg(final long opId, final String tableId, final int blockId,
                              final String senderId, final String receiverId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.DataAckMsg)
+            .setDataAckMsg(
+                DataAckMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .setSenderId(senderId)
+                    .setReceiverId(receiverId)
+                    .build())
+            .build(), MigrationMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.DataAckMsg)
-                .setDataAckMsg(
-                    DataAckMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .setSenderId(senderId)
-                        .setReceiverId(receiverId)
-                        .build()
-                )
-                .build())
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
         .build();
 
     networkConnection.send(senderId, msg);
@@ -343,21 +368,21 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendDataMovedMsg(final long opId, final String tableId, final int blockId,
                                final boolean moveOwnershipTogether) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MigrationMsg.newBuilder()
+            .setOperationId(opId)
+            .setType(MigrationMsgType.DataMovedMsg)
+            .setDataMovedMsg(
+                DataMovedMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .setMoveOwnershipTogether(moveOwnershipTogether)
+                    .build())
+            .build(), MigrationMsg.class);
+
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
-        .setMigrationMsg(
-            MigrationMsg.newBuilder()
-                .setOperationId(opId)
-                .setType(MigrationMsgType.DataMovedMsg)
-                .setDataMovedMsg(
-                    DataMovedMsg.newBuilder()
-                        .setTableId(tableId)
-                        .setBlockId(blockId)
-                        .setMoveOwnershipTogether(moveOwnershipTogether)
-                        .build()
-                )
-                .build()
-        )
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
         .build();
 
     networkConnection.send(driverId, msg);
@@ -368,22 +393,22 @@ public final class MessageSenderImpl implements MessageSender {
                                   final Map<String, Long> bytesReceivedGetResp,
                                   final Map<String, Integer> countSentGetReq,
                                   final List<ByteBuffer> encodedCustomMetrics) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        MetricMsg.newBuilder()
+            .setType(MetricMsgType.MetricReportMsg)
+            .setMetricReportMsg(
+                MetricReportMsg.newBuilder()
+                    .setTableToNumBlocks(tableToNumBlocks)
+                    .setBytesReceivedGetResp(bytesReceivedGetResp)
+                    .setCountSentGetReq(countSentGetReq)
+                    .setHostname(HostnameResolver.resolve())
+                    .setCustomMetrics(encodedCustomMetrics)
+                    .build())
+            .build(), MetricMsg.class);
+    
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MetricMsg)
-        .setMetricMsg(
-            MetricMsg.newBuilder()
-                .setType(MetricMsgType.MetricReportMsg)
-                .setMetricReportMsg(
-                    MetricReportMsg.newBuilder()
-                        .setTableToNumBlocks(tableToNumBlocks)
-                        .setBytesReceivedGetResp(bytesReceivedGetResp)
-                        .setCountSentGetReq(countSentGetReq)
-                        .setHostname(HostnameResolver.resolve())
-                        .setCustomMetrics(encodedCustomMetrics)
-                        .build()
-                )
-                .build()
-        )
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
         .build();
 
     networkConnection.send(driverId, msg);
