@@ -51,6 +51,7 @@ public final class DolphinMaster {
   private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
   private final ProgressTracker progressTracker;
+  private final MasterSideMsgHandler msgHandler;
 
   private final long serverMetricFlushPeriodMs;
 
@@ -65,15 +66,16 @@ public final class DolphinMaster {
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
+                        final MasterSideMsgHandler masterSideMsgHandler,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
     this.metricManager = metricManager;
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
+    this.msgHandler = masterSideMsgHandler;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
-
     optimizationOrchestrator.start();
   }
 
@@ -107,6 +109,15 @@ public final class DolphinMaster {
     return MetricServiceExecutorConf.newBuilder()
         .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
         .build();
+  }
+
+  /**
+   * Returns a msg handler, which handles {@link DolphinMsg}.
+   * It should be called when {@link edu.snu.cay.dolphin.async.network.DriverSideMsgHandler} has been called.
+   * @return a master
+   */
+  public MasterSideMsgHandler getMsgHandler() {
+    return msgHandler;
   }
 
   /**

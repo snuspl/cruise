@@ -36,12 +36,17 @@
   ]
 },
 
+/**
+ * A message format for dolphin app.
+ * With different job id, users can run multiple dolphin jobs concurrently.
+ */
 {
   "namespace": "edu.snu.cay.dolphin.async",
   "type": "record",
   "name": "DolphinMsg",
   "fields":
   [
+    {"name": "jobId", "type": "string"},
     {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
         "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
     {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
