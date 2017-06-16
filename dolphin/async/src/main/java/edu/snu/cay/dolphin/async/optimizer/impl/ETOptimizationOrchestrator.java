@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
-import edu.snu.cay.dolphin.async.ETModelAccessor;
-import edu.snu.cay.dolphin.async.ETTrainingDataProvider;
-import edu.snu.cay.dolphin.async.WorkerStateManager;
-import edu.snu.cay.dolphin.async.ETTaskRunner;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
@@ -67,6 +64,9 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
 
+  private final String modelTableId;
+  private final String inputTableId;
+
   private final long optimizationIntervalMs;
 
   /**
@@ -84,6 +84,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      final PlanCompiler planCompiler,
                                      final ETTaskRunner taskRunner,
                                      final WorkerStateManager workerStateManager,
+                                     @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+                                     @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                      @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
@@ -96,6 +98,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.etMaster = etMaster;
     this.taskRunner = taskRunner;
     this.workerStateManager = workerStateManager;
+    this.modelTableId = modelTableId;
+    this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.numAvailableEvals = numInitialResources;
@@ -131,8 +135,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         final AllocatedTable modelTable;
         final AllocatedTable inputTable;
         try {
-          modelTable = etMaster.getTable(ETModelAccessor.MODEL_TABLE_ID);
-          inputTable = etMaster.getTable(ETTrainingDataProvider.TRAINING_DATA_TABLE_ID);
+          modelTable = etMaster.getTable(modelTableId);
+          inputTable = etMaster.getTable(inputTableId);
         } catch (TableNotExistException e) {
           throw new RuntimeException(e);
         }
@@ -198,8 +202,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     final AllocatedTable modelTable;
     final AllocatedTable inputTable;
     try {
-      modelTable = etMaster.getTable(ETModelAccessor.MODEL_TABLE_ID);
-      inputTable = etMaster.getTable(ETTrainingDataProvider.TRAINING_DATA_TABLE_ID);
+      modelTable = etMaster.getTable(modelTableId);
+      inputTable = etMaster.getTable(inputTableId);
     } catch (TableNotExistException e) {
       throw new RuntimeException(e);
     }

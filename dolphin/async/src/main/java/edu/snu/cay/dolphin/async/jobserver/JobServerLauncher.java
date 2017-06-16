@@ -19,7 +19,6 @@ import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
@@ -32,6 +31,7 @@ import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
+import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
@@ -71,7 +71,7 @@ import java.util.logging.Logger;
 public final class JobServerLauncher {
   private static final Logger LOG = Logger.getLogger(JobServerLauncher.class.getName());
 
-  @NamedParameter(doc = "the number of dolphin jobs to run concurrently")
+  @NamedParameter(doc = "the number of dolphin jobs to run concurrently", short_name = "num_jobs", default_value = "1")
   final class NumJobs implements Name<Integer> {
   }
 
@@ -184,6 +184,10 @@ public final class JobServerLauncher {
 
     // parameters for driver (job server)
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
+        // TODO #00: submit jobs dynamically
+        // number of jobs to run
+        NumJobs.class,
+
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
 
@@ -322,7 +326,7 @@ public final class JobServerLauncher {
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
-        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, LoggingMetricReceiver.class)
         .build();
 
     final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);

@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.MemoryUtils;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
@@ -41,16 +42,15 @@ import java.util.logging.Logger;
 public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   private static final Logger LOG = Logger.getLogger(ETModelAccessor.class.getName());
 
-  public static final String MODEL_TABLE_ID = "model_table";
-
   private final Table<K, V, P> modelTable;
 
   private final Tracer pushTracer = new Tracer();
   private final Tracer pullTracer = new Tracer();
 
   @Inject
-  ETModelAccessor(final TableAccessor tableAccessor) throws TableNotExistException {
-    this.modelTable = tableAccessor.getTable(MODEL_TABLE_ID);
+  ETModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+                  final TableAccessor tableAccessor) throws TableNotExistException {
+    this.modelTable = tableAccessor.getTable(modelTableId);
   }
 
   @Override

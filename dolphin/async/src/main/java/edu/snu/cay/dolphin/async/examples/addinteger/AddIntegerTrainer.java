@@ -26,8 +26,6 @@ import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
-
 /**
  * {@link Trainer} class for the AddIntegerREEF application.
  * Pushes a value to the server and checks the current value at the server via pull, once per mini-batch.
@@ -71,6 +69,7 @@ final class AddIntegerTrainer implements Trainer {
   @Inject
   private AddIntegerTrainer(final ModelAccessor<Integer, Integer, Integer> modelAccessor,
                             final TableAccessor tableAccessor,
+                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
                             @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
@@ -82,7 +81,7 @@ final class AddIntegerTrainer implements Trainer {
     this.delta = delta;
     this.numberOfKeys = numberOfKeys;
     this.computeTime = computeTime;
-    final int numMiniBatches = tableAccessor.getTable(TRAINING_DATA_TABLE_ID).getLocalTablet().getNumBlocks();
+    final int numMiniBatches = tableAccessor.getTable(inputTableId).getLocalTablet().getNumBlocks();
 
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",

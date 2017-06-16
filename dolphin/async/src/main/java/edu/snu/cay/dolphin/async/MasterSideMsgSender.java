@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -38,12 +37,12 @@ final class MasterSideMsgSender {
   private final NetworkConnection<DolphinMsg> networkConnection;
 
   @Inject
-  private MasterSideMsgSender(@Parameter(JobIdentifier.class) final String jobId,
+  private MasterSideMsgSender(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                               final NetworkConnection<DolphinMsg> networkConnection) {
     LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
     this.networkConnection = networkConnection;
     this.releaseMsg = DolphinMsg.newBuilder()
-        .setJobId(jobId)
+        .setJobId(dolphinJobId)
         .setType(dolphinMsgType.ReleaseMsg)
         .build();
   }
