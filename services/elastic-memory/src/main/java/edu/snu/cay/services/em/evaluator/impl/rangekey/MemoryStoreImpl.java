@@ -117,7 +117,7 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
     LOG.log(Level.FINE, "Execute operation requested from local client. OpId: {0}, OpType: {1}, numSubOps: {2}",
         new Object[]{operation.getOpId(), operation.getOpType(), numSubOps});
 
-    // execute local operation and submit the result
+    // execute local operation and submitSingleThreadService the result
     final Map<Long, V> localOutputData = executeSubOperation(operation, localBlockToSubKeyRangesMap);
     operation.commitResult(localOutputData, Collections.emptyList());
 

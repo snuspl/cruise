@@ -67,7 +67,7 @@ final class PregelMaster {
     LOG.log(Level.INFO, "Start a thread that controls workers...");
     final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    // submit a runnable that controls workers' supersteps.
+    // submitSingleThreadService a runnable that controls workers' supersteps.
     executor.submit((Runnable) () -> {
       while (true) {
         try {

@@ -110,7 +110,7 @@ final class EvaluatorManagerTestHelper {
   }
 
   /**
-   * Tests single plan with a single context submit.
+   * Tests single plan with a single context submitSingleThreadService.
    * Checks that context stack is built correctly.
    */
   void testSinglePlanSingleContext() {
@@ -192,7 +192,7 @@ final class EvaluatorManagerTestHelper {
   }
 
   /**
-   * Tests multiple requests for heterogeneous evaluators without no context submit.
+   * Tests multiple requests for heterogeneous evaluators without no context submitSingleThreadService.
    * Checks that allocated evaluators's resource type is as requested.
    */
   void testHeteroEvalRequest() {
@@ -224,7 +224,7 @@ final class EvaluatorManagerTestHelper {
   }
 
   /**
-   * Generate mocked {@link EvaluatorRequestor}, which provides {@code submit()} method.
+   * Generate mocked {@link EvaluatorRequestor}, which provides {@code submitSingleThreadService()} method.
    * @return mocked {@link EvaluatorRequestor}
    */
   private EvaluatorRequestor generateMockedEvaluatorRequestor() {
@@ -396,7 +396,7 @@ final class EvaluatorManagerTestHelper {
   }
 
   /**
-   * Last {@link ActiveContext} handler which does not submit context.
+   * Last {@link ActiveContext} handler which does not submitSingleThreadService context.
    * Add identifier of given {@link ActiveContext} to evalIdToActualContextIdStack for validation.
    */
   private final class LastACHandler implements EventHandler<ActiveContext> {
