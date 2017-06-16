@@ -23,7 +23,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD.
+ * Client for non-negative matrix factorization via SGD with JobServer.
  */
 public final class NMFJobServer {
 

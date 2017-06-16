@@ -64,7 +64,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main entry point for launching a Dolphin on ET application.
+ * Main entry point for launching a JobServer for Dolphin applications.
  * See {@link JobServerLauncher#launch(String, String[], ETDolphinConfiguration)}.
  */
 @ClientSide

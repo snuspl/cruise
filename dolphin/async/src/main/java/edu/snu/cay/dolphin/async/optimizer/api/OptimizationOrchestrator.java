@@ -19,7 +19,7 @@ import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- *
+ * A class that orchestrates the overall optimization process for a Dolphin job.
  */
 @DefaultImplementation(ETOptimizationOrchestrator.class)
 public interface OptimizationOrchestrator {

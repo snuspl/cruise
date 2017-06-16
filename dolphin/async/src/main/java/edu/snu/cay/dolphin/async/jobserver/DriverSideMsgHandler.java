@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-
 import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.network.MessageHandler;
@@ -26,7 +25,9 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
+ * A driver-side message handler for JobServer, which manages multiple {@link DolphinMaster}s.
+ * Therefore, it routes messages to an appropriate {@link DolphinMaster}
+ * based on {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId} embedded in incoming {@link DolphinMsg}.
  */
 final class DriverSideMsgHandler implements MessageHandler {
 
@@ -41,7 +42,6 @@ final class DriverSideMsgHandler implements MessageHandler {
   public void onNext(final Message<DolphinMsg> msg) {
     final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
 
-    // TODO #1175: propagate the msg to the corresponding DolphinMaster based on the job id
     final String jobId = dolphinMsg.getJobId().toString();
     final DolphinMaster dolphinMaster = jobServerDriverFuture.get().getDolphinMaster(jobId);
     dolphinMaster.getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);

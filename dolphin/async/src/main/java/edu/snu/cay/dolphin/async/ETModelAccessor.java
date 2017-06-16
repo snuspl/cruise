@@ -48,7 +48,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   private final Tracer pullTracer = new Tracer();
 
   @Inject
-  ETModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+  private ETModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                   final TableAccessor tableAccessor) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);
   }

@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import javax.inject.Inject;
 
 /**
- *
+ * A dummy implementation that does nothing.
  */
 public final class DummyOrchestrator implements OptimizationOrchestrator {
 

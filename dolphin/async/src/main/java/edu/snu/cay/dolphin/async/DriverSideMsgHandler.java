@@ -24,7 +24,7 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
+ * A driver-side message handler that routes messages to {@link DolphinMaster}.
  */
 final class DriverSideMsgHandler implements MessageHandler {
 
