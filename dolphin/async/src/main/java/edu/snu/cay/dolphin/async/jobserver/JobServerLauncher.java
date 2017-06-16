@@ -102,13 +102,15 @@ public final class JobServerLauncher {
       // parse command line arguments, separate them into basic & user parameters
       final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
 
-      final Configuration clientParamConf = configurations.get(0); // only client uses this
-      final Configuration driverParamConf = configurations.get(1);
+      final Configuration clientParamConf = configurations.get(0); // only client uses it
+      final Configuration driverParamConf = configurations.get(1); // only driver uses it
+
+      // driver will also use following things for executing a job
       final Configuration serverParamConf = configurations.get(2);
       final Configuration workerParamConf = configurations.get(3);
       final Configuration userParamConf = configurations.get(4);
 
-      // server conf
+      // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
           serverParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
@@ -118,7 +120,7 @@ public final class JobServerLauncher {
               .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
               .build());
 
-      // worker conf
+      // worker conf. workers will be spawned with this configuration
       final Configuration workerConf = Configurations.merge(
           workerParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
@@ -139,7 +141,7 @@ public final class JobServerLauncher {
               clientParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
-      // job configuration
+      // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(serverConf, workerConf, userParamConf);
 
       // driver configuration
@@ -184,7 +186,7 @@ public final class JobServerLauncher {
 
     // parameters for driver (job server)
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
-        // TODO #00: submit jobs dynamically
+        // TODO #1173: submit jobs dynamically
         // number of jobs to run
         NumJobs.class,
 
@@ -200,6 +202,7 @@ public final class JobServerLauncher {
         // extra resource params
         NumExtraResources.class, ExtraResourcesPeriodSec.class);
 
+    // parameters for servers
     final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumServerHandlerThreads.class, NumServerSenderThreads.class,
@@ -207,6 +210,7 @@ public final class JobServerLauncher {
         NumServerBlocks.class
     );
 
+    // parameters for workers
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
@@ -296,6 +300,9 @@ public final class JobServerLauncher {
         .build();
   }
 
+  /**
+   * @return a configuration for spawning a {@link DolphinMaster}.
+   */
   private static Configuration getJobConfiguration(final Configuration serverConf,
                                                    final Configuration workerConf,
                                                    final Configuration userParamConf) {
@@ -308,7 +315,9 @@ public final class JobServerLauncher {
         .build();
   }
 
-
+  /**
+   * @return a configuration for jobserver driver
+   */
   private static Configuration getDriverConfiguration(final String jobName,
                                                       final int driverMemSize,
                                                       final Configuration jobConf) {
