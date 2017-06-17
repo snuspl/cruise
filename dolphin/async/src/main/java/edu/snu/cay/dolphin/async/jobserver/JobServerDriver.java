@@ -187,7 +187,7 @@ public final class JobServerDriver {
     @Override
     public void onNext(final StartTime startTime) {
       try {
-        // TODO #00: execute jobs dynamically
+        // TODO #1173: execute jobs dynamically
         for (int i = 0; i < numJobs; i++) {
           executeJob(jobConf);
         }
@@ -209,7 +209,6 @@ public final class JobServerDriver {
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
 
     LOG.log(Level.INFO, "Execute job with Id {0}", dolphinJobId);
-
     jobInjector.bindVolatileParameter(DolphinJobId.class, dolphinJobId);
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
@@ -258,55 +257,52 @@ public final class JobServerDriver {
         workerInjector, numWorkerBlocks, userParamConf);
     final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
-    LOG.log(Level.INFO, "Preparing executors and tables");
-    try {
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers,
-          ExecutorConfiguration.newBuilder()
-              .setResourceConf(serverResourceConf)
-              .setRemoteAccessConf(serverRemoteAccessConf)
-              .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-              .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
-              .build()).get();
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers,
-          ExecutorConfiguration.newBuilder()
-              .setResourceConf(workerResourceConf)
-              .setRemoteAccessConf(workerRemoteAccessConf)
-              .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-              .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
-              .build()).get();
+    LOG.log(Level.INFO, "Preparing executors and tables for job: {0}", dolphinJobId);
+    final Future<List<AllocatedExecutor>> serversFuture = etMaster.addExecutors(numServers,
+        ExecutorConfiguration.newBuilder()
+            .setResourceConf(serverResourceConf)
+            .setRemoteAccessConf(serverRemoteAccessConf)
+            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
+            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
+            .build());
+    final Future<List<AllocatedExecutor>> workersFuture = etMaster.addExecutors(numWorkers,
+        ExecutorConfiguration.newBuilder()
+            .setResourceConf(workerResourceConf)
+            .setRemoteAccessConf(workerRemoteAccessConf)
+            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
+            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
+            .build());
 
-      Executors.newSingleThreadExecutor().submit(() -> {
-        try {
-          final Future<AllocatedTable> modelTableFuture = etMaster.createTable(serverTableConf, servers);
-          final Future<AllocatedTable> inputTableFuture = etMaster.createTable(workerTableConf, workers);
+    new Thread(() -> {
+      try {
+        final List<AllocatedExecutor> servers = serversFuture.get();
+        final List<AllocatedExecutor> workers = workersFuture.get();
 
-          final AllocatedTable modelTable = modelTableFuture.get();
-          final AllocatedTable inputTable = inputTableFuture.get();
+        final Future<AllocatedTable> modelTableFuture = etMaster.createTable(serverTableConf, servers);
+        final Future<AllocatedTable> inputTableFuture = etMaster.createTable(workerTableConf, workers);
 
-          modelTable.subscribe(workers).get();
-          inputTable.load(workers, inputPath).get();
+        final AllocatedTable modelTable = modelTableFuture.get();
+        final AllocatedTable inputTable = inputTableFuture.get();
 
-          LOG.log(Level.FINE, "Spawn new dolphinMaster with ID {0}", dolphinJobId);
-          final DolphinMaster dolphinMaster = jobInjector.getInstance(DolphinMaster.class);
-          dolphinMasterMap.put(dolphinJobId, dolphinMaster);
+        modelTable.subscribe(workers).get();
+        inputTable.load(workers, inputPath).get();
 
-          dolphinMaster.start(servers, workers, modelTable, inputTable);
+        LOG.log(Level.FINE, "Spawn new dolphinMaster with ID {0}", dolphinJobId);
+        final DolphinMaster dolphinMaster = jobInjector.getInstance(DolphinMaster.class);
+        dolphinMasterMap.put(dolphinJobId, dolphinMaster);
 
-          workers.forEach(AllocatedExecutor::close);
-          servers.forEach(AllocatedExecutor::close);
-        } catch (Exception e) {
-          LOG.log(Level.SEVERE, "Exception while running a job", e);
-          throw new RuntimeException(e);
-        } finally {
-          LOG.log(Level.INFO, "Job execution has been finished. JobId: {0}", dolphinJobId);
-          dolphinMasterMap.remove(dolphinJobId);
-        }
-      });
+        dolphinMaster.start(servers, workers, modelTable, inputTable);
 
-    } catch (InterruptedException | ExecutionException e) {
-      LOG.log(Level.SEVERE, "Exception", e);
-      throw new RuntimeException(e);
-    }
+        workers.forEach(AllocatedExecutor::close);
+        servers.forEach(AllocatedExecutor::close);
+      } catch (Exception e) {
+        LOG.log(Level.SEVERE, "Exception while running a job", e);
+        throw new RuntimeException(e);
+      } finally {
+        LOG.log(Level.INFO, "Job execution has been finished. JobId: {0}", dolphinJobId);
+        dolphinMasterMap.remove(dolphinJobId);
+      }
+    }).start();
   }
 
   /**
