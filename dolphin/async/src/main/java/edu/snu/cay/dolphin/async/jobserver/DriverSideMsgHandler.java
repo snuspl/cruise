@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.network;
-
+package edu.snu.cay.dolphin.async.jobserver;
 
 import edu.snu.cay.dolphin.async.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
+import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
@@ -25,23 +25,25 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
+ * A driver-side message handler for JobServer, which manages multiple {@link DolphinMaster}s.
+ * Therefore, it routes messages to an appropriate {@link DolphinMaster}
+ * based on {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId} embedded in incoming {@link DolphinMsg}.
  */
-public final class DriverSideMsgHandler implements MessageHandler {
+final class DriverSideMsgHandler implements MessageHandler {
 
-  private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
+  private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 
   @Inject
-  private DriverSideMsgHandler(final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
-    this.dolphinMasterFuture = dolphinMasterFuture;
+  private DriverSideMsgHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture) {
+    this.jobServerDriverFuture = jobServerDriverFuture;
   }
 
   @Override
   public void onNext(final Message<DolphinMsg> msg) {
     final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
 
-    // TODO #1175: propagate the msg to the corresponding DolphinMaster based on the job id
     final String jobId = dolphinMsg.getJobId().toString();
-    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+    final DolphinMaster dolphinMaster = jobServerDriverFuture.get().getDolphinMaster(jobId);
+    dolphinMaster.getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
   }
 }

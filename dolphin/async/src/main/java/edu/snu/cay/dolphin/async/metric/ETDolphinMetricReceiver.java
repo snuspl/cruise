@@ -29,9 +29,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
-import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
-
 /**
  * Implementation of Metric receiver for Dolphin on ET.
  */
@@ -44,12 +41,19 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   private final int miniBatchSize;
 
+  private final String modelTableId;
+  private final String inputTableId;
+
   @Inject
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
+                          @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
                           @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
+    this.modelTableId = modelTableId;
+    this.inputTableId = inputTableId;
     this.miniBatchSize = miniBatchSize;
   }
 
@@ -75,7 +79,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Distinguishes the metrics from workers if the metrics consist of information of the training data table.
    */
   private boolean isWorkerMetrics(final MetricReportMsg metricReportMsg) {
-    return metricReportMsg.getTableToNumBlocks().containsKey(TRAINING_DATA_TABLE_ID);
+    return metricReportMsg.getTableToNumBlocks().containsKey(inputTableId);
   }
 
   /**
@@ -122,7 +126,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setMiniBatchSize(miniBatchSize)
               .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
               .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
-              .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
+              .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(inputTableId))
               .setTotalTime(epochMetrics.getEpochTimeSec())
               .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
               .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
@@ -142,7 +146,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                                             final String hostname,
                                             final BatchMetrics batchMetrics) {
     return WorkerMetrics.newBuilder()
-              .setNumDataBlocks(tableToNumBlocks.get(TRAINING_DATA_TABLE_ID))
+              .setNumDataBlocks(tableToNumBlocks.get(inputTableId))
               .setEpochIdx(batchMetrics.getEpochIdx())
               .setMiniBatchIdx(batchMetrics.getBatchIdx())
               .setMiniBatchSize(miniBatchSize)
@@ -163,8 +167,8 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
   private ParameterWorkerMetrics buildParameterWorkerMetrics(final MetricReportMsg metricReportMsg) {
     return ParameterWorkerMetrics.newBuilder()
-        .setTotalPullCount(metricReportMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
-        .setTotalReceivedBytes(metricReportMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L))
+        .setTotalPullCount(metricReportMsg.getCountSentGetReq().getOrDefault(modelTableId, 0))
+        .setTotalReceivedBytes(metricReportMsg.getBytesReceivedGetResp().getOrDefault(modelTableId, 0L))
         .build();
   }
 
@@ -177,7 +181,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   private void processServerMetrics(final String srcId, final MetricReportMsg metricReportMsg) {
     final String hostname = metricReportMsg.getHostname();
     final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-        .setNumModelBlocks(metricReportMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
+        .setNumModelBlocks(metricReportMsg.getTableToNumBlocks().getOrDefault(modelTableId, 0))
         .setHostname(hostname)
         .build();
     metricManager.storeServerMetrics(srcId, serverMetrics);

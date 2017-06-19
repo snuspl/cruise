@@ -21,7 +21,6 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -35,7 +34,7 @@ import java.nio.ByteBuffer;
 final class WorkerSideMsgSender {
 
   private final String driverId;
-  private final String jobId;
+  private final String dolphinJobId;
   private final String executorId;
   private final NetworkConnection<DolphinMsg> networkConnection;
 
@@ -45,11 +44,11 @@ final class WorkerSideMsgSender {
   private WorkerSideMsgSender(final NetworkConnection<DolphinMsg> networkConnection,
                               final SerializableCodec<WorkerGlobalBarrier.State> codec,
                               @Parameter(DriverIdentifier.class) final String driverId,
-                              @Parameter(JobIdentifier.class) final String jobId,
+                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                               @Parameter(ExecutorIdentifier.class) final String executorId) {
     this.networkConnection = networkConnection;
     this.driverId = driverId;
-    this.jobId = jobId;
+    this.dolphinJobId = dolphinJobId;
     this.executorId = executorId;
     this.codec = codec;
   }
@@ -65,7 +64,7 @@ final class WorkerSideMsgSender {
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(jobId)
+        .setJobId(dolphinJobId)
         .setType(dolphinMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
@@ -86,7 +85,7 @@ final class WorkerSideMsgSender {
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(jobId)
+        .setJobId(dolphinJobId)
         .setType(dolphinMsgType.SyncMsg)
         .setSyncMsg(syncMsg)
         .build();

@@ -43,7 +43,7 @@ public final class ETTaskRunner {
 
   private final ETMaster etMaster;
 
-  private final InjectionFuture<DolphinMaster> etDolphinDriverFuture;
+  private final InjectionFuture<DolphinMaster> etDolphinMasterFuture;
 
   private final WorkerStateManager workerStateManager;
 
@@ -58,7 +58,7 @@ public final class ETTaskRunner {
                        final WorkerStateManager workerStateManager,
                        @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.etMaster = etMaster;
-    this.etDolphinDriverFuture = dolphinMasterFuture;
+    this.etDolphinMasterFuture = dolphinMasterFuture;
     this.workerStateManager = workerStateManager;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
   }
@@ -75,11 +75,11 @@ public final class ETTaskRunner {
     servers.forEach(server -> serverExecutors.put(server.getId(), server));
 
     // submit dummy tasks to servers
-    servers.forEach(server -> server.submitTask(etDolphinDriverFuture.get().getServerTaskConf()));
+    servers.forEach(server -> server.submitTask(etDolphinMasterFuture.get().getServerTaskConf()));
 
     final Map<String, Future<SubmittedTask>> executorIdToTaskFuture = new HashMap<>(workers.size());
     workers.forEach(worker -> executorIdToTaskFuture.put(worker.getId(),
-        worker.submitTask(etDolphinDriverFuture.get().getWorkerTaskConf())));
+        worker.submitTask(etDolphinMasterFuture.get().getWorkerTaskConf())));
 
     executorIdToTaskFuture.forEach((executorId, taskFuture) -> {
       try {
