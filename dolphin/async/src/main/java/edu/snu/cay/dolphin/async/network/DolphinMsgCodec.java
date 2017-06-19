@@ -13,30 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.dolphin.async.network;
 
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.exception.evaluator.NetworkException;
+import edu.snu.cay.dolphin.async.DolphinMsg;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * A class for reporting epoch progress to driver.
+ * Codec for DolphinMsg.
  */
-@EvaluatorSide
-public final class ProgressReporter {
-  private final WorkerSideMsgSender msgSender;
+public final class DolphinMsgCodec implements Codec<DolphinMsg> {
 
   @Inject
-  private ProgressReporter(final WorkerSideMsgSender msgSender) {
-    this.msgSender = msgSender;
+  private DolphinMsgCodec() {
+
   }
 
-  /**
-   * Report its progress to {@link ProgressTracker}.
-   * @param epochIdx a current processing epoch index
-   */
-  void report(final int epochIdx) throws NetworkException {
-    msgSender.sendProgressMsg(epochIdx);
+  @Override
+  public byte[] encode(final DolphinMsg dolphinMsg) {
+    return AvroUtils.toBytes(dolphinMsg, DolphinMsg.class);
+  }
+
+  @Override
+  public DolphinMsg decode(final byte[] bytes) {
+    return AvroUtils.fromBytes(bytes, DolphinMsg.class);
   }
 }

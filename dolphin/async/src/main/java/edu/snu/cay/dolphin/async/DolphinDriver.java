@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -38,7 +38,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -84,14 +83,14 @@ public final class DolphinDriver {
   private final TableConfiguration serverTableConf;
   private final String inputPath;
 
-  private final Configuration centCommContextConf;
-  private final Configuration centCommServiceConf;
+  private final Configuration executorContextConf;
+  private final Configuration executorServiceConf;
 
   @Inject
   private DolphinDriver(final DolphinMaster dolphinMaster,
                         final ETMaster etMaster,
                         final ConfigurationSerializer confSerializer,
-                        final CentCommConfProvider centCommConfProvider,
+                        final NetworkConfProvider networkConfProvider,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
                         @Parameter(NumServerCores.class) final int numServerCores,
@@ -140,11 +139,8 @@ public final class DolphinDriver {
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
     // cent comm configuration for executors
-    this.centCommContextConf = centCommConfProvider.getContextConfiguration();
-    this.centCommServiceConf = Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(JobIdentifier.class, jobId) // use it as a client id
-            .build());
+    this.executorContextConf = networkConfProvider.getContextConfiguration();
+    this.executorServiceConf = networkConfProvider.getServiceConfiguration(jobId);
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -212,8 +208,8 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserContextConf(centCommContextConf)
-        .setUserServiceConf(centCommServiceConf)
+        .setUserContextConf(executorContextConf)
+        .setUserServiceConf(executorServiceConf)
         .build();
   }
 
@@ -221,8 +217,8 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
         .setRemoteAccessConf(serverRemoteAccessConf)
-        .setUserContextConf(centCommContextConf)
-        .setUserServiceConf(centCommServiceConf)
+        .setUserContextConf(executorContextConf)
+        .setUserServiceConf(executorServiceConf)
         .build();
   }
 

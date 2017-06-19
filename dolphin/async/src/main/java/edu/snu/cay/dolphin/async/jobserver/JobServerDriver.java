@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.FailedTask;
@@ -51,6 +52,8 @@ public final class JobServerDriver {
   private static final Logger LOG = Logger.getLogger(JobServerDriver.class.getName());
 
   private final ETMaster etMaster;
+  private final JobMessageObserver jobMessageObserver;
+  private final HttpServerInfo httpServerInfo;
   private final String jobId;
   private final Map<String, Pair<List<AllocatedExecutor>, List<AllocatedExecutor>>> jobToExecutorsMap;
 
@@ -64,9 +67,13 @@ public final class JobServerDriver {
 
   @Inject
   private JobServerDriver(final ETMaster etMaster,
-                          @Parameter(JobIdentifier.class) final String jobId)
+                          @Parameter(JobIdentifier.class) final String jobId,
+                          final JobMessageObserver jobMessageObserver,
+                          final HttpServerInfo httpServerInfo)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
+    this.jobMessageObserver = jobMessageObserver;
+    this.httpServerInfo = httpServerInfo;
     this.jobId = jobId;
     jobToExecutorsMap = new HashMap<>();
   }
@@ -101,6 +108,7 @@ public final class JobServerDriver {
     @Override
     public void onNext(final StartTime startTime) {
       try {
+        showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
         final List<AllocatedExecutor> servers = etMaster.addExecutors(2, EXECUTOR_CONF).get();
         final List<AllocatedExecutor> workers = etMaster.addExecutors(2, EXECUTOR_CONF).get();
 
@@ -142,5 +150,14 @@ public final class JobServerDriver {
       // TODO #677: Handle failure from Evaluators properly
       throw new RuntimeException(failedTask.asError());
     }
+  }
+
+  private void showHttpInfoToClient(final String localAddress, final int portNumber) {
+    final String httpMsg = String.format(
+        "\nIP address : %s\n " +
+        "Port : %d\n " +
+        "Usage : http://%s:%d/dolphin/v1/conf={#jobConf}",
+        localAddress, portNumber, localAddress, portNumber);
+    jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
   }
 }

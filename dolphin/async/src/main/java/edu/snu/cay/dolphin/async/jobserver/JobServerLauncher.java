@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.jobserver;
 
 import edu.snu.cay.common.client.DriverLauncher;
+import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -97,11 +98,15 @@ public final class JobServerLauncher {
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
+    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration();
+
     final Configuration httpConf = HttpHandlerConfiguration.CONF
         .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
         .build();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, httpConf, getNCSConfiguration());
+
+    return Configurations.merge(driverConf, etMasterConfiguration,
+        driverNetworkConf, httpConf, getNCSConfiguration());
   }
 
   private static Configuration getNCSConfiguration() {
