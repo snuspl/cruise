@@ -16,12 +16,15 @@
 package edu.snu.cay.utils;
 
 import java.util.concurrent.*;
-import java.util.logging.Logger;
 
 /**
  * Factory methods for {@link CatchableExecutor} as similar with {@link Executors}.
  */
 public final class CatchableExecutors {
+
+  private CatchableExecutors() {
+
+  }
 
   /**
    * Creates an Executor that uses a single worker thread operating
@@ -51,7 +54,7 @@ public final class CatchableExecutors {
    * With this executorIt can spawn user threads that it throws {@link RuntimeException} when detecting any exception.
    * See {@link #afterExecute(Runnable, Throwable)}.
    */
-  public static class CatchableExecutor extends ThreadPoolExecutor {
+  public static final class CatchableExecutor extends ThreadPoolExecutor {
     private CatchableExecutor(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime,
                                final TimeUnit unit, final BlockingQueue<Runnable> workQueue) {
       super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
