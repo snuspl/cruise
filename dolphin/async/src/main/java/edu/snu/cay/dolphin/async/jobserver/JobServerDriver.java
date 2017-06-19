@@ -69,6 +69,7 @@ import java.util.logging.Logger;
 @Unit
 public final class JobServerDriver {
   private static final Logger LOG = Logger.getLogger(JobServerDriver.class.getName());
+  private static final int DRIVER_IDLE_PERIOD_MS = 30000;
 
   private final ETMaster etMaster;
 
@@ -195,8 +196,7 @@ public final class JobServerDriver {
     @Override
     public void onNext(final StartTime startTime) {
       // prevent driver from being closed by registering a dummy clock
-      final int DRIVER_IDLE_PERIOD_MS = 30000;
-      clock.scheduleAlarm(DRIVER_IDLE_PERIOD_MS, value -> {});
+      clock.scheduleAlarm(DRIVER_IDLE_PERIOD_MS, value -> { });
 
       // TODO #1173: execute jobs dynamically
       for (int i = 0; i < numJobsToExecute; i++) {
