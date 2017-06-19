@@ -15,72 +15,62 @@
  */
 package edu.snu.cay.utils;
 
-
-import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class a extension version of {@link ExecutorService}.
- * It can spawn user threads which futures are managed by {@code #threadFutureMap}
+ * This class a extension version of {@link ThreadPoolExecutor}.
+ * It can spawn user threads that it throws {@link RuntimeException} when detecting any exception.
+ * See {@link #afterExecute(Runnable, Throwable)}.
  */
-public final class CatchableExecutors {
+public final class CatchableExecutors extends ThreadPoolExecutor {
 
   private static final Logger LOG = Logger.getLogger(CatchableExecutors.class.getName());
 
-  private static CatchableExecutors instance;
-  private final AtomicInteger defaultThreadIdentifier = new AtomicInteger(0);
-  private final Map<String, Future> threadFutureMap;
-  private Thread mainThread;
+  private CatchableExecutors(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime,
+                             final TimeUnit unit, final BlockingQueue<Runnable> workQueue) {
+    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
+  }
 
-  private CatchableExecutors(final Thread mainThread) {
-    this.threadFutureMap = new ConcurrentHashMap<>();
-    this.mainThread = mainThread;
-
-    final Thread poolThread = new Thread(() -> {
-      while (true) {
-        if (threadFutureMap.size() > 0) {
-          threadFutureMap.forEach((threadId, future) -> {
-            if (future.isDone()) {
-              try {
-                future.get();
-              } catch (InterruptedException | ExecutionException e) {
-                LOG.log(Level.INFO, "Exception caught, thread id : {0}, exception : {1}",
-                    new Object[]{threadId, e});
-                //this.mainThread.interrupt();
-                throw new RuntimeException(e);
-              }
-            }
-          });
-        }
+  @Override
+  protected void afterExecute(final Runnable runnable, final Throwable throwable) {
+    super.afterExecute(runnable, throwable);
+    Throwable resultThrowable = throwable;
+    if (throwable == null && runnable instanceof Future<?>) {
+      try {
+        ((Future) runnable).get();
+      } catch (InterruptedException | ExecutionException e) {
+        resultThrowable = e;
       }
-    });
-
-    poolThread.start();
-  }
-
-  public static CatchableExecutors getInstance() {
-    if (instance == null) {
-      instance = new CatchableExecutors(Thread.currentThread());
     }
-    return instance;
+
+    if (resultThrowable != null) {
+      throw new RuntimeException(resultThrowable);
+    }
   }
 
-  public CatchableExecutors setMainThread(final Thread nextThread) {
-    this.mainThread = nextThread;
-    return instance;
+  /**
+   * Creates an Executor that uses a single worker thread operating
+   * off an unbounded queue. Unlike {@code Executors.newSingleThreadExecutor()}, if this
+   * single thread terminates due to a failure during execution,
+   * it just throws a {@link RuntimeException} rather than takes a new one.
+   * @return the newly created single-threaded Executor
+   */
+  public static CatchableExecutors newSingleThreadExecutor() {
+    return new CatchableExecutors(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
   }
 
-  public void submitBySingle(final String threadId, final Runnable runnable) {
-    final Future result = Executors.newSingleThreadExecutor().submit(runnable);
-    threadFutureMap.put(threadId, result);
-  }
-
-  public void submitBySingle(final Runnable runnable) {
-    final String threadId = String.valueOf(defaultThreadIdentifier.getAndIncrement());
-    submitBySingle(threadId, runnable);
+  /**
+   * Creates a thread pool that reuses a fixed number of threads operating
+   * off a shared unbounded queue. At any point, at most {@code numThreads}
+   * threads will be active processing tasks. Unlike {@code Executors.newFixedThreadPool()}, if any
+   * thread terminates due to a failure during execution, it just throws a {@link RuntimeException}.
+   * @param numThreads the number of threads in the pool
+   * @return the newly created thread pool
+   */
+  public static CatchableExecutors newFixedThreadPool(final int numThreads) {
+    return new CatchableExecutors(numThreads, numThreads, 0L,
+        TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
   }
 
 }

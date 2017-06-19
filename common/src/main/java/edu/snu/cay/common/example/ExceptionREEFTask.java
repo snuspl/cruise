@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.common.example;
 
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -41,21 +42,7 @@ public final class ExceptionREEFTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
 
-    new Thread(() -> {
-      for (int i = 1; i <= 100; i++) {
-        LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
-      }
-
-      final int errorNumber = 1 / 0;
-
-      for (int i = 101; i <= 200; i++) {
-        LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
-      }
-    }).start();
-
-    /*
-    CatchableExecutors.getInstance().setMainThread(Thread.currentThread()).submitBySingle(() -> {
-
+    CatchableExecutors.newSingleThreadExecutor().submit(() -> {
       for (int i = 1; i <= 100; i++) {
         LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
       }
@@ -66,7 +53,6 @@ public final class ExceptionREEFTask implements Task {
         LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
       }
     });
-    */
 
     Thread.sleep(5000);
     return null;

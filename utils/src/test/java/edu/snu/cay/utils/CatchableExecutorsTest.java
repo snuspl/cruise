@@ -15,26 +15,66 @@
  */
 package edu.snu.cay.utils;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Test for the {@link CatchableExecutors} class.
  */
 public class CatchableExecutorsTest {
 
+  private final List<Throwable> errorList = new ArrayList<>();
   @Rule
-  public ExpectedException expectedEx = ExpectedException.none();
+  public ExpectedException thrown = ExpectedException.none();
 
-  @Test(expected = RuntimeException.class)
-  public void singleThreadTest() throws Exception {
-    CatchableExecutors.getInstance().submitBySingle(() -> {
-      throw new RuntimeException("This exception must interrupt main thread.");
-    });
-    throw new RuntimeException("hi");
-
-    //Thread.sleep(1000);
+  @Before
+  public void setUp() {
+    errorList.clear();
+    Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> errorList.add(throwable));
   }
 
+  @Test
+  public void newSingleThreadExecutorTest() throws InterruptedException {
+    thrown.expect(RuntimeException.class);
+    CatchableExecutors.newSingleThreadExecutor().submit(() -> {
+      final int errorNumber = 1 / 0;
+    });
+
+    Thread.sleep(500);
+
+    errorList.forEach(throwable -> {
+      throw new RuntimeException(throwable);
+    });
+  }
+
+  @Test
+  public void newFixedThreadPoolTest() throws InterruptedException {
+    thrown.expect(RuntimeException.class);
+    final ExecutorService threadPool = CatchableExecutors.newFixedThreadPool(4);
+    for (int index = 0; index < 3; index++) {
+      threadPool.submit(() -> {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      });
+    }
+
+    threadPool.submit(() -> {
+      final int errorNumber = 1 / 0;
+    });
+
+    Thread.sleep(500);
+
+    errorList.forEach(throwable -> {
+      throw new RuntimeException(throwable);
+    });
+  }
 }
