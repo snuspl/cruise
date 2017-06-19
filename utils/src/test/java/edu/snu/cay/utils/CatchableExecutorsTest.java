@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
  */
 public class CatchableExecutorsTest {
 
+  private static final int SLEEP_TIME = 500;
   private final List<Throwable> errorList = new ArrayList<>();
   @Rule
   public ExpectedException thrown = ExpectedException.none();
@@ -46,7 +47,7 @@ public class CatchableExecutorsTest {
       final int errorNumber = 1 / 0;
     });
 
-    Thread.sleep(500);
+    Thread.sleep(SLEEP_TIME);
 
     errorList.forEach(throwable -> {
       throw new RuntimeException(throwable);
@@ -56,11 +57,12 @@ public class CatchableExecutorsTest {
   @Test
   public void newFixedThreadPoolTest() throws InterruptedException {
     thrown.expect(RuntimeException.class);
-    final ExecutorService threadPool = CatchableExecutors.newFixedThreadPool(4);
-    for (int index = 0; index < 3; index++) {
+    final int poolSize = 4;
+    final ExecutorService threadPool = CatchableExecutors.newFixedThreadPool(poolSize);
+    for (int index = 0; index < poolSize - 1; index++) {
       threadPool.submit(() -> {
         try {
-          Thread.sleep(1000);
+          Thread.sleep(SLEEP_TIME);
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
@@ -71,7 +73,7 @@ public class CatchableExecutorsTest {
       final int errorNumber = 1 / 0;
     });
 
-    Thread.sleep(500);
+    Thread.sleep(SLEEP_TIME);
 
     errorList.forEach(throwable -> {
       throw new RuntimeException(throwable);
