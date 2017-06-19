@@ -154,8 +154,8 @@ public final class JobServerDriver {
 
   private void showHttpInfoToClient(final String localAddress, final int portNumber) {
     final String httpMsg = String.format(
-        "\nIP address : %s\n " +
-        "Port : %d\n " +
+        "\nIP address : %s\n" +
+        "Port : %d\n" +
         "Usage : http://%s:%d/dolphin/v1/conf={#jobConf}",
         localAddress, portNumber, localAddress, portNumber);
     jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
