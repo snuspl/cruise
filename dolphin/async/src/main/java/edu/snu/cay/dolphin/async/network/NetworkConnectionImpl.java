@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (C) 2016 Seoul National University
+=======
+ * Copyright (C) 2017 Seoul National University
+>>>>>>> master
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +26,8 @@ import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.NetworkConnectionService;
+import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.Codec;
@@ -41,17 +47,17 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
   private final MessageHandler msgHandler;
   private final NetworkLinkListener networkLinkListener;
   private final IdentifierFactory identifierFactory;
+  private final String jobId;
 
   /**
    * Member variables for holding network connection instance.
    */
-  private Identifier connectionFactoryId;
   private ConnectionFactory<DolphinMsg> connectionFactory;
-  private Identifier localEndPointId;
 
   @Inject
   private NetworkConnectionImpl(final NetworkConnectionService networkConnectionService,
                                 final IdentifierFactory identifierFactory,
+                                @Parameter(JobIdentifier.class) final String jobId,
                                 final DolphinMsgCodec codec,
                                 final MessageHandler msgHandler,
                                 final NetworkLinkListener networkLinkListener) {
@@ -60,16 +66,18 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
     this.msgHandler = msgHandler;
     this.networkLinkListener = networkLinkListener;
     this.identifierFactory = identifierFactory;
+    this.jobId = jobId;
   }
 
   @Override
-  public void setup(final String connectionId, final String endPointId) {
+  public void setup(final String endPointId) {
     if (connectionFactory != null) {
-      throw new AlreadyConnectedException(connectionFactoryId, localEndPointId);
+      throw new AlreadyConnectedException(connectionFactory.getConnectionFactoryId(),
+          connectionFactory.getLocalEndPointId());
     }
 
-    connectionFactoryId = identifierFactory.getNewInstance(connectionId);
-    localEndPointId = identifierFactory.getNewInstance(endPointId);
+    final Identifier connectionFactoryId = identifierFactory.getNewInstance(jobId);
+    final Identifier localEndPointId = identifierFactory.getNewInstance(endPointId);
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryId, codec,
         msgHandler, networkLinkListener, localEndPointId);
     LOG.log(Level.INFO, "Established network connection {0}/{1}",

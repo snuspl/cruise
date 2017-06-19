@@ -25,7 +25,7 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to an appropriate component corresponding to the msg type.
+ * A driver-side message handler that routes messages to an appropriate {@link DolphinMaster}.
  */
 public final class DriverSideMsgHandler implements MessageHandler {
 
@@ -38,8 +38,10 @@ public final class DriverSideMsgHandler implements MessageHandler {
 
   @Override
   public void onNext(final Message<DolphinMsg> msg) {
-    // TODO #00: Get a specific handler by a job id in dolphinMsg
     final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
+
+    // TODO #1175: propagate the msg to the corresponding DolphinMaster based on the job id
+    final String jobId = dolphinMsg.getJobId().toString();
     dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
   }
 }

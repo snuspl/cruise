@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
@@ -33,6 +34,7 @@ import java.nio.ByteBuffer;
 @EvaluatorSide
 final class WorkerSideMsgSender {
 
+  private final String driverId;
   private final String jobId;
   private final String executorId;
   private final NetworkConnection<DolphinMsg> networkConnection;
@@ -42,9 +44,11 @@ final class WorkerSideMsgSender {
   @Inject
   private WorkerSideMsgSender(final NetworkConnection<DolphinMsg> networkConnection,
                               final SerializableCodec<WorkerGlobalBarrier.State> codec,
+                              @Parameter(DriverIdentifier.class) final String driverId,
                               @Parameter(JobIdentifier.class) final String jobId,
                               @Parameter(ExecutorIdentifier.class) final String executorId) {
     this.networkConnection = networkConnection;
+    this.driverId = driverId;
     this.jobId = jobId;
     this.executorId = executorId;
     this.codec = codec;
@@ -61,11 +65,12 @@ final class WorkerSideMsgSender {
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
         .setType(dolphinMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    networkConnection.send(jobId, dolphinMsg);
+    networkConnection.send(driverId, dolphinMsg);
   }
 
   /**
@@ -81,10 +86,11 @@ final class WorkerSideMsgSender {
         .build();
 
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(jobId)
         .setType(dolphinMsgType.SyncMsg)
         .setSyncMsg(syncMsg)
         .build();
 
-    networkConnection.send(jobId, dolphinMsg);
+    networkConnection.send(driverId, dolphinMsg);
   }
 }

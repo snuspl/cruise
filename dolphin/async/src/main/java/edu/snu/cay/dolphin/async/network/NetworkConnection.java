@@ -31,7 +31,7 @@ public interface NetworkConnection<T> {
    * Establish a connection to Dolphin network layer.
    * @throws AlreadyConnectedException when a network connection already exists
    */
-  void setup(String connectionId, String localEndpointId) throws AlreadyConnectedException;
+  void setup(String localEndpointId) throws AlreadyConnectedException;
 
   /**
    * Send msg through connection.

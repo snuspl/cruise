@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.async.DolphinMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.evaluator.context.events.ContextStart;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -35,20 +34,17 @@ import javax.inject.Inject;
 @EvaluatorSide
 public final class ContextStartHandler implements EventHandler<ContextStart> {
   private final NetworkConnection<DolphinMsg> networkConnection;
-  private final String jobId;
   private final String evaluatorId;
 
   @Inject
   private ContextStartHandler(final NetworkConnection<DolphinMsg> networkConnection,
-                              @Parameter(JobIdentifier.class) final String jobId,
                               @Parameter(EvaluatorIdentifier.class) final String evaluatorId) {
     this.networkConnection = networkConnection;
-    this.jobId = jobId;
     this.evaluatorId = evaluatorId;
   }
 
   @Override
   public void onNext(final ContextStart contextStart) {
-    networkConnection.setup(jobId, evaluatorId);
+    networkConnection.setup(evaluatorId);
   }
 }
