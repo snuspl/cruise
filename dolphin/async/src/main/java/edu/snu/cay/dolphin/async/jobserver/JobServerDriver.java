@@ -88,7 +88,7 @@ public final class JobServerDriver {
 
   private final Injector jobBaseInjector;
 
-  // for a single dolphin job
+  // will use this configuration to run multiple instances of dolphin jobs
   private final Configuration testingJobConf;
 
   private ConfigurationSerializer confSerializer;
