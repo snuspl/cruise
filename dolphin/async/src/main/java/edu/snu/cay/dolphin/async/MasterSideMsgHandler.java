@@ -35,7 +35,6 @@ public final class MasterSideMsgHandler {
     this.progressTrackerFuture = progressTrackerFuture;
   }
 
-
   /**
    * Handles dolphin msgs from workers.
    */
