@@ -16,37 +16,14 @@
 package edu.snu.cay.utils;
 
 import java.util.concurrent.*;
-import java.util.logging.Logger;
 
 /**
- * This class a extension version of {@link ThreadPoolExecutor}.
- * It can spawn user threads that it throws {@link RuntimeException} when detecting any exception.
- * See {@link #afterExecute(Runnable, Throwable)}.
+ * Factory methods for {@link CatchableExecutor} as similar with {@link Executors}.
  */
-public final class CatchableExecutors extends ThreadPoolExecutor {
+public final class CatchableExecutors {
 
-  private static final Logger LOG = Logger.getLogger(CatchableExecutors.class.getName());
+  private CatchableExecutors() {
 
-  private CatchableExecutors(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime,
-                             final TimeUnit unit, final BlockingQueue<Runnable> workQueue) {
-    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
-  }
-
-  @Override
-  protected void afterExecute(final Runnable runnable, final Throwable throwable) {
-    super.afterExecute(runnable, throwable);
-    Throwable resultThrowable = throwable;
-    if (throwable == null && runnable instanceof Future<?>) {
-      try {
-        ((Future) runnable).get();
-      } catch (InterruptedException | ExecutionException e) {
-        resultThrowable = e;
-      }
-    }
-
-    if (resultThrowable != null) {
-      throw new RuntimeException(resultThrowable);
-    }
   }
 
   /**
@@ -56,8 +33,8 @@ public final class CatchableExecutors extends ThreadPoolExecutor {
    * it just throws a {@link RuntimeException} rather than takes a new one.
    * @return the newly created single-threaded Executor
    */
-  public static CatchableExecutors newSingleThreadExecutor() {
-    return new CatchableExecutors(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+  public static CatchableExecutor newSingleThreadExecutor() {
+    return new CatchableExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
   }
 
   /**
@@ -68,9 +45,36 @@ public final class CatchableExecutors extends ThreadPoolExecutor {
    * @param numThreads the number of threads in the pool
    * @return the newly created thread pool
    */
-  public static CatchableExecutors newFixedThreadPool(final int numThreads) {
-    return new CatchableExecutors(numThreads, numThreads, 0L,
-        TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+  public static CatchableExecutor newFixedThreadPool(final int numThreads) {
+    return new CatchableExecutor(numThreads, numThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
   }
 
+  /**
+   * This class is an extended version of {@link ThreadPoolExecutor}.
+   * With this executorIt can spawn user threads that it throws {@link RuntimeException} when detecting any exception.
+   * See {@link #afterExecute(Runnable, Throwable)}.
+   */
+  public static final class CatchableExecutor extends ThreadPoolExecutor {
+    private CatchableExecutor(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime,
+                               final TimeUnit unit, final BlockingQueue<Runnable> workQueue) {
+      super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
+    }
+
+    @Override
+    protected void afterExecute(final Runnable runnable, final Throwable throwable) {
+      super.afterExecute(runnable, throwable);
+      Throwable resultThrowable = throwable;
+      if (throwable == null && runnable instanceof Future<?>) {
+        try {
+          ((Future) runnable).get();
+        } catch (InterruptedException | ExecutionException e) {
+          resultThrowable = e;
+        }
+      }
+
+      if (resultThrowable != null) {
+        throw new RuntimeException(resultThrowable);
+      }
+    }
+  }
 }
