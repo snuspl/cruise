@@ -87,7 +87,7 @@ public final class CentCommConfProvider {
 
   /**
    * Return the service configuration for the Cent Comm Service including NameResolver.
-   * Note that if more than one service tries to submit
+   * Note that if more than one service tries to submit service configuration with NameResolver,
    * TANG will throw an exception.
    * @return service configuration for the Cent Comm Service
    */
