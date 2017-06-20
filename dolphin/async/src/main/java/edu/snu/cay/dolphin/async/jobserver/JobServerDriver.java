@@ -193,27 +193,6 @@ public final class JobServerDriver {
         .build();
   }
 
-
-  /**
-   * Submits a job by a specific {@link JobConfiguration}.
-   * All commands are received by {@link JobServerHttpHandler}.
-   */
-  public void submitJob(final JobConfiguration jobConfToExecute) {
-    //TODO #1173: Implement runtime job submission.
-    LOG.log(Level.INFO, "Job submission command is received : job id : {0}, " +
-            "number of server : {1}, " + "number of worker : {2}",
-        new Object[]{jobConfToExecute.getJobId(), jobConfToExecute.getNumServer(), jobConfToExecute.getNumWorker()});
-  }
-
-  /**
-   * Terminates all jobs that were running and closes all executors used for each job.
-   */
-  public void finishServer() {
-    //TODO #1173: Implement job server completion.
-    jobServerTerminator.finishJobServer();
-    LOG.log(Level.INFO, "Job server is finished");
-  }
-
   /**
    * A driver start handler for requesting executors and creating tables to run a dolphin job.
    */
@@ -236,7 +215,7 @@ public final class JobServerDriver {
    * Executes a job with the given configuration.
    * @param jobConfToExecute a job configuration to execute
    */
-  private void executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
+  public void executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
     final Injector jobInjector = jobBaseInjector.forkInjector(jobConfToExecute);
 
     // generate different dolphin job id for each job
@@ -346,6 +325,14 @@ public final class JobServerDriver {
   }
 
   /**
+   * Terminates all jobs that were running and closes all executors used for each job.
+   */
+  public void finishServer() {
+    jobServerTerminator.finishJobServer();
+    LOG.log(Level.INFO, "Job server is successfully finished");
+  }
+
+  /**
    * Handler for FailedContext, which throws RuntimeException to shutdown the entire job.
    */
   final class FailedContextHandler implements EventHandler<FailedContext> {
@@ -383,7 +370,7 @@ public final class JobServerDriver {
         "\nIP address : %s\n" +
         "Port : %d\n" +
         "Command API :\n " +
-        "submit?conf={}\n " +
+        "submit?conf={\"jobConf\" : jobConfString}\n " +
         "finish\n" +
         "Usage : http://%s:%d/dolphin/v1/{command}",
         localAddress, portNumber, localAddress, portNumber);

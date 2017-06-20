@@ -21,7 +21,6 @@ import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -40,7 +39,6 @@ public final class JobServerTerminator implements DriverIdlenessSource {
   private final InjectionFuture<DriverIdleManager> driverIdleManagerFuture;
   private boolean isJobRunning;
 
-
   @Inject
   private JobServerTerminator(final InjectionFuture<DriverIdleManager> driverIdleManagerFuture) {
     this.driverIdleManagerFuture = driverIdleManagerFuture;
@@ -56,7 +54,6 @@ public final class JobServerTerminator implements DriverIdlenessSource {
    * Sends {@link IdleMessage} to {@link DriverIdleManager} to terminate a job.
    */
   public void finishJobServer() {
-    LOG.log(Level.INFO, "try finishing job server");
     isJobRunning = false;
     driverIdleManagerFuture.get().onPotentiallyIdle(JOB_FINISH_MSG);
   }

@@ -16,7 +16,10 @@
 package edu.snu.cay.dolphin.async.jobserver;
 
 import com.google.gson.Gson;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.webserver.HttpHandler;
 import org.apache.reef.webserver.ParsedHttpRequest;
 
@@ -34,10 +37,13 @@ public final class JobServerHttpHandler implements HttpHandler {
 
   private String uriSpecification = "dolphin";
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
+  private final ConfigurationSerializer configurationSerializer;
 
   @Inject
-  private JobServerHttpHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture) {
+  private JobServerHttpHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture,
+                               final ConfigurationSerializer configurationSerializer) {
     this.jobServerDriverFuture = jobServerDriverFuture;
+    this.configurationSerializer = configurationSerializer;
   }
 
   @Override
@@ -55,8 +61,8 @@ public final class JobServerHttpHandler implements HttpHandler {
    * The request url is http://127.0.1.1:{port}/dolphin/v1/{command}
    *
    * APIs
-   *    /submit?conf={conf}     to submit a new job with a {@link JobConfigurationMetadata}.
-   *    /finish                 to finish the job server.
+   *    /submit?conf={"jobConf" : confString}     to submit a new job.
+   *    /finish                                   to finish the job server.
    */
   @Override
   public void onHttpRequest(final ParsedHttpRequest request, final HttpServletResponse httpServletResponse)
@@ -67,7 +73,11 @@ public final class JobServerHttpHandler implements HttpHandler {
     final HttpResponse result;
     switch (target) {
     case "submit":
-      result = onSubmit(queryMap);
+      try {
+        result = onSubmit(queryMap);
+      } catch (InjectionException e) {
+        throw new RuntimeException(e);
+      }
       break;
     case "finish":
       result = onFinish();
@@ -86,15 +96,15 @@ public final class JobServerHttpHandler implements HttpHandler {
     }
   }
 
-  private HttpResponse onSubmit(final Map<String, List<String>> queryMap) {
+  private HttpResponse onSubmit(final Map<String, List<String>> queryMap) throws IOException, InjectionException {
     final List<String> args = queryMap.get("conf");
     final Gson gson = new Gson();
     if (args.size() != 1) {
       return HttpResponse.badRequest("Usage : only one configuration at a time");
     } else {
-      final JobConfigurationMetadata jobConfMetadata = gson.fromJson(args.get(0), JobConfigurationMetadata.class);
-      final JobConfiguration jobConf = JobConfiguration.from(jobConfMetadata);
-      jobServerDriverFuture.get().submitJob(jobConf);
+      final String serializedJobConf = gson.fromJson(args.get(0), JobRequest.class).getJobConf();
+      final Configuration jobConf = configurationSerializer.fromString(serializedJobConf);
+      jobServerDriverFuture.get().executeJob(jobConf);
       return HttpResponse.ok("Job is successfully submitted");
     }
   }
@@ -102,5 +112,14 @@ public final class JobServerHttpHandler implements HttpHandler {
   private HttpResponse onFinish() {
     jobServerDriverFuture.get().finishServer();
     return HttpResponse.ok("Job server is successfully finished");
+  }
+
+  private final class JobRequest {
+
+    private String jobConf;
+
+    String getJobConf() {
+      return jobConf;
+    }
   }
 }
