@@ -310,7 +310,7 @@ public final class JobServerDriver {
       } catch (InterruptedException | ExecutionException | InjectionException e) {
         LOG.log(Level.INFO, "Exception while running a job");
       }
-    });
+    }).start();
   }
 
   /**
