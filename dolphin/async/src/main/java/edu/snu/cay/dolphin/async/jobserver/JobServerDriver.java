@@ -33,7 +33,6 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
@@ -54,7 +53,6 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,15 +68,12 @@ import java.util.logging.Logger;
  */
 @Unit
 public final class JobServerDriver {
-
-
-
   private static final Logger LOG = Logger.getLogger(JobServerDriver.class.getName());
 
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final HttpServerInfo httpServerInfo;
-  private final Map<String, Pair<List<AllocatedExecutor>, List<AllocatedExecutor>>> jobToExecutorsMap;
+  private final JobServerTerminator jobServerTerminator;
 
   private final String reefJobId;
 
@@ -103,6 +98,7 @@ public final class JobServerDriver {
                           final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
                           final HttpServerInfo httpServerInfo,
+                          final JobServerTerminator jobServerTerminator,
                           final Injector jobBaseInjector,
                           @Parameter(JobServerLauncher.NumJobs.class) final int numJobsToExecute,
                           @Parameter(DriverIdentifier.class) final String driverId,
@@ -112,7 +108,7 @@ public final class JobServerDriver {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.httpServerInfo = httpServerInfo;
-    jobToExecutorsMap = new HashMap<>();
+    this.jobServerTerminator = jobServerTerminator;
 
     this.numJobsToExecute = numJobsToExecute;
     this.reefJobId = reefJobId;
@@ -214,10 +210,7 @@ public final class JobServerDriver {
    */
   public void finishServer() {
     //TODO #1173: Implement job server completion.
-    jobToExecutorsMap.values().forEach(pair -> {
-      pair.getLeft().forEach(AllocatedExecutor::close);
-      pair.getRight().forEach(AllocatedExecutor::close);
-    });
+    jobServerTerminator.finishJobServer();
     LOG.log(Level.INFO, "Job server is finished");
   }
 
@@ -322,7 +315,6 @@ public final class JobServerDriver {
       try {
         final List<AllocatedExecutor> servers = serversFuture.get();
         final List<AllocatedExecutor> workers = workersFuture.get();
-        jobToExecutorsMap.put(dolphinJobId, Pair.of(servers, workers));
 
         final Future<AllocatedTable> modelTableFuture = etMaster.createTable(serverTableConf, servers);
         final Future<AllocatedTable> inputTableFuture = etMaster.createTable(workerTableConf, workers);
@@ -348,9 +340,9 @@ public final class JobServerDriver {
         }
 
       } catch (InterruptedException | ExecutionException | InjectionException e) {
-        LOG.log(Level.INFO, "Exception while running a job");
+        LOG.log(Level.SEVERE, "Exception while running a job");
       }
-    });
+    }).start();
   }
 
   /**
@@ -388,9 +380,12 @@ public final class JobServerDriver {
 
   private void showHttpInfoToClient(final String localAddress, final int portNumber) {
     final String httpMsg = String.format(
-        "\nIP address : %s\n " +
-        "Port : %d\n " +
-        "Usage : http://%s:%d/dolphin/v1/conf={#jobConf}",
+        "\nIP address : %s\n" +
+        "Port : %d\n" +
+        "Command API :\n " +
+        "submit?conf={}\n " +
+        "finish\n" +
+        "Usage : http://%s:%d/dolphin/v1/{command}",
         localAddress, portNumber, localAddress, portNumber);
     jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
   }

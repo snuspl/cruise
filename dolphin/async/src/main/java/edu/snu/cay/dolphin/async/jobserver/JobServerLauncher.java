@@ -40,6 +40,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.driver.parameters.DriverIdleSources;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -345,11 +346,14 @@ public final class JobServerLauncher {
         .build();
 
     final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
+    final Configuration jobTerminatorConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
+        .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
     return Configurations.merge(driverConf, httpConf, etMasterConfiguration, metricServiceConf,
-        driverNetworkConf, getNCSConfiguration(),
+        driverNetworkConf, jobTerminatorConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
             .build());

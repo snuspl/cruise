@@ -27,8 +27,8 @@ public final class JobConfiguration {
 
   private JobConfiguration(final JobConfigurationMetadata jobConfigurationMetadata) {
     this.jobId = jobConfigurationMetadata.getJobId();
-    this.numServer = jobConfigurationMetadata.getNumServer();
-    this.numWorker = jobConfigurationMetadata.getNumWorker();
+    this.numServer = jobConfigurationMetadata.getNumServers();
+    this.numWorker = jobConfigurationMetadata.getNumWorkers();
   }
 
   public String getJobId() {

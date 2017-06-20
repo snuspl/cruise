@@ -22,18 +22,39 @@ package edu.snu.cay.dolphin.async.jobserver;
 public final class JobConfigurationMetadata {
 
   private String jobId;
-  private int numServer;
-  private int numWorker;
+  private int maxNumEpochs;
+  private int numServers;
+  private int numWorkers;
+  private String inputDir;
+  private int miniBatchSize;
+  private int numWorkerBlocks;
 
   public String getJobId() {
     return jobId;
   }
 
-  public int getNumServer() {
-    return numServer;
+  public int getNumServers() {
+    return numServers;
   }
 
-  public int getNumWorker() {
-    return numWorker;
+  public int getNumWorkers() {
+    return numWorkers;
+  }
+
+  public String getInputDir() {
+    return inputDir;
+  }
+
+  public int getMiniBatchSize() {
+    return miniBatchSize;
+  }
+
+  public int getNumWorkerBlocks() {
+    return numWorkerBlocks;
+  }
+
+  public int getMaxNumEpochs() {
+
+    return maxNumEpochs;
   }
 }
