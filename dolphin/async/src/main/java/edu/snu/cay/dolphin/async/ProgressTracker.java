@@ -40,6 +40,7 @@ import java.util.logging.Logger;
 public final class ProgressTracker implements ProgressProvider {
   private static final Logger LOG = Logger.getLogger(ProgressTracker.class.getName());
 
+  private final String dolphinJobId;
   private final int maxNumEpochs;
   private final int numWorkers;
   private volatile int globalMinEpochIdx;
@@ -54,9 +55,11 @@ public final class ProgressTracker implements ProgressProvider {
 
   @Inject
   private ProgressTracker(final JobMessageObserver jobMessageObserver,
+                          @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                           @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                           @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.jobMessageObserver = jobMessageObserver;
+    this.dolphinJobId = dolphinJobId;
     this.maxNumEpochs = maxNumEpochs;
     this.numWorkers = numWorkers;
     this.globalMinEpochIdx = 0;
@@ -102,7 +105,8 @@ public final class ProgressTracker implements ProgressProvider {
    */
   private void updateGlobalMinEpochIdx(final int newMinEpochIdx) {
     globalMinEpochIdx = newMinEpochIdx;
-    final String msgToClient = String.format("Epoch progress is [%d / %d]", newMinEpochIdx, maxNumEpochs);
+    final String msgToClient = String.format("Epoch progress: [%d / %d], JobId: %s",
+        newMinEpochIdx, maxNumEpochs, dolphinJobId);
     jobMessageObserver.sendMessageToClient(msgToClient.getBytes(StandardCharsets.UTF_8));
   }
 

@@ -13,7 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.dolphin.async.optimizer.api;
+
+import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 /**
- * Classes for the dolphin jobserver, which supports multiple dolphin jobs concurrently.
+ * A class that orchestrates the overall optimization process for a Dolphin job.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+@DefaultImplementation(ETOptimizationOrchestrator.class)
+public interface OptimizationOrchestrator {
+
+  /**
+   * Start the optimization.
+   */
+  void start();
+}

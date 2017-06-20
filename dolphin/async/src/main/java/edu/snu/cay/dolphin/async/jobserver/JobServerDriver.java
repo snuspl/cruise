@@ -15,20 +15,40 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
+import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
+import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
+import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
+import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
@@ -37,8 +57,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,44 +71,142 @@ import java.util.logging.Logger;
 @Unit
 public final class JobServerDriver {
 
+
+
   private static final Logger LOG = Logger.getLogger(JobServerDriver.class.getName());
 
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final HttpServerInfo httpServerInfo;
-  private final String jobId;
   private final Map<String, Pair<List<AllocatedExecutor>, List<AllocatedExecutor>>> jobToExecutorsMap;
 
-  private static final ExecutorConfiguration EXECUTOR_CONF = ExecutorConfiguration.newBuilder()
-      .setResourceConf(
-          ResourceConfiguration.newBuilder()
-              .setNumCores(1)
-              .setMemSizeInMB(128)
-              .build())
-      .build();
+  private final String reefJobId;
+
+  private final int numJobsToExecute;
+  private final AtomicInteger jobCounter = new AtomicInteger(0);
+
+  /**
+   * It maintains {@link DolphinMaster}s of running dolphin jobs.
+   */
+  private final Map<String, DolphinMaster> dolphinMasterMap = new ConcurrentHashMap<>();
+
+  private final Injector jobBaseInjector;
+
+  // for a single dolphin job
+  private final Configuration jobConf;
+
+  private ConfigurationSerializer confSerializer;
 
   @Inject
   private JobServerDriver(final ETMaster etMaster,
-                          @Parameter(JobIdentifier.class) final String jobId,
+                          final ConfigurationSerializer confSerializer,
+                          final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
-                          final HttpServerInfo httpServerInfo)
+                          final HttpServerInfo httpServerInfo,
+                          final Injector jobBaseInjector,
+                          @Parameter(JobServerLauncher.NumJobs.class) final int numJobsToExecute,
+                          @Parameter(DriverIdentifier.class) final String driverId,
+                          @Parameter(JobIdentifier.class) final String reefJobId,
+                          @Parameter(JobServerLauncher.SerializedJobConf.class) final String serializedJobConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.httpServerInfo = httpServerInfo;
-    this.jobId = jobId;
     jobToExecutorsMap = new HashMap<>();
+
+    this.numJobsToExecute = numJobsToExecute;
+    this.reefJobId = reefJobId;
+
+    networkConnection.setup(driverId);
+
+    this.jobBaseInjector = jobBaseInjector;
+
+    this.confSerializer = confSerializer;
+    this.jobConf = confSerializer.fromString(serializedJobConf);
   }
+
+  /**
+   * Gets a {@link DolphinMaster} with {@code dolphinJobId}.
+   * @param dolphinJobId a dolphin job identifier
+   * @return
+   */
+  public DolphinMaster getDolphinMaster(final String dolphinJobId) {
+    return dolphinMasterMap.get(dolphinJobId);
+  }
+
+  private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
+    return ResourceConfiguration.newBuilder()
+        .setNumCores(numCores)
+        .setMemSizeInMB(memSize)
+        .build();
+  }
+
+  private static RemoteAccessConfiguration buildRemoteAccessConf(final int numSenderThreads,
+                                                                 final int senderQueueSize,
+                                                                 final int numHandlerThreads,
+                                                                 final int handlerQueueSize) {
+    return RemoteAccessConfiguration.newBuilder()
+        .setNumSenderThreads(numSenderThreads)
+        .setSenderQueueSize(senderQueueSize)
+        .setNumHandlerThreads(numHandlerThreads)
+        .setHandlerQueueSize(handlerQueueSize)
+        .build();
+  }
+
+  private static TableConfiguration buildWorkerTableConf(final String tableId,
+                                                         final Injector workerInjector,
+                                                         final int numTotalBlocks,
+                                                         final Configuration userParamConf) throws InjectionException {
+    final Codec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
+    final Codec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
+    final DataParser dataParser = workerInjector.getInstance(DataParser.class);
+
+    return TableConfiguration.newBuilder()
+        .setId(tableId)
+        .setKeyCodecClass(keyCodec.getClass())
+        .setValueCodecClass(valueCodec.getClass())
+        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setNumTotalBlocks(numTotalBlocks)
+        .setIsMutableTable(false)
+        .setIsOrderedTable(true)
+        .setDataParserClass(dataParser.getClass())
+        .setUserParamConf(userParamConf)
+        .build();
+  }
+
+  private static TableConfiguration buildServerTableConf(final String tableId,
+                                                         final Injector serverInjector,
+                                                         final int numTotalBlocks,
+                                                         final Configuration userParamConf) throws InjectionException {
+    final Codec keyCodec = serverInjector.getNamedInstance(KeyCodec.class);
+    final Codec valueCodec = serverInjector.getNamedInstance(ValueCodec.class);
+    final Codec updateValueCodec = serverInjector.getNamedInstance(UpdateValueCodec.class);
+    final UpdateFunction updateFunction = serverInjector.getInstance(UpdateFunction.class);
+
+    return TableConfiguration.newBuilder()
+        .setId(tableId)
+        .setKeyCodecClass(keyCodec.getClass())
+        .setValueCodecClass(valueCodec.getClass())
+        .setUpdateValueCodecClass(updateValueCodec.getClass())
+        .setUpdateFunctionClass(updateFunction.getClass())
+        .setNumTotalBlocks(numTotalBlocks)
+        .setIsMutableTable(true)
+        .setIsOrderedTable(false)
+        .setUserParamConf(userParamConf)
+        .build();
+  }
+
 
   /**
    * Submits a job by a specific {@link JobConfiguration}.
    * All commands are received by {@link JobServerHttpHandler}.
    */
-  public void submitJob(final JobConfiguration jobConf) {
+  public void submitJob(final JobConfiguration jobConfToExecute) {
     //TODO #1173: Implement runtime job submission.
     LOG.log(Level.INFO, "Job submission command is received : job id : {0}, " +
-        "number of server : {1}, " + "number of worker : {2}",
-        new Object[]{jobConf.getJobId(), jobConf.getNumServer(), jobConf.getNumWorker()});
+            "number of server : {1}, " + "number of worker : {2}",
+        new Object[]{jobConfToExecute.getJobId(), jobConfToExecute.getNumServer(), jobConfToExecute.getNumWorker()});
   }
 
   /**
@@ -102,21 +222,135 @@ public final class JobServerDriver {
   }
 
   /**
-   * A driver start handler for requesting executors.
+   * A driver start handler for requesting executors and creating tables to run a dolphin job.
    */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      try {
-        showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
-        final List<AllocatedExecutor> servers = etMaster.addExecutors(2, EXECUTOR_CONF).get();
-        final List<AllocatedExecutor> workers = etMaster.addExecutors(2, EXECUTOR_CONF).get();
-
-        Executors.newSingleThreadExecutor().submit(() -> jobToExecutorsMap.put(jobId, Pair.of(servers, workers)));
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
+      // TODO #1173: execute jobs dynamically
+      showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
+      for (int i = 0; i < numJobsToExecute; i++) {
+        try {
+          executeJob(jobConf);
+        } catch (InjectionException | IOException e) {
+          throw new RuntimeException("Exception while running a job", e);
+        }
       }
     }
+  }
+
+  /**
+   * Executes a job with the given configuration.
+   * @param jobConfToExecute a job configuration to execute
+   */
+  private void executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
+    final Injector jobInjector = jobBaseInjector.forkInjector(jobConfToExecute);
+
+    // generate different dolphin job id for each job
+    final int jobCount = jobCounter.getAndIncrement();
+
+    final String dolphinJobId = reefJobId + "-" + jobCount;
+    final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
+    final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
+
+    LOG.log(Level.INFO, "Execute job with Id {0}", dolphinJobId);
+    jobInjector.bindVolatileParameter(DolphinJobId.class, dolphinJobId);
+    jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
+    jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
+
+    final String serializedParamConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedParamConf.class);
+    final String serializedServerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedServerConf.class);
+    final String serializedWorkerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedWorkerConf.class);
+
+    // configuration commonly used in both workers and servers
+    final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
+
+    // prepare server-side configurations
+    final Configuration serverConf = confSerializer.fromString(serializedServerConf);
+    final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
+    final int numServers = serverInjector.getNamedInstance(NumServers.class);
+    final int numServerCores = serverInjector.getNamedInstance(NumServerCores.class);
+    final int serverMemSize = serverInjector.getNamedInstance(ServerMemSize.class);
+    final int numServerSenderThreads = serverInjector.getNamedInstance(NumServerSenderThreads.class);
+    final int numServerHandlerThreads = serverInjector.getNamedInstance(NumServerHandlerThreads.class);
+    final int serverSenderQueueSize = serverInjector.getNamedInstance(ServerSenderQueueSize.class);
+    final int serverHandlerQueueSize = serverInjector.getNamedInstance(ServerHandlerQueueSize.class);
+    final int numServerBlocks = serverInjector.getNamedInstance(NumServerBlocks.class);
+
+    final ResourceConfiguration serverResourceConf = buildResourceConf(numServerCores, serverMemSize);
+    final RemoteAccessConfiguration serverRemoteAccessConf = buildRemoteAccessConf(
+        numServerSenderThreads, serverSenderQueueSize, numServerHandlerThreads, serverHandlerQueueSize);
+    final TableConfiguration serverTableConf = buildServerTableConf(modelTableId,
+        serverInjector, numServerBlocks, userParamConf);
+
+    // prepare worker-side configurations
+    final Configuration workerConf = confSerializer.fromString(serializedWorkerConf);
+    final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
+    final int numWorkers = workerInjector.getNamedInstance(NumWorkers.class);
+    final int numWorkerCores = workerInjector.getNamedInstance(NumWorkerCores.class);
+    final int workerMemSize = workerInjector.getNamedInstance(WorkerMemSize.class);
+    final int numWorkerSenderThreads = workerInjector.getNamedInstance(NumWorkerSenderThreads.class);
+    final int numWorkerHandlerThreads = workerInjector.getNamedInstance(NumWorkerHandlerThreads.class);
+    final int workerSenderQueueSize = workerInjector.getNamedInstance(WorkerSenderQueueSize.class);
+    final int workerHandlerQueueSize = workerInjector.getNamedInstance(WorkerHandlerQueueSize.class);
+    final int numWorkerBlocks = workerInjector.getNamedInstance(NumWorkerBlocks.class);
+
+    final ResourceConfiguration workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
+    final RemoteAccessConfiguration workerRemoteAccessConf = buildRemoteAccessConf(
+        numWorkerSenderThreads, workerSenderQueueSize, numWorkerHandlerThreads, workerHandlerQueueSize);
+    final TableConfiguration workerTableConf = buildWorkerTableConf(inputTableId,
+        workerInjector, numWorkerBlocks, userParamConf);
+    final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
+
+    LOG.log(Level.INFO, "Preparing executors and tables for job: {0}", dolphinJobId);
+    final Future<List<AllocatedExecutor>> serversFuture = etMaster.addExecutors(numServers,
+        ExecutorConfiguration.newBuilder()
+            .setResourceConf(serverResourceConf)
+            .setRemoteAccessConf(serverRemoteAccessConf)
+            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
+            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
+            .build());
+    final Future<List<AllocatedExecutor>> workersFuture = etMaster.addExecutors(numWorkers,
+        ExecutorConfiguration.newBuilder()
+            .setResourceConf(workerResourceConf)
+            .setRemoteAccessConf(workerRemoteAccessConf)
+            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
+            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
+            .build());
+
+    new Thread(() -> {
+      try {
+        final List<AllocatedExecutor> servers = serversFuture.get();
+        final List<AllocatedExecutor> workers = workersFuture.get();
+        jobToExecutorsMap.put(dolphinJobId, Pair.of(servers, workers));
+
+        final Future<AllocatedTable> modelTableFuture = etMaster.createTable(serverTableConf, servers);
+        final Future<AllocatedTable> inputTableFuture = etMaster.createTable(workerTableConf, workers);
+
+        final AllocatedTable modelTable = modelTableFuture.get();
+        final AllocatedTable inputTable = inputTableFuture.get();
+
+        modelTable.subscribe(workers).get();
+        inputTable.load(workers, inputPath).get();
+
+        try {
+          LOG.log(Level.FINE, "Spawn new dolphinMaster with ID {0}", dolphinJobId);
+          final DolphinMaster dolphinMaster = jobInjector.getInstance(DolphinMaster.class);
+          dolphinMasterMap.put(dolphinJobId, dolphinMaster);
+
+          dolphinMaster.start(servers, workers, modelTable, inputTable);
+
+          workers.forEach(AllocatedExecutor::close);
+          servers.forEach(AllocatedExecutor::close);
+        } finally {
+          LOG.log(Level.INFO, "Job execution has been finished. JobId: {0}", dolphinJobId);
+          dolphinMasterMap.remove(dolphinJobId);
+        }
+
+      } catch (InterruptedException | ExecutionException | InjectionException e) {
+        LOG.log(Level.INFO, "Exception while running a job");
+      }
+    });
   }
 
   /**
@@ -154,8 +388,8 @@ public final class JobServerDriver {
 
   private void showHttpInfoToClient(final String localAddress, final int portNumber) {
     final String httpMsg = String.format(
-        "\nIP address : %s\n" +
-        "Port : %d\n" +
+        "\nIP address : %s\n " +
+        "Port : %d\n " +
         "Usage : http://%s:%d/dolphin/v1/conf={#jobConf}",
         localAddress, portNumber, localAddress, portNumber);
     jobMessageObserver.sendMessageToClient(httpMsg.getBytes());

@@ -47,7 +47,7 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
   private final MessageHandler msgHandler;
   private final NetworkLinkListener networkLinkListener;
   private final IdentifierFactory identifierFactory;
-  private final String jobId;
+  private final String reefJobId;
 
   /**
    * Member variables for holding network connection instance.
@@ -57,7 +57,7 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
   @Inject
   private NetworkConnectionImpl(final NetworkConnectionService networkConnectionService,
                                 final IdentifierFactory identifierFactory,
-                                @Parameter(JobIdentifier.class) final String jobId,
+                                @Parameter(JobIdentifier.class) final String reefJobId,
                                 final DolphinMsgCodec codec,
                                 final MessageHandler msgHandler,
                                 final NetworkLinkListener networkLinkListener) {
@@ -66,7 +66,7 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
     this.msgHandler = msgHandler;
     this.networkLinkListener = networkLinkListener;
     this.identifierFactory = identifierFactory;
-    this.jobId = jobId;
+    this.reefJobId = reefJobId;
   }
 
   @Override
@@ -76,7 +76,7 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
           connectionFactory.getLocalEndPointId());
     }
 
-    final Identifier connectionFactoryId = identifierFactory.getNewInstance(jobId);
+    final Identifier connectionFactoryId = identifierFactory.getNewInstance(reefJobId);
     final Identifier localEndPointId = identifierFactory.getNewInstance(endPointId);
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryId, codec,
         msgHandler, networkLinkListener, localEndPointId);

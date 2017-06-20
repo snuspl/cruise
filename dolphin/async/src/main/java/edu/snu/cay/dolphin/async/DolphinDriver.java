@@ -58,9 +58,6 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
-import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
-
 /**
  * Driver code for Dolphin on ET.
  * Upon start, it initializes executors and tables for running a dolphin job.
@@ -171,7 +168,7 @@ public final class DolphinDriver {
     final DataParser dataParser = workerInjector.getInstance(DataParser.class);
 
     return TableConfiguration.newBuilder()
-        .setId(TRAINING_DATA_TABLE_ID)
+        .setId(InputTableId.DEFAULT_VALUE)
         .setKeyCodecClass(keyCodec.getClass())
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
@@ -193,7 +190,7 @@ public final class DolphinDriver {
     final UpdateFunction updateFunction = serverInjector.getInstance(UpdateFunction.class);
 
     return TableConfiguration.newBuilder()
-        .setId(MODEL_TABLE_ID)
+        .setId(ModelTableId.DEFAULT_VALUE)
         .setKeyCodecClass(keyCodec.getClass())
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(updateValueCodec.getClass())
@@ -210,7 +207,7 @@ public final class DolphinDriver {
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
         .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId))
+        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId, jobId))
         .build();
   }
 
@@ -219,7 +216,7 @@ public final class DolphinDriver {
         .setResourceConf(serverResourceConf)
         .setRemoteAccessConf(serverRemoteAccessConf)
         .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId))
+        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId, jobId))
         .build();
   }
 

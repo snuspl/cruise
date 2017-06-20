@@ -13,7 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.dolphin.async.optimizer.impl;
+
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
+
+import javax.inject.Inject;
+
 /**
- * Classes for the dolphin jobserver, which supports multiple dolphin jobs concurrently.
+ * A dummy implementation that does nothing.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+public final class DummyOrchestrator implements OptimizationOrchestrator {
+
+  @Inject
+  private DummyOrchestrator() {
+
+  }
+
+  @Override
+  public void start() {
+    // do nothing
+  }
+}
