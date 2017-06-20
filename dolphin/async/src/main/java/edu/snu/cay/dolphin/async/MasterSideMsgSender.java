@@ -33,7 +33,6 @@ final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
   private final DolphinMsg releaseMsg;
-
   private final NetworkConnection<DolphinMsg> networkConnection;
 
   @Inject

@@ -138,7 +138,6 @@ public final class DolphinDriver {
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
-
     this.jobId = jobId;
   }
 

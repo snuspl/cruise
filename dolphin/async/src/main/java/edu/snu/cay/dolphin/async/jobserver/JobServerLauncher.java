@@ -40,12 +40,17 @@ import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.driver.parameters.DriverIdleSources;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
+import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.webserver.HttpHandlerConfiguration;
+
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -53,8 +58,6 @@ import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.tang.types.NamedParameterNode;
-import org.apache.reef.util.EnvironmentUtils;
-import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -332,6 +335,15 @@ public final class JobServerLauncher {
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
+    final Configuration jobServerConf = Configurations.merge(
+        HttpHandlerConfiguration.CONF
+            .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
+            .build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
+            .build()
+    );
+
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
@@ -342,7 +354,7 @@ public final class JobServerLauncher {
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf,
+    return Configurations.merge(driverConf, jobServerConf, etMasterConfiguration, metricServiceConf,
         driverNetworkConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
