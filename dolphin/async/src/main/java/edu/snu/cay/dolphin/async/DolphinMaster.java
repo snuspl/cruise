@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
-import edu.snu.cay.dolphin.async.optimizer.impl.ETOptimizationOrchestrator;
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
@@ -55,6 +55,10 @@ public final class DolphinMaster {
 
   private final long serverMetricFlushPeriodMs;
 
+  private final String dolphinJobId;
+
+  private final String modelTableId;
+  private final String inputTableId;
   private final Configuration workerConf;
 
   private final AtomicInteger workerTaskIdCount = new AtomicInteger(0);
@@ -62,11 +66,14 @@ public final class DolphinMaster {
 
   @Inject
   private DolphinMaster(final MetricManager metricManager,
-                        final ETOptimizationOrchestrator optimizationOrchestrator,
+                        final OptimizationOrchestrator optimizationOrchestrator,
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
                         final MasterSideMsgHandler masterSideMsgHandler,
+                        @Parameter(DolphinJobId.class) final String dolphinJobId,
+                        @Parameter(ModelTableId.class) final String modelTableId,
+                        @Parameter(InputTableId.class) final String inputTableId,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
@@ -75,25 +82,32 @@ public final class DolphinMaster {
     this.progressTracker = progressTracker;
     this.msgHandler = masterSideMsgHandler;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
+    this.dolphinJobId = dolphinJobId;
+    this.modelTableId = modelTableId;
+    this.inputTableId = inputTableId;
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
     optimizationOrchestrator.start();
   }
 
   public Configuration getWorkerTaskConf() {
     return Configurations.merge(TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + workerTaskIdCount.getAndIncrement())
+            .set(TaskConfiguration.IDENTIFIER, dolphinJobId + "-" + TASK_ID_PREFIX +
+                workerTaskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, ETWorkerTask.class)
             .set(TaskConfiguration.ON_CLOSE, WorkerTaskCloseHandler.class)
             .build(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
+            .bindNamedParameter(ModelTableId.class, modelTableId)
+            .bindNamedParameter(InputTableId.class, inputTableId)
             .build(),
         workerConf);
   }
 
   public Configuration getServerTaskConf() {
     return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, SERVER_TASK_ID_PREFIX + serverTaskIdCount.getAndIncrement())
+        .set(TaskConfiguration.IDENTIFIER, dolphinJobId + "-" + SERVER_TASK_ID_PREFIX +
+            serverTaskIdCount.getAndIncrement())
         .set(TaskConfiguration.TASK, ETServerTask.class)
         .set(TaskConfiguration.ON_CLOSE, ServerTaskCloseHandler.class)
         .build();
@@ -113,7 +127,7 @@ public final class DolphinMaster {
 
   /**
    * Returns a msg handler, which handles {@link DolphinMsg}.
-   * It should be called when {@link edu.snu.cay.dolphin.async.network.DriverSideMsgHandler} has been called.
+   * It should be called when {@link DriverSideMsgHandler} has been called.
    * @return a master
    */
   public MasterSideMsgHandler getMsgHandler() {
