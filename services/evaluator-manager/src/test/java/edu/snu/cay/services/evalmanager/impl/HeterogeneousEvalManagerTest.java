@@ -33,7 +33,7 @@ public final class HeterogeneousEvalManagerTest {
   }
 
   /**
-   * Tests single plan with a single context submitSingleThreadService.
+   * Tests single plan with a single context submit.
    * Checks that context stack is built correctly.
    */
   @Test

@@ -43,7 +43,7 @@ import java.util.logging.Logger;
  * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times)
  * 2) the driver does not call {@code onEvent()} multiple times
  * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event
- * 3) there are no REEF event handlers which submitSingleThreadService context
+ * 3) there are no REEF event handlers which submit context
  * except for the handlers passed by {@code allocateEvaluators}
  *
  * The assumptions above are reasonable since one of the {@link EvaluatorManager}'s role is

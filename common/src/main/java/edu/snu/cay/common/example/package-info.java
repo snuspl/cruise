@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Example classes for Cay-Utils.
+ * Example classes for checking {@link edu.snu.cay.utils.CatchableExecutors}.
  */
 package edu.snu.cay.common.example;

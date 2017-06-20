@@ -28,6 +28,8 @@ import java.util.logging.Logger;
 
 /**
  * A client code for Exception check app.
+ * It checks that any exception thrown in user-thread can terminate REEF job
+ * by using {@link edu.snu.cay.utils.CatchableExecutors}.
  */
 public final class ExceptionREEF {
 
@@ -54,7 +56,8 @@ public final class ExceptionREEF {
 
   public static void main(final String[] args) throws InjectionException {
 
-    final LauncherStatus status = DriverLauncher.getLauncher(RUNTIME_CONFIG).run(DRIVER_CONFIG, JOB_TIMEOUT);
+    final LauncherStatus status = DriverLauncher.getLauncher(RUNTIME_CONFIG)
+        .run(DRIVER_CONFIG, JOB_TIMEOUT);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

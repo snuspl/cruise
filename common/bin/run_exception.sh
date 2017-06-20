@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_centcomm.sh 
+# ./run_exception.sh 
 
 SELF_JAR=`echo ../target/cay-common-*-shaded.jar`
 

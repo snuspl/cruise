@@ -101,7 +101,7 @@ public final class DriverLauncher implements AutoCloseable {
   /**
    * Submit REEF job asynchronously and do not wait for its completion.
    *
-   * @param driverConfig configuration of hte driver to submitSingleThreadService to the RM.
+   * @param driverConfig configuration of hte driver to submit to the RM.
    * @return ID of the new application.
    */
   public String submit(final Configuration driverConfig, final long waitTime) {
@@ -112,7 +112,7 @@ public final class DriverLauncher implements AutoCloseable {
 
   /**
    * Wait for one of the specified statuses of the REEF job.
-   * This method is called after the job is submitted to the RM via submitSingleThreadService().
+   * This method is called after the job is submitted to the RM via submit().
    * @param waitTime wait time in milliseconds.
    * @param statuses array of statuses to wait for.
    * @return the state of the job after the wait.

@@ -135,7 +135,7 @@ public final class LineCountingDriver {
   }
 
   /**
-   * Builds a list of contexts that we can submitSingleThreadService tasks.
+   * Builds a list of contexts that we can submit tasks.
    * It submits tasks to the given context after adding {@link ActiveContext} to {@link #contextList}.
    */
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -147,7 +147,7 @@ public final class LineCountingDriver {
       contextList.add(activeContext);
       LOG.log(Level.FINER, "Active context: ({0} / {1})", new Object[]{activeCtxCnt, numSplits});
 
-      // when all contexts become active, submitSingleThreadService line counting tasks
+      // when all contexts become active, submit line counting tasks
       if (activeCtxCnt == numSplits) {
         loadNextFile();
       }

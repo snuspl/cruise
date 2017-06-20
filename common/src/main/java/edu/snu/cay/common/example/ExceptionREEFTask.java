@@ -47,6 +47,7 @@ public final class ExceptionREEFTask implements Task {
         LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
       }
 
+      // it occurs divide-by-zero exception
       final int errorNumber = 1 / 0;
 
       for (int i = 101; i <= 200; i++) {
@@ -54,7 +55,7 @@ public final class ExceptionREEFTask implements Task {
       }
     });
 
-    Thread.sleep(5000);
+    Thread.sleep(1000);
     return null;
   }
 }
