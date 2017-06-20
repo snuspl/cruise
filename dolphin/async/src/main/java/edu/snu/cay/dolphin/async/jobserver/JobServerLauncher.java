@@ -335,9 +335,14 @@ public final class JobServerLauncher {
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
-    final Configuration httpConf = HttpHandlerConfiguration.CONF
-        .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
-        .build();
+    final Configuration jobServerConf = Configurations.merge(
+        HttpHandlerConfiguration.CONF
+            .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
+            .build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
+            .build()
+    );
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
@@ -346,14 +351,11 @@ public final class JobServerLauncher {
         .build();
 
     final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
-    final Configuration jobTerminatorConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
-        .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, httpConf, etMasterConfiguration, metricServiceConf,
-        driverNetworkConf, jobTerminatorConf, getNCSConfiguration(),
+    return Configurations.merge(driverConf, jobServerConf, etMasterConfiguration, metricServiceConf,
+        driverNetworkConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
             .build());

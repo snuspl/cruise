@@ -32,29 +32,29 @@ public final class JobServerTerminator implements DriverIdlenessSource {
 
   private static final Logger LOG = Logger.getLogger(JobServerTerminator.class.getName());
   private static final IdleMessage JOB_RUNNING_MSG =
-      new IdleMessage("JobServerTerminator", "Job is still running", false);
+      new IdleMessage("JobServerTerminator", "JobServer is still running", false);
   private static final IdleMessage JOB_FINISH_MSG =
-      new IdleMessage("JobServerTerminator", "Job finished", true);
+      new IdleMessage("JobServerTerminator", "JobServer finished", true);
 
   private final InjectionFuture<DriverIdleManager> driverIdleManagerFuture;
-  private boolean isJobRunning;
+  private volatile boolean isJobServerRunning;
 
   @Inject
   private JobServerTerminator(final InjectionFuture<DriverIdleManager> driverIdleManagerFuture) {
     this.driverIdleManagerFuture = driverIdleManagerFuture;
-    this.isJobRunning = true;
+    this.isJobServerRunning = true;
   }
 
   @Override
   public IdleMessage getIdleStatus() {
-    return isJobRunning ? JOB_RUNNING_MSG : JOB_FINISH_MSG;
+    return isJobServerRunning ? JOB_RUNNING_MSG : JOB_FINISH_MSG;
   }
 
   /**
    * Sends {@link IdleMessage} to {@link DriverIdleManager} to terminate a job.
    */
   public void finishJobServer() {
-    isJobRunning = false;
+    isJobServerRunning = false;
     driverIdleManagerFuture.get().onPotentiallyIdle(JOB_FINISH_MSG);
   }
 

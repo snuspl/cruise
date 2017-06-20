@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,9 +89,11 @@ public final class JobServerDriver {
   private final Injector jobBaseInjector;
 
   // for a single dolphin job
-  private final Configuration jobConf;
+  private final Configuration testingJobConf;
 
   private ConfigurationSerializer confSerializer;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Inject
   private JobServerDriver(final ETMaster etMaster,
@@ -118,7 +121,7 @@ public final class JobServerDriver {
     this.jobBaseInjector = jobBaseInjector;
 
     this.confSerializer = confSerializer;
-    this.jobConf = confSerializer.fromString(serializedJobConf);
+    this.testingJobConf = confSerializer.fromString(serializedJobConf);
   }
 
   /**
@@ -203,7 +206,7 @@ public final class JobServerDriver {
       showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
       for (int i = 0; i < numJobsToExecute; i++) {
         try {
-          executeJob(jobConf);
+          executeJob(testingJobConf);
         } catch (InjectionException | IOException e) {
           throw new RuntimeException("Exception while running a job", e);
         }
@@ -212,10 +215,22 @@ public final class JobServerDriver {
   }
 
   /**
+   * @return a job configuration that is for testing purpose
+   */
+  public Configuration getTestingJobConf() {
+    return testingJobConf;
+  }
+
+  /**
    * Executes a job with the given configuration.
    * @param jobConfToExecute a job configuration to execute
    */
-  public void executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
+  public boolean executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
+    if (isClosed.get()) {
+      LOG.log(Level.INFO, "JobServer has been shut down and will not accept jobs.");
+      return false;
+    }
+
     final Injector jobInjector = jobBaseInjector.forkInjector(jobConfToExecute);
 
     // generate different dolphin job id for each job
@@ -229,6 +244,8 @@ public final class JobServerDriver {
     jobInjector.bindVolatileParameter(DolphinJobId.class, dolphinJobId);
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
+
+    jobMessageObserver.sendMessageToClient(String.format("Job [%s] has been accepted", dolphinJobId).getBytes());
 
     final String serializedParamConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedParamConf.class);
     final String serializedServerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedServerConf.class);
@@ -322,14 +339,19 @@ public final class JobServerDriver {
         LOG.log(Level.SEVERE, "Exception while running a job");
       }
     }).start();
+
+    return true;
   }
 
   /**
-   * Terminates all jobs that were running and closes all executors used for each job.
+   * Initiates a shutdown in which previously submitted jobs are executed, but no new jobs will be accepted.
+   * Invocation has no additional effect if already shut down.
    */
-  public void finishServer() {
-    jobServerTerminator.finishJobServer();
-    LOG.log(Level.INFO, "Job server is successfully finished");
+  public void shutdown() {
+    LOG.log(Level.INFO, "Initiates shutdown of JobServer");
+    if (isClosed.compareAndSet(false, true)) {
+      jobServerTerminator.finishJobServer();
+    }
   }
 
   /**
@@ -365,14 +387,19 @@ public final class JobServerDriver {
     }
   }
 
+  /**
+   * Send http info to the client.
+   * @param localAddress address of web server
+   * @param portNumber port of web server
+   */
   private void showHttpInfoToClient(final String localAddress, final int portNumber) {
     final String httpMsg = String.format(
         "\nIP address : %s\n" +
         "Port : %d\n" +
-        "Command API :\n " +
-        "submit?conf={\"jobConf\" : jobConfString}\n " +
-        "finish\n" +
-        "Usage : http://%s:%d/dolphin/v1/{command}",
+        "Usage : http://%s:%d/dolphin/v1/{command}\n" +
+        "Available commands :\n" +
+        "1) To submit a job. 'submit'\n" +
+        "2) To shutdown jobserver: 'finish'",
         localAddress, portNumber, localAddress, portNumber);
     jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
   }
