@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.jobserver.JobServerLauncher;
+import edu.snu.cay.dolphin.async.jobserver.NMFJobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
@@ -25,16 +25,16 @@ import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 /**
  * Client for non-negative matrix factorization via SGD with JobServer.
  */
-public final class NMFJobServer {
+public final class NMFJob {
 
   /**
    * Should not be instantiated.
    */
-  private NMFJobServer() {
+  private NMFJob() {
   }
 
   public static void main(final String[] args) {
-    JobServerLauncher.launch("MatrixFactorizationJobServer", args, ETDolphinConfiguration.newBuilder()
+    NMFJobLauncher.launch("MatrixFactorizationJob", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

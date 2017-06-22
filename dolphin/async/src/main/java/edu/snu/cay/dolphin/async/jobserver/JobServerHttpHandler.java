@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.jobserver;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.webserver.HttpHandler;
 import org.apache.reef.webserver.ParsedHttpRequest;
 
@@ -25,18 +26,23 @@ import javax.inject.Inject;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 /**
  * Receive HttpRequest so that it can handle the command list.
  */
 public final class JobServerHttpHandler implements HttpHandler {
 
+  private static final Logger LOG = Logger.getLogger(JobServerHttpHandler.class.getName());
   private String uriSpecification = "dolphin";
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
+  private final ConfigurationSerializer confSerializer;
 
   @Inject
-  private JobServerHttpHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture) {
+  private JobServerHttpHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture,
+                               final ConfigurationSerializer confSerializer) {
     this.jobServerDriverFuture = jobServerDriverFuture;
+    this.confSerializer = confSerializer;
   }
 
   @Override
@@ -65,7 +71,8 @@ public final class JobServerHttpHandler implements HttpHandler {
     final HttpResponse result;
     switch (target) {
     case "submit":
-      result = onSubmit();
+      //LOG.log(Level.INFO, "request is {0}", request.getReader());
+      result = onSubmit(request.getParameter("conf"));
       break;
     case "finish":
       result = onFinish();
@@ -84,8 +91,8 @@ public final class JobServerHttpHandler implements HttpHandler {
     }
   }
 
-  private HttpResponse onSubmit() {
-    final Configuration jobConf = jobServerDriverFuture.get().getTestingJobConf();
+  private HttpResponse onSubmit(final String serializedConf) throws IOException {
+    final Configuration jobConf = confSerializer.fromString(serializedConf);
     try {
       final boolean isAccepted = jobServerDriverFuture.get().executeJob(jobConf);
       if (isAccepted) {

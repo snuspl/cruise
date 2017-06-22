@@ -77,8 +77,8 @@ public final class JobServerDriver {
   private final JobServerTerminator jobServerTerminator;
 
   private final String reefJobId;
+  private final boolean onLocal;
 
-  private final int numJobsToExecute;
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
   /**
@@ -89,7 +89,6 @@ public final class JobServerDriver {
   private final Injector jobBaseInjector;
 
   // will use this configuration to run multiple instances of dolphin jobs
-  private final Configuration testingJobConf;
 
   private ConfigurationSerializer confSerializer;
 
@@ -103,25 +102,23 @@ public final class JobServerDriver {
                           final HttpServerInfo httpServerInfo,
                           final JobServerTerminator jobServerTerminator,
                           final Injector jobBaseInjector,
-                          @Parameter(JobServerLauncher.NumJobs.class) final int numJobsToExecute,
                           @Parameter(DriverIdentifier.class) final String driverId,
                           @Parameter(JobIdentifier.class) final String reefJobId,
-                          @Parameter(JobServerLauncher.SerializedJobConf.class) final String serializedJobConf)
+                          @Parameter(Parameters.OnLocal.class) final boolean onLocal)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.httpServerInfo = httpServerInfo;
     this.jobServerTerminator = jobServerTerminator;
 
-    this.numJobsToExecute = numJobsToExecute;
     this.reefJobId = reefJobId;
+    this.onLocal = onLocal;
 
     networkConnection.setup(driverId);
 
     this.jobBaseInjector = jobBaseInjector;
 
     this.confSerializer = confSerializer;
-    this.testingJobConf = confSerializer.fromString(serializedJobConf);
   }
 
   /**
@@ -204,21 +201,7 @@ public final class JobServerDriver {
     public void onNext(final StartTime startTime) {
       // TODO #1173: execute jobs dynamically
       showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
-      for (int i = 0; i < numJobsToExecute; i++) {
-        try {
-          executeJob(testingJobConf);
-        } catch (InjectionException | IOException e) {
-          throw new RuntimeException("Exception while running a job", e);
-        }
-      }
     }
-  }
-
-  /**
-   * @return a job configuration that is for testing purpose
-   */
-  public Configuration getTestingJobConf() {
-    return testingJobConf;
   }
 
   /**
@@ -236,7 +219,8 @@ public final class JobServerDriver {
     // generate different dolphin job id for each job
     final int jobCount = jobCounter.getAndIncrement();
 
-    final String dolphinJobId = reefJobId + "-" + jobCount;
+    final String appId = jobInjector.getNamedInstance(NMFJobLauncher.AppIdentifier.class);
+    final String dolphinJobId = appId + "-" + jobCount;
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
 
@@ -319,7 +303,7 @@ public final class JobServerDriver {
         final AllocatedTable inputTable = inputTableFuture.get();
 
         modelTable.subscribe(workers).get();
-        inputTable.load(workers, inputPath).get();
+        inputTable.load(workers, processInputPath(inputPath)).get();
 
         try {
           LOG.log(Level.FINE, "Spawn new dolphinMaster with ID {0}", dolphinJobId);
@@ -337,6 +321,7 @@ public final class JobServerDriver {
 
       } catch (InterruptedException | ExecutionException | InjectionException e) {
         LOG.log(Level.SEVERE, "Exception while running a job");
+        throw new RuntimeException(e);
       }
     }).start();
 
@@ -402,5 +387,12 @@ public final class JobServerDriver {
         "2) To shutdown jobserver: 'finish'",
         localAddress, portNumber, localAddress, portNumber);
     jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
+  }
+
+  private String processInputPath(final String inputDir) throws InjectionException {
+    if (!onLocal) {
+      return inputDir;
+    }
+    return "file:///home/cmslab/Git/cay/dolphin/async/bin/" + inputDir;
   }
 }

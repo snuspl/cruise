@@ -45,7 +45,7 @@ public final class DashboardLauncher {
    *           or failed to make processBuilder.
    */
   public static void runDashboardServer(final int port) throws IOException, URISyntaxException {
-    LOG.log(Level.INFO, "Now launch dashboard server");
+    LOG.log(Level.INFO, "Now run dashboard server");
 
     // Check if the port number is available by trying to connect a socket to given port.
     // If the connection is successful, it means the port number is already in use.

@@ -34,7 +34,7 @@ import java.util.List;
  * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link UpdateFunction}, {@link DataParser}, codecs,
  * parameters, configuration for workers, and configuration for servers.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
- * Use with {@link ETDolphinLauncher#launch(String, String[], ETDolphinConfiguration)} to launch application.
+ * Use with {@link ETDolphinLauncher#launch(String, String[], ETDolphinConfiguration)} to run application.
  */
 @ClientSide
 public final class ETDolphinConfiguration {
