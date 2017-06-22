@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.evaluator.api.Tablet;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.TaskSide;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -35,15 +36,15 @@ import java.util.logging.Logger;
 @TaskSide
 public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> {
   private static final Logger LOG = Logger.getLogger(ETTrainingDataProvider.class.getName());
-  public static final String TRAINING_DATA_TABLE_ID = "training_data_table";
 
   private volatile Iterator<Block<?, V, ?>> blockIterator = Iterators.emptyIterator();
 
   private final Table<?, V, Object> trainingDataTable;
 
   @Inject
-  private ETTrainingDataProvider(final TableAccessor tableAccessor) throws TableNotExistException {
-    this.trainingDataTable = tableAccessor.getTable(TRAINING_DATA_TABLE_ID);
+  private ETTrainingDataProvider(@Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
+                                 final TableAccessor tableAccessor) throws TableNotExistException {
+    this.trainingDataTable = tableAccessor.getTable(inputTableId);
   }
 
   @Override

@@ -13,35 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.dolphin.async.jobserver;
+
 import edu.snu.cay.common.client.DriverLauncher;
-import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
+import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
+import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
+import edu.snu.cay.dolphin.async.optimizer.impl.DummyOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.driver.parameters.DriverIdleSources;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
+import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.webserver.HttpHandlerConfiguration;
+
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -49,41 +58,34 @@ import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.tang.types.NamedParameterNode;
-import org.apache.reef.util.EnvironmentUtils;
-import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main entry point for launching a Dolphin on ET application.
- * See {@link ETDolphinLauncher#launch(String, String[], ETDolphinConfiguration)}.
+ * Main entry point for launching a JobServer for Dolphin applications.
+ * See {@link JobServerLauncher#launch(String, String[], ETDolphinConfiguration)}.
  */
 @ClientSide
-public final class ETDolphinLauncher {
-  private static final Logger LOG = Logger.getLogger(ETDolphinLauncher.class.getName());
+public final class JobServerLauncher {
+  private static final Logger LOG = Logger.getLogger(JobServerLauncher.class.getName());
 
-  @NamedParameter(doc = "configuration for parameters, serialized as a string")
-  public final class SerializedParamConf implements Name<String> {
+  @NamedParameter(doc = "the number of dolphin jobs to run concurrently", short_name = "num_jobs", default_value = "1")
+  final class NumJobs implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  public final class SerializedWorkerConf implements Name<String> {
-  }
-
-  @NamedParameter(doc = "configuration for server class, serialized as a string")
-  public final class SerializedServerConf implements Name<String> {
+  @NamedParameter(doc = "configuration for dolphin job, serialized as a string")
+  final class SerializedJobConf implements Name<String> {
   }
 
   /**
    * Should not be instantiated.
    */
-  private ETDolphinLauncher() {
+  private JobServerLauncher() {
   }
 
   /**
@@ -103,13 +105,15 @@ public final class ETDolphinLauncher {
       // parse command line arguments, separate them into basic & user parameters
       final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
 
-      final Configuration clientParamConf = configurations.get(0);
-      final Configuration driverParamConf = configurations.get(1);
+      final Configuration clientParamConf = configurations.get(0); // only client uses it
+      final Configuration driverParamConf = configurations.get(1); // only driver uses it
+
+      // driver will also use following things for executing a job
       final Configuration serverParamConf = configurations.get(2);
       final Configuration workerParamConf = configurations.get(3);
       final Configuration userParamConf = configurations.get(4);
 
-      // server conf
+      // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
           serverParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
@@ -119,7 +123,7 @@ public final class ETDolphinLauncher {
               .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
               .build());
 
-      // worker conf
+      // worker conf. workers will be spawned with this configuration
       final Configuration workerConf = Configurations.merge(
           workerParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
@@ -140,10 +144,12 @@ public final class ETDolphinLauncher {
               clientParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
+      // job configuration. driver will use this configuration to spawn a job
+      final Configuration jobConf = getJobConfiguration(serverConf, workerConf, userParamConf);
+
       // driver configuration
       final Configuration driverConf = getDriverConfiguration(jobName,
-          clientParameterInjector.getNamedInstance(DriverMemory.class),
-          serverConf, workerConf, userParamConf);
+          clientParameterInjector.getNamedInstance(DriverMemory.class), jobConf);
 
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
@@ -181,17 +187,11 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
+    // parameters for driver (job server)
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
-        // generic params
-        NumServers.class, ServerMemSize.class, NumServerCores.class,
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
-
-        // ET-specific params
-        NumServerHandlerThreads.class, NumServerSenderThreads.class,
-        ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
-        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
-        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
-        NumServerBlocks.class, NumWorkerBlocks.class,
+        // TODO #1173: submit jobs dynamically
+        // number of jobs to run
+        NumJobs.class,
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
@@ -199,17 +199,28 @@ public final class ETDolphinLauncher {
         // metric processing params
         MovingAverageWindowSize.class, MetricWeightFactor.class,
 
-        // extra resource params
-        NumExtraResources.class, ExtraResourcesPeriodSec.class,
-
         // metric collection params
-        ServerMetricFlushPeriodMs.class);
+        ServerMetricFlushPeriodMs.class,
 
-    // it's empty now
-    final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
+        // extra resource params
+        NumExtraResources.class, ExtraResourcesPeriodSec.class);
 
+    // parameters for servers
+    final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
+        NumServers.class, ServerMemSize.class, NumServerCores.class,
+        NumServerHandlerThreads.class, NumServerSenderThreads.class,
+        ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
+        NumServerBlocks.class
+    );
+
+    // parameters for workers
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
-        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class);
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
+        WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
+        NumWorkerBlocks.class,
+        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class
+    );
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
@@ -292,38 +303,61 @@ public final class ETDolphinLauncher {
         .build();
   }
 
+  /**
+   * @return a configuration for spawning a {@link DolphinMaster}.
+   */
+  private static Configuration getJobConfiguration(final Configuration serverConf,
+                                                   final Configuration workerConf,
+                                                   final Configuration userParamConf) {
+    final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
+        .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, confSerializer.toString(userParamConf))
+        .build();
+  }
+
+  /**
+   * @return a configuration for jobserver driver
+   */
   private static Configuration getDriverConfiguration(final String jobName,
                                                       final int driverMemSize,
-                                                      final Configuration serverConf,
-                                                      final Configuration workerConf,
-                                                      final Configuration userParamConf) {
+                                                      final Configuration jobConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobServerDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, JobServerDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, JobServerDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, JobServerDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, JobServerDriver.FailedTaskHandler.class)
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
+
+    final Configuration jobServerConf = Configurations.merge(
+        HttpHandlerConfiguration.CONF
+            .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
+            .build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
+            .build()
+    );
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
-        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, LoggingMetricReceiver.class)
         .build();
 
     final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf,
+    return Configurations.merge(driverConf, jobServerConf, etMasterConfiguration, metricServiceConf,
         driverNetworkConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
-            .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
-            .bindNamedParameter(SerializedParamConf.class, confSerializer.toString(userParamConf))
+            .bindNamedParameter(SerializedJobConf.class, confSerializer.toString(jobConf))
             .build());
   }
 

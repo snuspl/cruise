@@ -15,8 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.impl;
 
-import edu.snu.cay.dolphin.async.DolphinDriver;
-import edu.snu.cay.dolphin.async.DolphinMaster;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -27,14 +26,13 @@ import edu.snu.cay.utils.DAG;
 import edu.snu.cay.utils.DAGImpl;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
-import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_WORKER;
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_SERVER;
 
@@ -44,12 +42,19 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
 public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
 
+  private final String modelTableId;
+  private final String inputTableId;
+
   private final InjectionFuture<DolphinDriver> dolphinDriverFuture;
   private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
 
   @Inject
-  private PlanCompiler(final InjectionFuture<DolphinDriver> dolphinDriverFuture,
+  private PlanCompiler(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+                       @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
+                       final InjectionFuture<DolphinDriver> dolphinDriverFuture,
                        final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+    this.modelTableId = modelTableId;
+    this.inputTableId = inputTableId;
     this.dolphinDriverFuture = dolphinDriverFuture;
     this.dolphinMasterFuture = dolphinMasterFuture;
   }
@@ -233,17 +238,17 @@ public final class PlanCompiler {
       // server -> worker
       if (srcNamespace.equals(NAMESPACE_SERVER)) {
         for (final String executor : executors) {
-          final UnassociateOp unassociateOp = new UnassociateOp(executor, MODEL_TABLE_ID);
+          final UnassociateOp unassociateOp = new UnassociateOp(executor, modelTableId);
           unassociateOps.put(executor, unassociateOp);
 
-          final SubscribeOp subscribeOp = new SubscribeOp(executor, MODEL_TABLE_ID);
+          final SubscribeOp subscribeOp = new SubscribeOp(executor, modelTableId);
           subscribeOps.put(executor, subscribeOp);
 
           dag.addVertex(unassociateOp);
           dag.addVertex(subscribeOp);
           dag.addEdge(unassociateOp, subscribeOp);
 
-          final AssociateOp associateOp = new AssociateOp(executor, TRAINING_DATA_TABLE_ID);
+          final AssociateOp associateOp = new AssociateOp(executor, inputTableId);
           associateOps.put(executor, associateOp);
 
           dag.addVertex(associateOp);
@@ -265,17 +270,17 @@ public final class PlanCompiler {
         // worker -> server
       } else {
         for (final String executor : executors) {
-          final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(executor, MODEL_TABLE_ID);
+          final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(executor, modelTableId);
           unsubscribeOps.put(executor, unsubscribeOp);
 
-          final AssociateOp associateOp = new AssociateOp(executor, MODEL_TABLE_ID);
+          final AssociateOp associateOp = new AssociateOp(executor, modelTableId);
           associateOps.put(executor, associateOp);
 
           dag.addVertex(unsubscribeOp);
           dag.addVertex(associateOp);
           dag.addEdge(unsubscribeOp, associateOp);
 
-          final UnassociateOp unassociateOp = new UnassociateOp(executor, TRAINING_DATA_TABLE_ID);
+          final UnassociateOp unassociateOp = new UnassociateOp(executor, inputTableId);
           unassociateOps.put(executor, unassociateOp);
 
           dag.addVertex(unassociateOp);
@@ -305,7 +310,7 @@ public final class PlanCompiler {
     for (final Map.Entry<String, Collection<String>> entry : namespaceToEvalsToDel.entrySet()) {
       final String namespace = entry.getKey();
 
-      final String tableIdToUnassociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
+      final String tableIdToUnassociate = namespace.equals(NAMESPACE_WORKER) ? inputTableId : modelTableId;
 
       final Collection<String> evalsToDel = entry.getValue();
       for (final String evalToDel : evalsToDel) {
@@ -321,7 +326,7 @@ public final class PlanCompiler {
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StopOp stopOp = new StopOp(evalToDel);
           stopOps.put(evalToDel, stopOp);
-          final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(evalToDel, MODEL_TABLE_ID);
+          final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(evalToDel, modelTableId);
           unsubscribeOps.put(evalToDel, unsubscribeOp);
 
           dag.addVertex(stopOp);
@@ -351,7 +356,7 @@ public final class PlanCompiler {
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
           dolphinDriverFuture.get().getWorkerExecutorConf() : dolphinDriverFuture.get().getServerExecutorConf();
-      final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
+      final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? inputTableId : modelTableId;
 
       for (final String evalToAdd : evalsToAdd) {
         final AllocateOp allocateOp = new AllocateOp(evalToAdd, executorConf);
@@ -368,7 +373,7 @@ public final class PlanCompiler {
               dolphinMasterFuture.get().getWorkerTaskConf(),
               dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(evalToAdd, startOp);
-          final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, MODEL_TABLE_ID);
+          final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, modelTableId);
           subscribeOps.put(evalToAdd, subscribeOp);
 
           dag.addVertex(startOp);
@@ -398,7 +403,7 @@ public final class PlanCompiler {
       final String namespace = entry.getKey();
       final Collection<TransferStep> transferSteps = entry.getValue();
 
-      final String tableId = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
+      final String tableId = namespace.equals(NAMESPACE_WORKER) ? inputTableId : modelTableId;
 
       for (final TransferStep transferStep : transferSteps) {
         final MoveOp moveOp = new MoveOp(transferStep.getSrcId(), transferStep.getDstId(),
