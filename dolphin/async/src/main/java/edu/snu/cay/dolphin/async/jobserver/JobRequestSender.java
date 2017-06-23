@@ -29,6 +29,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
@@ -42,6 +43,7 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.tang.types.NamedParameterNode;
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,26 +51,31 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Created by cmslab on 6/21/17.
+ * A HTTP request sender to control job server.
+ * It submits specific ML job dynamically to running job server by {@link #submitJob}.
+ * All parameters related to job are determined by command line.
+ * It also closes running job server by {@link #closeJobServer}.
+ * Note that it supports only NMF job in this stage.
  */
 @ClientSide
-public final class NMFJobLauncher {
+public final class JobRequestSender {
 
-  private static final Logger LOG = Logger.getLogger(NMFJobLauncher.class.getName());
+  private static final Logger LOG = Logger.getLogger(JobRequestSender.class.getName());
 
-  private NMFJobLauncher() {
+  private JobRequestSender() {
 
   }
 
-  public static void launch(final String appId,
-                            final String[] args,
-                            final ETDolphinConfiguration dolphinConf) {
+  public static void submitJob(final String appId,
+                               final String[] args,
+                               final ETDolphinConfiguration dolphinConf) {
     try {
       final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
-      final Configuration serverParamConf = configurations.get(0);
-      final Configuration workerParamConf = configurations.get(1);
-      final Configuration userParamConf = configurations.get(2);
-      final Configuration urlConf = configurations.get(3);
+      final Configuration masterParamConf = configurations.get(0);
+      final Configuration serverParamConf = configurations.get(1);
+      final Configuration workerParamConf = configurations.get(2);
+      final Configuration userParamConf = configurations.get(3);
+      final Configuration urlConf = configurations.get(4);
 
       // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
@@ -93,16 +100,35 @@ public final class NMFJobLauncher {
               .build());
 
       // job configuration. driver will use this configuration to spawn a job
-      final Configuration jobConf = getJobConfiguration(appId, serverConf, workerConf, userParamConf);
+      final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
 
       // send http request
       final ConfigurationSerializer configurationSerializer = new AvroConfigurationSerializer();
       final Injector urlInjector = Tang.Factory.getTang().newInjector(urlConf);
       final String targetAddress = urlInjector.getNamedInstance(HttpAddress.class);
       final String targetPort = urlInjector.getNamedInstance(HttpPort.class);
-      sendRequest(targetAddress, targetPort, configurationSerializer.toString(jobConf));
+      sendRequest("submit", targetAddress, targetPort, configurationSerializer.toString(jobConf));
 
     } catch (IOException | InjectionException | ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void closeJobServer(final String[] args) {
+    try {
+      final CommandLine cl = new CommandLine();
+      cl.registerShortNameOfClass(HttpAddress.class);
+      cl.registerShortNameOfClass(HttpPort.class);
+
+      // http configuration, target of http request is specified by this configuration.
+      final Configuration httpConf;
+      httpConf = cl.processCommandLine(args).getBuilder().build();
+      final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
+      final String address = httpParamInjector.getNamedInstance(HttpAddress.class);
+      final String port = httpParamInjector.getNamedInstance(HttpPort.class);
+      sendRequest("finish", address, port, null);
+
+    } catch (IOException | InjectionException e) {
       throw new RuntimeException(e);
     }
   }
@@ -110,6 +136,13 @@ public final class NMFJobLauncher {
   private static List<Configuration> parseCommandLine(
       final String[] args, final List<Class<? extends Name<?>>> userParamList)
       throws IOException, InjectionException, ClassNotFoundException {
+
+    // parameters for master
+    final List<Class<? extends Name<?>>> masterParamList = Arrays.asList(
+        MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class
+    );
+
+    // parameters for servers
     final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumServerHandlerThreads.class, NumServerSenderThreads.class,
@@ -134,6 +167,10 @@ public final class NMFJobLauncher {
     userParamList.forEach(cl::registerShortNameOfClass);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
+
+    // master side parameters are already registered. So it can be extracted
+    // from commandLineConf unless it wasn't registered.
+    final Configuration masterConf = extractParameterConf(masterParamList, commandLineConf);
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
@@ -146,13 +183,14 @@ public final class NMFJobLauncher {
         .bindNamedParameter(InputDir.class, inputPath)
         .build();
 
-    final Configuration urlConf = Tang.Factory.getTang().newConfigurationBuilder()
+    // http configuration, target of http request is specified by this configuration.
+    final Configuration httpConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(HttpAddress.class, commandlineParamInjector.getNamedInstance(HttpAddress.class))
         .bindNamedParameter(HttpPort.class, commandlineParamInjector.getNamedInstance(HttpPort.class))
         .build();
 
-    return Arrays.asList(serverConf,
-        Configurations.merge(workerConf, inputPathConf), userConf, urlConf);
+    return Arrays.asList(masterConf, serverConf,
+        Configurations.merge(workerConf, inputPathConf), userConf, httpConf);
   }
 
   /**
@@ -178,30 +216,52 @@ public final class NMFJobLauncher {
    * @return a configuration for spawning a {@link DolphinMaster}.
    */
   private static Configuration getJobConfiguration(final String id,
+                                                   final Configuration masterConf,
                                                    final Configuration serverConf,
                                                    final Configuration workerConf,
                                                    final Configuration userParamConf) {
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
-    return Tang.Factory.getTang().newConfigurationBuilder()
+    return Configurations.merge(masterConf, Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(AppIdentifier.class, id)
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
         .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
         .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))
         .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, confSerializer.toString(userParamConf))
-        .build();
+        .build());
   }
 
-  private static void sendRequest(final String address, final String port, final String serializedConf) {
+  /**
+   * Sends HTTP requests to specified URL using {@link HttpClient}.
+   * @param command command of HTTP request
+   * @param address an address of HTTP request
+   * @param port a port number of HTTP request
+   * @param serializedConf a job configuration for submitting a job.
+   *                       It is serialized to send via HTTP POST body parameters.
+   */
+  private static void sendRequest(final String command, final String address,
+                                  final String port, @Nullable final String serializedConf) {
     try {
       final HttpClient httpClient = HttpClientBuilder.create().build();
-      final String url = "http://" + address + ":" + port + "/dolphin/v1/submit";
-      final HttpPost request = new HttpPost(url);
-      final NameValuePair confPair = new BasicNameValuePair("conf", serializedConf);
-      final List<NameValuePair> nameValuePairs = Collections.singletonList(confPair);
-      request.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-      request.addHeader("content-type", "application/x-www-form-urlencoded");
-      final HttpResponse response = httpClient.execute(request);
-      System.out.println("\nSending 'GET' request to URL : " + url);
+      final String url = "http://" + address + ":" + port + "/dolphin/v1/" + command;
+      final HttpResponse response;
+      switch (command) {
+      case "submit":
+        final NameValuePair confPair = new BasicNameValuePair("conf", serializedConf);
+        final List<NameValuePair> nameValuePairs = Collections.singletonList(confPair);
+        final HttpPost submitRequest = new HttpPost(url);
+        submitRequest.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+        submitRequest.addHeader("content-type", "application/x-www-form-urlencoded");
+        response = httpClient.execute(submitRequest);
+        System.out.println("\nSending 'POST' request to URL : " + url);
+        break;
+      case "finish":
+        final HttpGet finishRequest = new HttpGet(url);
+        response = httpClient.execute(finishRequest);
+        break;
+      default:
+        throw new RuntimeException("There is an unexpected command.");
+      }
+
       System.out.println("Response Code : " + response.getStatusLine().getStatusCode() +
           ", Response Message : " + response.getStatusLine().getReasonPhrase());
     } catch (IOException e) {
@@ -209,12 +269,12 @@ public final class NMFJobLauncher {
     }
   }
 
-  @NamedParameter(doc = "Destination port number of HTTP request.", short_name = "port")
+  @NamedParameter(doc = "A port number of HTTP request.", short_name = "port")
   private final class HttpPort implements Name<String> {
 
   }
 
-  @NamedParameter(doc = "Destination address of HTTP request", short_name = "address")
+  @NamedParameter(doc = "An address of HTTP request", short_name = "address")
   private final class HttpAddress implements Name<String> {
 
   }

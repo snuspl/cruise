@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.jobserver;
 
 import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
@@ -221,7 +220,6 @@ public final class JobServerLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, JobServerDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, JobServerDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, JobServerDriver.FailedTaskHandler.class)
-        .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
     final Configuration jobServerConf = Configurations.merge(

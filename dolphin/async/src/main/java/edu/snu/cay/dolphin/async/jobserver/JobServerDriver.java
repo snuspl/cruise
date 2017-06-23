@@ -65,7 +65,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver code for Dolphin on ET.
- * Upon start, it initializes executors and tables for running a dolphin job.
+ * Upon start, it waits for HTTP request from {@link JobRequestSender}.
  */
 @Unit
 public final class JobServerDriver {
@@ -87,8 +87,6 @@ public final class JobServerDriver {
   private final Map<String, DolphinMaster> dolphinMasterMap = new ConcurrentHashMap<>();
 
   private final Injector jobBaseInjector;
-
-  // will use this configuration to run multiple instances of dolphin jobs
 
   private ConfigurationSerializer confSerializer;
 
@@ -124,7 +122,6 @@ public final class JobServerDriver {
   /**
    * Gets a {@link DolphinMaster} with {@code dolphinJobId}.
    * @param dolphinJobId a dolphin job identifier
-   * @return
    */
   public DolphinMaster getDolphinMaster(final String dolphinJobId) {
     return dolphinMasterMap.get(dolphinJobId);
@@ -194,7 +191,7 @@ public final class JobServerDriver {
   }
 
   /**
-   * A driver start handler for requesting executors and creating tables to run a dolphin job.
+   * A driver start handler for showing network information to client.
    */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
@@ -219,7 +216,7 @@ public final class JobServerDriver {
     // generate different dolphin job id for each job
     final int jobCount = jobCounter.getAndIncrement();
 
-    final String appId = jobInjector.getNamedInstance(NMFJobLauncher.AppIdentifier.class);
+    final String appId = jobInjector.getNamedInstance(JobRequestSender.AppIdentifier.class);
     final String dolphinJobId = appId + "-" + jobCount;
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
