@@ -196,7 +196,6 @@ public final class JobServerDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      // TODO #1173: execute jobs dynamically
       showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
     }
   }

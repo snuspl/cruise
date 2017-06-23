@@ -56,7 +56,7 @@ public final class JobServerHttpHandler implements HttpHandler {
   }
 
   /**
-   * HttpRequest handler.
+   * A HTTP request handler.
    * The request url is http://127.0.1.1:{port}/dolphin/v1/{command}
    *
    * APIs
@@ -71,13 +71,13 @@ public final class JobServerHttpHandler implements HttpHandler {
     final HttpResponse result;
     switch (target) {
     case "submit":
-      //LOG.log(Level.INFO, "request is {0}", request.getReader());
       result = onSubmit(request.getParameter("conf"));
       break;
     case "finish":
       result = onFinish();
       break;
     default:
+      httpServletResponse.sendError(500, "There is unexpected command");
       return;
     }
 

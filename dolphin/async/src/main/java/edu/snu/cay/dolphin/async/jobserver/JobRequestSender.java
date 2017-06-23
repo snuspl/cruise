@@ -75,7 +75,7 @@ public final class JobRequestSender {
       final Configuration serverParamConf = configurations.get(1);
       final Configuration workerParamConf = configurations.get(2);
       final Configuration userParamConf = configurations.get(3);
-      final Configuration urlConf = configurations.get(4);
+      final Configuration httpConf = configurations.get(4);
 
       // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
@@ -104,9 +104,9 @@ public final class JobRequestSender {
 
       // send http request
       final ConfigurationSerializer configurationSerializer = new AvroConfigurationSerializer();
-      final Injector urlInjector = Tang.Factory.getTang().newInjector(urlConf);
-      final String targetAddress = urlInjector.getNamedInstance(HttpAddress.class);
-      final String targetPort = urlInjector.getNamedInstance(HttpPort.class);
+      final Injector httpConfInjector = Tang.Factory.getTang().newInjector(httpConf);
+      final String targetAddress = httpConfInjector.getNamedInstance(HttpAddress.class);
+      final String targetPort = httpConfInjector.getNamedInstance(HttpPort.class);
       sendRequest("submit", targetAddress, targetPort, configurationSerializer.toString(jobConf));
 
     } catch (IOException | InjectionException | ClassNotFoundException e) {
@@ -121,8 +121,7 @@ public final class JobRequestSender {
       cl.registerShortNameOfClass(HttpPort.class);
 
       // http configuration, target of http request is specified by this configuration.
-      final Configuration httpConf;
-      httpConf = cl.processCommandLine(args).getBuilder().build();
+      final Configuration httpConf = cl.processCommandLine(args).getBuilder().build();
       final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
       final String address = httpParamInjector.getNamedInstance(HttpAddress.class);
       final String port = httpParamInjector.getNamedInstance(HttpPort.class);
@@ -231,7 +230,7 @@ public final class JobRequestSender {
   }
 
   /**
-   * Sends HTTP requests to specified URL using {@link HttpClient}.
+   * Using Apache HTTP Network Service, it sends HTTP requests to specified URL.
    * @param command command of HTTP request
    * @param address an address of HTTP request
    * @param port a port number of HTTP request
@@ -257,6 +256,7 @@ public final class JobRequestSender {
       case "finish":
         final HttpGet finishRequest = new HttpGet(url);
         response = httpClient.execute(finishRequest);
+        System.out.println("\nSending 'GET' request to URL : " + url);
         break;
       default:
         throw new RuntimeException("There is an unexpected command.");

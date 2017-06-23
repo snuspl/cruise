@@ -58,6 +58,7 @@ import java.util.logging.Logger;
 /**
  * Main entry point for launching a JobServer for Dolphin applications.
  * See {@link JobServerLauncher#run(String[])}.
+ * This is called by {#run_jobserver.sh}
  */
 @ClientSide
 public final class JobServerLauncher {
@@ -208,7 +209,7 @@ public final class JobServerLauncher {
   }
 
   /**
-   * @return a configuration for jobserver driver
+   * @return a configuration for job server driver
    */
   private static Configuration getDriverConfiguration(final int driverMemSize,
                                                       final boolean onLocal) {
