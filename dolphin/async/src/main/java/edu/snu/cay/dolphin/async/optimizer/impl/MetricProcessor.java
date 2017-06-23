@@ -107,15 +107,11 @@ public final class MetricProcessor {
 
       // This server did not send metrics meaningful enough for optimization.
       // TODO #862: the following condition may be considered sufficient as Optimization triggering policy changes
-      if (aggregatedMetric.getTotalPushProcessed() == 0 || aggregatedMetric.getTotalPullProcessed() == 0) {
-        break;
-      } else {
-        final String serverId = entry.getKey();
-        processedMetrics.add(new ServerEvaluatorParameters(serverId,
-            new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
-                param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
-            aggregatedMetric));
-      }
+      final String serverId = entry.getKey();
+      processedMetrics.add(new ServerEvaluatorParameters(serverId,
+          new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
+              param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
+          aggregatedMetric));
     }
 
     return processedMetrics;
@@ -152,12 +148,6 @@ public final class MetricProcessor {
           metricWeightFactor, movingAvgWindowSize));
       aggregatedMetricBuilder.setTotalPushTime(calculateExponentialMovingAverage(workerMetric,
           param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPushTime(),
-          metricWeightFactor, movingAvgWindowSize));
-      aggregatedMetricBuilder.setAvgPullTime(calculateExponentialMovingAverage(workerMetric,
-          param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPullTime(),
-          metricWeightFactor, movingAvgWindowSize));
-      aggregatedMetricBuilder.setAvgPushTime(calculateExponentialMovingAverage(workerMetric,
-          param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPushTime(),
           metricWeightFactor, movingAvgWindowSize));
 
       if (workerMetric.size() > 0) {

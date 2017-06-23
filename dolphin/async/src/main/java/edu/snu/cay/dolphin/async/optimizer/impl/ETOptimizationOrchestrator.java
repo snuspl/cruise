@@ -76,6 +76,10 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private volatile int numAvailableEvals;
 
+  private final double metricWeightFactor;
+
+  private final int movingAverageWindowSize;
+
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -90,7 +94,9 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                      @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
                                      @Parameter(NumExtraResources.class) final int numExtraResources,
-                                     @Parameter(NumInitialResources.class) final int numInitialResources) {
+                                     @Parameter(NumInitialResources.class) final int numInitialResources,
+                                     @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                     @Parameter(MovingAverageWindowSize.class) final int movingAverageWindowSize) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.planCompiler = planCompiler;
@@ -103,7 +109,9 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.numAvailableEvals = numInitialResources;
-
+    this.metricWeightFactor = metricWeightFactor;
+    this.movingAverageWindowSize = movingAverageWindowSize;
+    
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
     if (numExtraResources > 0 && extraResourcesPeriodSec > 0) {
       Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(() -> {
@@ -225,12 +233,11 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     }
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
-    final List<EvaluatorParameters> processedServerMetrics = new ArrayList<>(currentServerMetrics.size());
-    currentServerMetrics.forEach((serverId, metricList) -> processedServerMetrics.add(metricList.get(0)));
+    final List<EvaluatorParameters> processedServerMetrics =
+        MetricProcessor.processServerMetrics(currentServerMetrics, metricWeightFactor, movingAverageWindowSize);
 
-    final List<EvaluatorParameters> processedWorkerMetrics = new ArrayList<>(currentWorkerMiniBatchMetrics.size());
-    currentWorkerMiniBatchMetrics.forEach((workerId, metricList) ->
-        processedWorkerMetrics.add(metricList.get(metricList.size() - 1)));
+    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processWorkerMetrics(
+        currentWorkerMiniBatchMetrics, metricWeightFactor, movingAverageWindowSize);
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed metrics of size less than the number of evaluators running in each space implies that
