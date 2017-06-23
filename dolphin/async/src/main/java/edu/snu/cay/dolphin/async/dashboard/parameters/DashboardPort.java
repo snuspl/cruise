@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
-    "the number should be within (0, 65535), other numbers or occupied port numbers will lead to run failure. " +
+    "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
     "You need to install Flask in python first.",
     short_name = "dashboard_port",
     default_value = "9005")
