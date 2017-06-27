@@ -17,17 +17,12 @@ package edu.snu.cay.dolphin.async.jobserver;
 
 import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
-import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
-import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.ClientSide;
@@ -51,6 +46,7 @@ import org.apache.reef.tang.types.NamedParameterNode;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -129,51 +125,17 @@ public final class JobServerLauncher {
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
     // parameters for driver (job server)
-    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
-        // TODO #1173: submit jobs dynamically
-
-        // optimization params
-        DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
-
-        // metric processing params
-        MovingAverageWindowSize.class, MetricWeightFactor.class,
-
-        // metric collection params
-        ServerMetricFlushPeriodMs.class,
-
-        // extra resource params
-        NumExtraResources.class, ExtraResourcesPeriodSec.class);
+    final List<Class<? extends Name<?>>> driverParamList = Collections.emptyList();
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
-    cl.registerShortNameOfClass(OptimizerClass.class); // handle it separately to bind a corresponding implementation
-    cl.registerShortNameOfClass(ETPlanExecutorClass.class); // handle it separately similar to OptimizerClass
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
     final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
 
-    // handle special parameters that need to be processed from commandline parameters
-    final Injector commandlineParamInjector = Tang.Factory.getTang().newInjector(commandLineConf);
-
-    final Configuration optimizationConf;
-    final int numInitialResources = commandlineParamInjector.getNamedInstance(NumWorkers.class)
-        + commandlineParamInjector.getNamedInstance(NumServers.class);
-
-    final Class<? extends Optimizer> optimizerClass =
-        (Class<? extends Optimizer>) Class.forName(commandlineParamInjector.getNamedInstance(OptimizerClass.class));
-
-    final Class<? extends PlanExecutor> planExecutorClass = (Class<? extends PlanExecutor>)
-        Class.forName(commandlineParamInjector.getNamedInstance(ETPlanExecutorClass.class));
-
-    optimizationConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(Optimizer.class, optimizerClass)
-        .bindImplementation(PlanExecutor.class, planExecutorClass)
-        .bindNamedParameter(NumInitialResources.class, Integer.toString(numInitialResources))
-        .build();
-
-    return Pair.of(clientConf, Configurations.merge(driverConf, optimizationConf));
+    return Pair.of(clientConf, driverConf);
   }
 
   /**
