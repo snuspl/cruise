@@ -18,9 +18,9 @@ package edu.snu.cay.dolphin.async.jobserver;
 /**
  * Client for closing running job server. This is called by {#close_jobserver.sh}
  */
-public final class CloseJob {
+public final class JobServerCloser {
 
-  private CloseJob() {
+  private JobServerCloser() {
   }
 
   public static void main(final String[] args) {

@@ -74,7 +74,7 @@ public final class JobServerDriver {
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final HttpServerInfo httpServerInfo;
-  private final JobServerTerminator jobServerTerminator;
+  private final JobServerStatusManager jobServerStatusManager;
 
   private final String reefJobId;
   private final boolean onLocal;
@@ -98,7 +98,7 @@ public final class JobServerDriver {
                           final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
                           final HttpServerInfo httpServerInfo,
-                          final JobServerTerminator jobServerTerminator,
+                          final JobServerStatusManager jobServerStatusManager,
                           final Injector jobBaseInjector,
                           @Parameter(DriverIdentifier.class) final String driverId,
                           @Parameter(JobIdentifier.class) final String reefJobId,
@@ -107,7 +107,7 @@ public final class JobServerDriver {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.httpServerInfo = httpServerInfo;
-    this.jobServerTerminator = jobServerTerminator;
+    this.jobServerStatusManager = jobServerStatusManager;
 
     this.reefJobId = reefJobId;
     this.onLocal = onLocal;
@@ -331,7 +331,7 @@ public final class JobServerDriver {
   public void shutdown() {
     LOG.log(Level.INFO, "Initiates shutdown of JobServer");
     if (isClosed.compareAndSet(false, true)) {
-      jobServerTerminator.finishJobServer();
+      jobServerStatusManager.finishJobServer();
     }
   }
 

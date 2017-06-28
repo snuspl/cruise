@@ -18,8 +18,6 @@ package edu.snu.cay.dolphin.async.jobserver;
 import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
-import edu.snu.cay.dolphin.async.plan.impl.ETPlanExecutorClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
@@ -190,7 +188,7 @@ public final class JobServerLauncher {
             .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
             .build(),
         Tang.Factory.getTang().newConfigurationBuilder()
-            .bindSetEntry(DriverIdleSources.class, JobServerTerminator.class)
+            .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
             .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
             .build()
     );
