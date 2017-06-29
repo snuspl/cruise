@@ -249,17 +249,13 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
     // Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
-    final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
-    final double numAvgMiniBatch = getAvgNumMiniBatchPerEpoch(currentWorkerEpochMetrics);
 
     // A map containing additional parameters for optimizer.
     final Map<String, Double> optimizerModelParams = new HashMap<>();
-    optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
-    optimizerModelParams.put(Constants.AVG_NUM_MINI_BATCH_PER_EPOCH, numAvgMiniBatch);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -356,22 +352,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   }
 
   /**
-   * Calculates the total number of data instances across workers.
-   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}
-   *                   in which the first item contains the number of data instances contained in the worker.
-   * @return the total number of data instances across workers.
-   */
-  private int getTotalNumDataInstances(final Map<String, List<EvaluatorParameters>> evalParams) {
-    int numDataInstances = 0;
-    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
-
-      final WorkerEvaluatorParameters firstWorkerEpochMetric = (WorkerEvaluatorParameters) entry.getValue().get(0);
-      numDataInstances += firstWorkerEpochMetric.getMetrics().getProcessedDataItemCount();
-    }
-    return numDataInstances;
-  }
-
-  /**
    * Calculates the total number of pulls per mini-batch from each worker,
    * by summing pull counts from all workers and dividing it by the number of workers.
    * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}.
@@ -400,18 +380,10 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     int count = 0;
     for (final List<EvaluatorParameters> evalParamList : evalParams.values()) {
       for (final EvaluatorParameters<WorkerMetrics> param : evalParamList) {
-        // do not include mini-batches which processed data less than mini-batch size
-        if ((int) param.getMetrics().getMiniBatchSize() == param.getMetrics().getProcessedDataItemCount()) {
-          totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
-          count++;
-        }
+        totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
+        count++;
       }
     }
     return totalPullData / count;
-  }
-
-  private double getAvgNumMiniBatchPerEpoch(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return evalParams.entrySet().stream().mapToDouble(entry ->
-        ((WorkerMetrics) entry.getValue().get(0).getMetrics()).getNumMiniBatchForEpoch()).average().orElse(0D);
   }
 }

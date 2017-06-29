@@ -49,7 +49,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                           final MetricManager metricManager,
                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                           @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                          @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize) {
+                          @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int miniBatchSize) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.modelTableId = modelTableId;

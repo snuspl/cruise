@@ -49,7 +49,7 @@ public interface Trainer<D> {
   /**
    * Main method of this trainer, which is called every mini-batch.
    * @param miniBatchTrainingData the training data to process in the batch
-   *                      (at most {@link edu.snu.cay.dolphin.async.DolphinParameters.MiniBatchSize} instances.
+   *                      (at most {@link DolphinParameters.NumTotalMiniBatches} instances.
    * @return a result of the mini-batch
    */
   void runMiniBatch(Collection<D> miniBatchTrainingData);

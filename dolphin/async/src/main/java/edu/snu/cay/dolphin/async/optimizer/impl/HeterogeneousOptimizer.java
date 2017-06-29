@@ -55,20 +55,20 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
-  private final int miniBatchSize;
+  private final int numTotalMiniBatches;
   private final double defNetworkBandwidth;
   private final double optBenefitThreshold;
 
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
-  private HeterogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+  private HeterogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                                  @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                                  @Parameter(Parameters.HostToBandwidthFilePath.class)
                                    final String hostBandwidthFilePath,
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {
-    this.miniBatchSize = miniBatchSize;
+    this.numTotalMiniBatches = numTotalMiniBatches;
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
@@ -137,14 +137,13 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> 1D / getBandwidth(param),
+            param -> 1D / getBandwidth(param), // unit cost: time elapsed for sending one bytes
             this::getBandwidth,
             NEW_SERVER_ID_PREFIX);
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
-                (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime(), // unit cost: time elapsed for a batch
             this::getBandwidth,
             NEW_WORKER_ID_PREFIX);
 
@@ -233,9 +232,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
-    final double optimalCost = numWorkersCostMap.get(optimalNumWorkers);
+    final double optimalCost = numWorkersCostMap.getOrDefault(optimalNumWorkers, Double.MAX_VALUE);
 
-    final double avgNumMiniBatchesPerWorker = modelParamsMap.get(Constants.AVG_NUM_MINI_BATCH_PER_EPOCH);
+    final double avgNumMiniBatchesPerWorker = numTotalMiniBatches / currentNumWorkers;
 
     // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
     final double currMeasuredCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
@@ -268,7 +267,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
         .mapToInt(EvaluatorSummary::getNumBlocks)
         .sum();
 
-    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
     final double avgPullSize = modelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MINI_BATCH);
 
     /*
@@ -285,7 +283,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     IntStream.range(1, numEvalsToUse)
         .filter(numWorkers -> numWorkers <= numDataBlocks && (numEvalsToUse - numWorkers) <= numModelBlocks)
         .forEach(numWorkers -> {
-          final double totalCost = totalCost(numWorkers, numTotalDataInstances, avgPullSize,
+          final double totalCost = totalCost(numWorkers, avgPullSize,
               numEvalsToUse, workerSummaries, serverSummaries);
 
           numWorkersCostMap.put(numWorkers, totalCost);
@@ -386,7 +384,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     for (int i = 0; i < optimalNumWorkers; i++) {
       inverseTerms[i] = 1 / (1 / workerSummaries.get(i).throughput
           + avgPullSize * Math.max(1 / workerSummaries.get(i).bandwidth, optimalNumWorkers / serverBandwidthSum)
-          / miniBatchSize);
+          / numTotalMiniBatches);
       termInverseSum += inverseTerms[i];
     }
 
@@ -464,7 +462,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
   }
 
   private double totalCost(final int numWorker,
-                           final int numTotalDataInstances,
                            final double avgPullSize,
                            final int availableEvaluators,
                            final List<EvaluatorSummary> workers,
@@ -478,12 +475,22 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final double[] terms = new double[numWorker];
     double termInverseSum = 0D;
     for (int i = 0; i < numWorker; i++) {
+      // terms[i] denotes that the estimated time in a batch
       terms[i] = 1 / workers.get(i).throughput +
-          avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum) / miniBatchSize;
+          avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum);
+      LOG.log(Level.INFO, "W: {0}, w[{1}], throughput: {2}, maxPull: {3}, terms[i]: {4}," +
+              "avgPullSize: {5}, serverBWSum: {6}, workerBW: {7}",
+          new Object[] {numWorker, i, workers.get(i).throughput,
+              avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum), terms[i],
+              serverBandwidthSum, workers.get(i).bandwidth});
       termInverseSum += 1D / terms[i];
     }
 
-    return numTotalDataInstances / termInverseSum;
+    final double avgNumBatches = numTotalMiniBatches / numWorker;
+
+    LOG.log(Level.INFO, "avgNumBatches: {0}, termInverseSum: {1}",
+        new Object[] {avgNumBatches, termInverseSum});
+    return avgNumBatches / termInverseSum;
   }
 
   private static void generateTransferSteps(final String namespace,

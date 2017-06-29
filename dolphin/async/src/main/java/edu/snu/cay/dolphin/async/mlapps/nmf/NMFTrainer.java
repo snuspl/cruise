@@ -81,7 +81,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
