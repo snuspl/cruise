@@ -214,14 +214,14 @@ public final class JobRequestSender {
   /**
    * @return a configuration for spawning a {@link DolphinMaster}.
    */
-  private static Configuration getJobConfiguration(final String id,
+  private static Configuration getJobConfiguration(final String appId,
                                                    final Configuration masterConf,
                                                    final Configuration serverConf,
                                                    final Configuration workerConf,
                                                    final Configuration userParamConf) {
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
     return Configurations.merge(masterConf, Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(AppIdentifier.class, id)
+        .bindNamedParameter(AppIdentifier.class, appId)
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
         .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
         .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))

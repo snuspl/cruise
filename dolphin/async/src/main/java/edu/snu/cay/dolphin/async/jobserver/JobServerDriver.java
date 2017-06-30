@@ -65,7 +65,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver code for Dolphin on ET.
- * Upon start, it waits for HTTP request from {@link JobRequestSender}.
+ * It executes a job or finishes itself upon request from clients.
  */
 @Unit
 public final class JobServerDriver {
