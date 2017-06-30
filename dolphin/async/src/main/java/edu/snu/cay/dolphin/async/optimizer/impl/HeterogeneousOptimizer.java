@@ -143,7 +143,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime(), // unit cost: time elapsed for a batch
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
+                param.getDataInfo().getNumBlocks(), // unit cost: time elapsed for a batch
             this::getBandwidth,
             NEW_WORKER_ID_PREFIX);
 
@@ -202,7 +203,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       numEvalsToUse = availableEvaluators;
     }
 
-    printInfo(evalParamsMap, costMap, modelParamsMap, optimalNumWorkers, numEvalsToUse);
+    printInfo(evalParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
@@ -212,7 +213,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
   private void printInfo(final Map<String, List<EvaluatorParameters>> evalParamsMap,
                          final Map<Integer, Double> numWorkersCostMap,
-                         final Map<String, Double> modelParamsMap,
                          final int optimalNumWorkers,
                          final int numEvalsToUse) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
@@ -234,12 +234,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final double optimalCost = numWorkersCostMap.getOrDefault(optimalNumWorkers, Double.MAX_VALUE);
 
-    final double avgNumMiniBatchesPerWorker = numTotalMiniBatches / currentNumWorkers;
-
     // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
-    final double currMeasuredCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+    final double currMeasuredCompCost = (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D));
-    final double currMeasuredCommCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+    final double currMeasuredCommCost = (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
     final double currMeasuredCost = currMeasuredCompCost + currMeasuredCommCost;
 
@@ -478,18 +476,15 @@ public final class HeterogeneousOptimizer implements Optimizer {
       // terms[i] denotes that the estimated time in a batch
       terms[i] = 1 / workers.get(i).throughput +
           avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum);
-      LOG.log(Level.INFO, "W: {0}, w[{1}], throughput: {2}, maxPull: {3}, terms[i]: {4}," +
-              "avgPullSize: {5}, serverBWSum: {6}, workerBW: {7}",
-          new Object[] {numWorker, i, workers.get(i).throughput,
-              avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum), terms[i],
-              serverBandwidthSum, workers.get(i).bandwidth});
       termInverseSum += 1D / terms[i];
+      LOG.log(Level.INFO, "terms[{0}] = 1 / {1}, + {2} * Math.max(1 / {3}, {4} / {5})",
+          new Object[] {i, workers.get(i).throughput, avgPullSize,
+              workers.get(i).bandwidth, numWorker, serverBandwidthSum});
     }
 
-    final double avgNumBatches = numTotalMiniBatches / numWorker;
-
-    LOG.log(Level.INFO, "avgNumBatches: {0}, termInverseSum: {1}",
-        new Object[] {avgNumBatches, termInverseSum});
+    final double avgNumBatches = (double) numTotalMiniBatches / numWorker;
+    LOG.log(Level.INFO, "avgNumBatches = {0} / {1} = {2}. termInverseSum = {3}",
+          new Object[] {numTotalMiniBatches, numWorker, avgNumBatches, termInverseSum});
     return avgNumBatches / termInverseSum;
   }
 

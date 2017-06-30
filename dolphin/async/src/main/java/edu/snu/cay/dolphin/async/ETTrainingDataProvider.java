@@ -77,4 +77,9 @@ public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> 
   public Collection<V> getEpochData() {
     return trainingDataTable.getLocalTablet().getDataMap().values();
   }
+
+  @Override
+  public int getNumBatchesForEpoch() {
+    return trainingDataTable.getLocalTablet().getNumBlocks();
+  }
 }

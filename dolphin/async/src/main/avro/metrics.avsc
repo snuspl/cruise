@@ -176,6 +176,9 @@
     // mini-batch index
     {"name": "batchIdx", "type": "int"},
 
+    // number of mini-batches for this epoch, only used for epoch metrics
+    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
+
     // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the batch (ex. DvT).
     {"name": "batchCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},

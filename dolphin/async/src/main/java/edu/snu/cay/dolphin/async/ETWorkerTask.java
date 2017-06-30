@@ -155,7 +155,8 @@ final class ETWorkerTask<V> implements Task {
     final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
     final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
     final double dataProcessingRate = processedDataItemCount / miniBatchElapsedTime;
-    
+    final int numBatchesForEpoch = trainingDataProvider.getNumBatchesForEpoch();
+
     // Update epoch operation time with metrics collected from this mini-batch round
     perOpTimeInEpoch.accumulate(batchCompTime, batchPullTime, batchPushTime);
     
@@ -165,6 +166,7 @@ final class ETWorkerTask<V> implements Task {
                 .setDataProcessingRate(dataProcessingRate)
                 .setNumBatchDataInstances(processedDataItemCount)
                 .setBatchIdx(miniBatchIdx)
+                .setNumMiniBatchForEpoch(numBatchesForEpoch)
                 .setEpochIdx(epochIdx)
                 .setBatchPushTimeSec(batchPushTime)
                 .setBatchPullTimeSec(batchPullTime)

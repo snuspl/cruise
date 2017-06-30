@@ -39,4 +39,9 @@ public interface TrainingDataProvider<V> {
    * @return a collection of training data instances for epoch
    */
   Collection<V> getEpochData();
+
+  /**
+   * Provides the number of batches that are expected to run for epoch.
+   */
+  int getNumBatchesForEpoch();
 }
