@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.jobserver;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.jobserver.Parameters.*;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.impl.DummyOrchestrator;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
@@ -25,28 +26,17 @@ import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.tang.types.NamedParameterNode;
 
-import javax.annotation.Nullable;
 import java.io.*;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -66,6 +56,12 @@ public final class JobRequestSender {
 
   }
 
+  /**
+   *
+   * @param appId
+   * @param args
+   * @param dolphinConf
+   */
   public static void submitJob(final String appId,
                                final String[] args,
                                final ETDolphinConfiguration dolphinConf) {
@@ -107,13 +103,17 @@ public final class JobRequestSender {
       final Injector httpConfInjector = Tang.Factory.getTang().newInjector(httpConf);
       final String targetAddress = httpConfInjector.getNamedInstance(HttpAddress.class);
       final String targetPort = httpConfInjector.getNamedInstance(HttpPort.class);
-      sendRequest("submit", targetAddress, targetPort, configurationSerializer.toString(jobConf));
+      HttpSender.sendSubmitCommand(targetAddress, targetPort, configurationSerializer.toString(jobConf));
 
     } catch (IOException | InjectionException | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
   }
 
+  /**
+   *
+   * @param args
+   */
   public static void closeJobServer(final String[] args) {
     try {
       final CommandLine cl = new CommandLine();
@@ -125,7 +125,7 @@ public final class JobRequestSender {
       final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
       final String address = httpParamInjector.getNamedInstance(HttpAddress.class);
       final String port = httpParamInjector.getNamedInstance(HttpPort.class);
-      sendRequest("finish", address, port, null);
+      HttpSender.sendFinishCommand(address, port);
 
     } catch (IOException | InjectionException e) {
       throw new RuntimeException(e);
@@ -228,60 +228,4 @@ public final class JobRequestSender {
         .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, confSerializer.toString(userParamConf))
         .build());
   }
-
-  /**
-   * Using Apache HTTP Network Service, it sends HTTP requests to specified URL.
-   * @param command command of HTTP request
-   * @param address an address of HTTP request
-   * @param port a port number of HTTP request
-   * @param serializedConf a job configuration for submitting a job.
-   *                       It is serialized to send via HTTP POST body parameters.
-   */
-  private static void sendRequest(final String command, final String address,
-                                  final String port, @Nullable final String serializedConf) {
-    try {
-      final HttpClient httpClient = HttpClientBuilder.create().build();
-      final String url = "http://" + address + ":" + port + "/dolphin/v1/" + command;
-      final HttpResponse response;
-      switch (command) {
-      case "submit":
-        final NameValuePair confPair = new BasicNameValuePair("conf", serializedConf);
-        final List<NameValuePair> nameValuePairs = Collections.singletonList(confPair);
-        final HttpPost submitRequest = new HttpPost(url);
-        submitRequest.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-        submitRequest.addHeader("content-type", "application/x-www-form-urlencoded");
-        response = httpClient.execute(submitRequest);
-        System.out.println("\nSending 'POST' request to URL : " + url);
-        break;
-      case "finish":
-        final HttpGet finishRequest = new HttpGet(url);
-        response = httpClient.execute(finishRequest);
-        System.out.println("\nSending 'GET' request to URL : " + url);
-        break;
-      default:
-        throw new RuntimeException("There is an unexpected command.");
-      }
-
-      System.out.println("Response Code : " + response.getStatusLine().getStatusCode() +
-          ", Response Message : " + response.getStatusLine().getReasonPhrase());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @NamedParameter(doc = "A port number of HTTP request.", short_name = "port")
-  private final class HttpPort implements Name<String> {
-
-  }
-
-  @NamedParameter(doc = "An address of HTTP request", short_name = "address")
-  private final class HttpAddress implements Name<String> {
-
-  }
-
-  @NamedParameter(doc = "An identifier of App.")
-  final class AppIdentifier implements Name<String> {
-
-  }
-
 }
