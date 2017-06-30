@@ -24,7 +24,7 @@ import javax.inject.Inject;
 /**
  * Information class of Http Connection.
  */
-public final class HttpServerInfo {
+final class HttpServerInfo {
 
   private final InjectionFuture<LocalAddressProvider> localAddressProviderFuture;
   private final InjectionFuture<HttpServer> httpServerFuture;
@@ -36,11 +36,11 @@ public final class HttpServerInfo {
     this.httpServerFuture = httpServerFuture;
   }
 
-  public String getLocalAddress() {
+  String getLocalAddress() {
     return localAddressProviderFuture.get().getLocalAddress();
   }
 
-  public int getPort() {
+  int getPort() {
     return httpServerFuture.get().getPort();
   }
 }

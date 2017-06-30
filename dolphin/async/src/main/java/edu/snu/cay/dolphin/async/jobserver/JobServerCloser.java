@@ -15,6 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.CommandLine;
+
+import java.io.IOException;
+
 /**
  * Client for closing running job server. This is called by {#close_jobserver.sh}
  */
@@ -24,6 +32,20 @@ public final class JobServerCloser {
   }
 
   public static void main(final String[] args) {
-    JobRequestSender.closeJobServer(args);
+    try {
+      final CommandLine cl = new CommandLine();
+      cl.registerShortNameOfClass(Parameters.HttpAddress.class);
+      cl.registerShortNameOfClass(Parameters.HttpPort.class);
+
+      // http configuration, target of http request is specified by this configuration.
+      final Configuration httpConf = cl.processCommandLine(args).getBuilder().build();
+      final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
+      final String address = httpParamInjector.getNamedInstance(Parameters.HttpAddress.class);
+      final String port = httpParamInjector.getNamedInstance(Parameters.HttpPort.class);
+      HttpSender.sendFinishCommand(address, port);
+
+    } catch (IOException | InjectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

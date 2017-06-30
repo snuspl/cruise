@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.jobserver.JobRequestSender;
+import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
@@ -34,7 +34,7 @@ public final class NMFJob {
   }
 
   public static void main(final String[] args) {
-    JobRequestSender.submitJob("MatrixFactorizationJob", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("MatrixFactorizationJob", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

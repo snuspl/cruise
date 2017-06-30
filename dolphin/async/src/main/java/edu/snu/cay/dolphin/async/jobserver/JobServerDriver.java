@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
+import edu.snu.cay.dolphin.async.jobserver.Parameters.AppIdentifier;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -215,7 +216,7 @@ public final class JobServerDriver {
     // generate different dolphin job id for each job
     final int jobCount = jobCounter.getAndIncrement();
 
-    final String appId = jobInjector.getNamedInstance(JobRequestSender.AppIdentifier.class);
+    final String appId = jobInjector.getNamedInstance(AppIdentifier.class);
     final String dolphinJobId = appId + "-" + jobCount;
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;

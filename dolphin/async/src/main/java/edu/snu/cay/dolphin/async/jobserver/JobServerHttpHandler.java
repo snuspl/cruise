@@ -26,14 +26,11 @@ import javax.inject.Inject;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * Receive HttpRequest so that it can handle the command list.
  */
 public final class JobServerHttpHandler implements HttpHandler {
-
-  private static final Logger LOG = Logger.getLogger(JobServerHttpHandler.class.getName());
   private String uriSpecification = "dolphin";
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
   private final ConfigurationSerializer confSerializer;

@@ -38,29 +38,24 @@ import org.apache.reef.tang.types.NamedParameterNode;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
- * A HTTP request sender to control job server.
- * It submits specific ML job dynamically to running job server by {@link #submitJob}.
+ * JobLauncher, which submits specific ML job dynamically to running job server via HTTP request.
  * All parameters related to job are determined by command line.
- * It also closes running job server by {@link #closeJobServer}.
  * Note that it supports only NMF job in this stage.
  */
 @ClientSide
-public final class JobRequestSender {
+public final class JobLauncher {
 
-  private static final Logger LOG = Logger.getLogger(JobRequestSender.class.getName());
-
-  private JobRequestSender() {
+  private JobLauncher() {
 
   }
 
   /**
-   *
-   * @param appId
-   * @param args
-   * @param dolphinConf
+   * Submits a job to JobServer.
+   * @param appId an app id
+   * @param args arguments for app
+   * @param dolphinConf dolphin configuration
    */
   public static void submitJob(final String appId,
                                final String[] args,
@@ -106,28 +101,6 @@ public final class JobRequestSender {
       HttpSender.sendSubmitCommand(targetAddress, targetPort, configurationSerializer.toString(jobConf));
 
     } catch (IOException | InjectionException | ClassNotFoundException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
-   *
-   * @param args
-   */
-  public static void closeJobServer(final String[] args) {
-    try {
-      final CommandLine cl = new CommandLine();
-      cl.registerShortNameOfClass(HttpAddress.class);
-      cl.registerShortNameOfClass(HttpPort.class);
-
-      // http configuration, target of http request is specified by this configuration.
-      final Configuration httpConf = cl.processCommandLine(args).getBuilder().build();
-      final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
-      final String address = httpParamInjector.getNamedInstance(HttpAddress.class);
-      final String port = httpParamInjector.getNamedInstance(HttpPort.class);
-      HttpSender.sendFinishCommand(address, port);
-
-    } catch (IOException | InjectionException e) {
       throw new RuntimeException(e);
     }
   }
