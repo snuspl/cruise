@@ -143,8 +143,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
-                param.getDataInfo().getNumBlocks(), // unit cost: time elapsed for a batch
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime(),
             this::getBandwidth,
             NEW_WORKER_ID_PREFIX);
 
@@ -381,8 +380,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     double termInverseSum = 0D;
     for (int i = 0; i < optimalNumWorkers; i++) {
       inverseTerms[i] = 1 / (1 / workerSummaries.get(i).throughput
-          + avgPullSize * Math.max(1 / workerSummaries.get(i).bandwidth, optimalNumWorkers / serverBandwidthSum)
-          / numTotalMiniBatches);
+          + avgPullSize * Math.max(1 / workerSummaries.get(i).bandwidth, optimalNumWorkers / serverBandwidthSum));
       termInverseSum += inverseTerms[i];
     }
 

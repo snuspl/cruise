@@ -150,6 +150,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setEpochIdx(batchMetrics.getEpochIdx())
               .setMiniBatchIdx(batchMetrics.getBatchIdx())
               .setMiniBatchSize(miniBatchSize)
+              .setNumMiniBatchForEpoch(batchMetrics.getNumMiniBatchForEpoch())
               .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
               .setTotalTime(batchMetrics.getBatchTimeSec())
               .setTotalCompTime(batchMetrics.getBatchCompTimeSec())

@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -154,10 +153,7 @@ public final class MetricProcessor {
           metricWeightFactor, movingAvgWindowSize));
       aggregatedMetricBuilder.setNumMiniBatchForEpoch(
           (int) Math.round(calculateExponentialMovingAverage(workerMetric,
-              param -> {
-                LOG.log(Level.INFO, ((WorkerEvaluatorParameters) param).getMetrics().getNumMiniBatchForEpoch()),
-                return ((WorkerEvaluatorParameters) param).getMetrics().getNumMiniBatchForEpoch();
-              },
+              param -> ((WorkerEvaluatorParameters) param).getMetrics().getNumMiniBatchForEpoch(),
               metricWeightFactor, movingAvgWindowSize)));
 
       if (workerMetric.size() > 0) {
