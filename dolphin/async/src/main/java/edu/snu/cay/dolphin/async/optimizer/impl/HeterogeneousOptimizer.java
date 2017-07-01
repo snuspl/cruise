@@ -137,13 +137,14 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> 1D / getBandwidth(param), // unit cost: time elapsed for sending one bytes
+            param -> 1D / getBandwidth(param), // servers' unit cost: time elapsed for sending one bytes
             this::getBandwidth,
             NEW_SERVER_ID_PREFIX);
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime(),
+            param ->
+                ((WorkerMetrics) param.getMetrics()).getTotalCompTime(), // worker's unit cost: compute time for a batch
             this::getBandwidth,
             NEW_WORKER_ID_PREFIX);
 
