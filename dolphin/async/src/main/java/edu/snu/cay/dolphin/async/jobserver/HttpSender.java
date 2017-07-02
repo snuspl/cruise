@@ -46,7 +46,7 @@ final class HttpSender {
    */
   static void sendSubmitCommand(final String address, final String port, final String serializedJobConf) {
     final HttpClient httpClient = HttpClientBuilder.create().build();
-    final String url = "http://" + address + ":" + port + "/dolphin/v1/" + Parameters.SUBMIT_COMMAMD;
+    final String url = "http://" + address + ":" + port + "/dolphin/v1/" + Parameters.SUBMIT_COMMAND;
 
     final NameValuePair confPair = new BasicNameValuePair("conf", serializedJobConf);
     final List<NameValuePair> nameValuePairs = Collections.singletonList(confPair);

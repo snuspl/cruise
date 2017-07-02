@@ -67,10 +67,10 @@ public final class JobServerHttpHandler implements HttpHandler {
     final String target = request.getTargetEntity().toLowerCase();
     final HttpResponse result;
     switch (target) {
-    case "submit":
+    case Parameters.SUBMIT_COMMAND:
       result = onSubmit(request.getParameter("conf"));
       break;
-    case "finish":
+    case Parameters.FINISH_COMMAND:
       result = onFinish();
       break;
     default:

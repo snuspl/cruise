@@ -19,10 +19,10 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Created by xyzi on 30/06/2017.
+ * Parameters used in JobServer.
  */
 final class Parameters {
-  static final String SUBMIT_COMMAMD = "submit";
+  static final String SUBMIT_COMMAND = "submit";
   static final String FINISH_COMMAND = "finish";
 
   private Parameters() {
