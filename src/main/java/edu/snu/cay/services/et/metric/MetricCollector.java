@@ -45,8 +45,9 @@ public final class MetricCollector {
   private final RemoteAccessOpStat remoteAccessOpStat;
 
   private final List<Object> customMetrics;
-  private final ScheduledExecutorService executor;
 
+  // below two fields will be assigned at start() and cleared by stop().
+  private ScheduledExecutorService executor;
   private Codec customMetricCodec;
 
   @Inject
@@ -57,7 +58,6 @@ public final class MetricCollector {
     this.msgSender = msgSender;
     this.remoteAccessOpStat = remoteAccessOpStat;
     this.customMetrics = Collections.synchronizedList(new LinkedList<>());
-    this.executor = Executors.newSingleThreadScheduledExecutor();
   }
 
   /**
@@ -68,6 +68,7 @@ public final class MetricCollector {
     customMetricCodec = metricCodec;
 
     if (metricSendingPeriodMs > 0) {
+      executor = Executors.newSingleThreadScheduledExecutor();
       executor.scheduleWithFixedDelay(this::flush, metricSendingPeriodMs, metricSendingPeriodMs, TimeUnit.MILLISECONDS);
     } else if (metricSendingPeriodMs == 0) {
       LOG.log(Level.INFO, "MetricCollector does not send metrics periodically because metricSendingPeriodMs = 0. " +
@@ -83,7 +84,10 @@ public final class MetricCollector {
    * It flushes out all unsent metrics.
    */
   public synchronized void stop() {
-    executor.shutdownNow();
+    if (executor != null) {
+      executor.shutdownNow();
+      executor = null;
+    }
     flush();
 
     customMetrics.clear();
