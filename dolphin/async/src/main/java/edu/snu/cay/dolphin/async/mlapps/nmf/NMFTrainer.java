@@ -81,7 +81,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int miniBatchSize,
+                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
@@ -107,8 +107,8 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
-    LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
+    LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", numTotalMiniBatches);
   }
 
   @Override

@@ -131,9 +131,6 @@
     // number of data items (mapped to a key in MemoryStore) processed
     {"name": "processedDataItemCount", "type": "int", "default": 0},
 
-    // number of training data instances processed per mini-batch
-    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
-
     // number of mini-batches for this epoch, only used for epoch metrics
     {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
 
@@ -175,9 +172,6 @@
 
     // mini-batch index
     {"name": "batchIdx", "type": "int"},
-
-    // number of mini-batches for this epoch, only used for epoch metrics
-    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
 
     // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the batch (ex. DvT).

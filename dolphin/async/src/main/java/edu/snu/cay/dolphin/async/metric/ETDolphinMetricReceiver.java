@@ -39,7 +39,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   private final MetricManager metricManager;
 
-  private final int miniBatchSize;
+  private final int numTotalMiniBatches;
 
   private final String modelTableId;
   private final String inputTableId;
@@ -49,12 +49,12 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                           final MetricManager metricManager,
                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                           @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                          @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int miniBatchSize) {
+                          @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
-    this.miniBatchSize = miniBatchSize;
+    this.numTotalMiniBatches = numTotalMiniBatches;
   }
 
   @Override
@@ -123,7 +123,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                                             final EpochMetrics epochMetrics) {
     return WorkerMetrics.newBuilder()
               .setEpochIdx(epochMetrics.getEpochIdx())
-              .setMiniBatchSize(miniBatchSize)
               .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
               .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
               .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(inputTableId))
@@ -149,8 +148,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setNumDataBlocks(tableToNumBlocks.get(inputTableId))
               .setEpochIdx(batchMetrics.getEpochIdx())
               .setMiniBatchIdx(batchMetrics.getBatchIdx())
-              .setMiniBatchSize(miniBatchSize)
-              .setNumMiniBatchForEpoch(batchMetrics.getNumMiniBatchForEpoch())
               .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
               .setTotalTime(batchMetrics.getBatchTimeSec())
               .setTotalCompTime(batchMetrics.getBatchCompTimeSec())

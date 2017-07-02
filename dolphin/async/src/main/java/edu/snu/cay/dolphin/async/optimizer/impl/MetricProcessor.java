@@ -24,13 +24,11 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
-import java.util.logging.Logger;
 
 /**
  * A class that process metrics for optimization purpose.
  */
 public final class MetricProcessor {
-  private static final Logger LOG = Logger.getLogger(MetricProcessor.class.getName());
 
   // utility classes should not be instantiated
   private MetricProcessor() {
@@ -151,10 +149,6 @@ public final class MetricProcessor {
       aggregatedMetricBuilder.setTotalPushTime(calculateExponentialMovingAverage(workerMetric,
           param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPushTime(),
           metricWeightFactor, movingAvgWindowSize));
-      aggregatedMetricBuilder.setNumMiniBatchForEpoch(
-          (int) Math.round(calculateExponentialMovingAverage(workerMetric,
-              param -> ((WorkerEvaluatorParameters) param).getMetrics().getNumMiniBatchForEpoch(),
-              metricWeightFactor, movingAvgWindowSize)));
 
       if (workerMetric.size() > 0) {
         // As the metrics are grouped by worker, hostname is always same; so we will get the first element's hostname
