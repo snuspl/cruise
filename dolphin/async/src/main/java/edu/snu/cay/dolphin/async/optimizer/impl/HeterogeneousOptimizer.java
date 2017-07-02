@@ -477,15 +477,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
       terms[i] = 1 / workers.get(i).throughput +
           avgPullSize * Math.max(1 / workers.get(i).bandwidth, numWorker / serverBandwidthSum);
       termInverseSum += 1D / terms[i];
-      LOG.log(Level.INFO, "terms[{0}] = 1 / {1}, + {2} * Math.max(1 / {3}, {4} / {5})",
-          new Object[] {i, workers.get(i).throughput, avgPullSize,
-              workers.get(i).bandwidth, numWorker, serverBandwidthSum});
     }
 
-    final double avgNumBatches = (double) numTotalMiniBatches / numWorker;
-    LOG.log(Level.INFO, "avgNumBatches = {0} / {1} = {2}. termInverseSum = {3}",
-          new Object[] {numTotalMiniBatches, numWorker, avgNumBatches, termInverseSum});
-    return avgNumBatches / termInverseSum;
+    return numTotalMiniBatches / termInverseSum;
   }
 
   private static void generateTransferSteps(final String namespace,
