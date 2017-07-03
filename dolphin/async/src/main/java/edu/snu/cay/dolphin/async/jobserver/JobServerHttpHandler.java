@@ -25,7 +25,11 @@ import org.apache.reef.webserver.ParsedHttpRequest;
 import javax.inject.Inject;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -71,6 +75,9 @@ public final class JobServerHttpHandler implements HttpHandler {
     final HttpResponse result;
     switch (target) {
     case "submit":
+      final String body = new String(request.getInputStream());
+      LOG.log(Level.INFO, "request post body is {0}", new String(request.getInputStream()));
+      LOG.log(Level.INFO, "body length is : {0}", body.length());
       result = onSubmit(request.getParameter("conf"));
       break;
     case "finish":
@@ -89,6 +96,40 @@ public final class JobServerHttpHandler implements HttpHandler {
     } else {
       httpServletResponse.sendError(status, message);
     }
+  }
+
+  public static String getBody(final ParsedHttpRequest request) throws IOException {
+
+    final String body;
+    final StringBuilder stringBuilder = new StringBuilder();
+    BufferedReader bufferedReader = null;
+
+    try {
+      final InputStream inputStream = request.getInputStreams();
+      if (inputStream != null) {
+        bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        final char[] charBuffer = new char[128];
+        int bytesRead = -1;
+        while ((bytesRead = bufferedReader.read(charBuffer)) > 0) {
+          stringBuilder.append(charBuffer, 0, bytesRead);
+        }
+      } else {
+        stringBuilder.append("");
+      }
+    } catch (IOException ex) {
+      throw ex;
+    } finally {
+      if (bufferedReader != null) {
+        try {
+          bufferedReader.close();
+        } catch (IOException ex) {
+          throw ex;
+        }
+      }
+    }
+
+    body = stringBuilder.toString();
+    return body;
   }
 
   private HttpResponse onSubmit(final String serializedConf) throws IOException {

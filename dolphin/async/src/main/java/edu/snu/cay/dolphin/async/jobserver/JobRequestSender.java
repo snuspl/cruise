@@ -61,7 +61,7 @@ import java.util.logging.Logger;
 public final class JobRequestSender {
 
   private static final Logger LOG = Logger.getLogger(JobRequestSender.class.getName());
-
+  private static final String USER_AGENT = "Mozilla/5.0";
   private JobRequestSender() {
 
   }
@@ -239,19 +239,28 @@ public final class JobRequestSender {
    */
   private static void sendRequest(final String command, final String address,
                                   final String port, @Nullable final String serializedConf) {
+    final HttpClient httpClient = HttpClientBuilder.create().build();
+    final HttpResponse response;
+    final String url = "http://" + address + ":" + port + "/dolphin/v1/" + command;
     try {
-      final HttpClient httpClient = HttpClientBuilder.create().build();
-      final String url = "http://" + address + ":" + port + "/dolphin/v1/" + command;
-      final HttpResponse response;
       switch (command) {
       case "submit":
-        final NameValuePair confPair = new BasicNameValuePair("conf", serializedConf);
-        final List<NameValuePair> nameValuePairs = Collections.singletonList(confPair);
         final HttpPost submitRequest = new HttpPost(url);
-        submitRequest.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-        submitRequest.addHeader("content-type", "application/x-www-form-urlencoded");
+        final List<NameValuePair> urlParameters =
+            Collections.singletonList(new BasicNameValuePair("conf", serializedConf));
+        submitRequest.setHeader("Connection", "keep-alive");
+        submitRequest.setHeader("User-Agent", USER_AGENT);
+        submitRequest.setHeader("Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        submitRequest.setHeader("Accept-Language", "en-US,en;q=0.5");
+        submitRequest.setHeader("Connection", "keep-alive");
+        submitRequest.setHeader("Content-Type", "application/x-www-form-urlencoded");
+        submitRequest.setEntity(new UrlEncodedFormEntity(urlParameters));
+        /*
+        final ByteArrayEntity entity = new ByteArrayEntity(serializedConf.getBytes());
+        submitRequest.setEntity(entity);
+        */
         response = httpClient.execute(submitRequest);
-        System.out.println("\nSending 'POST' request to URL : " + url);
         break;
       case "finish":
         final HttpGet finishRequest = new HttpGet(url);
@@ -264,6 +273,7 @@ public final class JobRequestSender {
 
       System.out.println("Response Code : " + response.getStatusLine().getStatusCode() +
           ", Response Message : " + response.getStatusLine().getReasonPhrase());
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
