@@ -22,7 +22,9 @@ import edu.snu.cay.dolphin.async.optimizer.impl.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.impl.WorkerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.dolphin.async.optimizer.parameters.NumInitialBatchMetricsToSkip;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -64,17 +66,29 @@ public final class MetricManager {
   private final DashboardConnector dashboardConnector;
 
   /**
+   * The number of metrics to skip initially, which are collected in a unstable state.
+   */
+  private final int numInitialBatchMetricsToSkip;
+
+  /**
+   * Counter for tracking the number of skipped metrics per evaluator.
+   */
+  private final Map<String, Integer> evalIdToMiniBatchCounter = new HashMap<>();
+
+  /**
    * Constructor of MetricManager.
    */
   @Inject
-  private MetricManager(final DashboardConnector dashboardConnector) {
+  private MetricManager(final DashboardConnector dashboardConnector,
+                        @Parameter(NumInitialBatchMetricsToSkip.class) final int numInitialBatchMetricsToSkip) {
     this.metricCollectionEnabled = false;
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
     this.metricStore = new MetricStore();
-
     this.dashboardConnector = dashboardConnector;
+
+    this.numInitialBatchMetricsToSkip = numInitialBatchMetricsToSkip;
   }
 
   /**
@@ -131,11 +145,11 @@ public final class MetricManager {
   }
 
   /**
-   * Checks whether the source of the metrics exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s
-   * evaluator list.
+   * Checks whether the source of the metrics exists in the {@link edu.snu.cay.services.et.driver.api.ETMaster}'s
+   * executor list.
    * @param srcId id of the source evaluator that sent the metrics.
    * @param validationInfo a map consists of evaluator ids as its keys
-   * @return {@code true} if the source exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
+   * @return {@code true} if the source exists in the {@link edu.snu.cay.services.et.driver.api.ETMaster}'s view.
    */
   private boolean isValidSource(final String srcId, final Map<String, Integer> validationInfo) {
     return validationInfo != null && validationInfo.containsKey(srcId);
@@ -148,16 +162,6 @@ public final class MetricManager {
    */
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
     return copyMetrics(metricStore.getWorkerMiniBatchMetrics());
-  }
-
-  /**
-   * Returns a map that contains epoch metrics from workers.
-   * Key is a worker id and value is a list of {@link EvaluatorParameters} from the corresponding worker.
-   * The list of a worker is empty, when the worker still does not report valid epoch metrics.
-   * @return a map between worker id and its epoch metrics
-   */
-  public Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
-    return copyMetrics(metricStore.getWorkerEpochMetrics());
   }
 
   /**
@@ -240,38 +244,25 @@ public final class MetricManager {
 
     private void storeWorkerEpochMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
       synchronized (workerEvalEpochParams) {
-        // skip the first epoch metric for the worker after metric collection has begun
-        if (!workerEvalEpochParams.containsKey(workerId)) {
-          workerEvalEpochParams.put(workerId, new ArrayList<>());
-        } else {
-          if (isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
-            workerEvalEpochParams.get(workerId).add(evalParams);
-          }
-        }
+        workerEvalEpochParams.computeIfAbsent(workerId, x -> new ArrayList<>()).add(evalParams);
       }
     }
 
-    private void storeWorkerMiniBatchMetrics(final String workerId, final EvaluatorParameters evalParams) {
-      // only collect the metric if the worker has completed its first epoch after metric collection has begun
-      if (workerEvalEpochParams.containsKey(workerId)) {
-        synchronized (workerEvalMiniBatchParams) {
-          if (!workerEvalMiniBatchParams.containsKey(workerId)) {
-            workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
-          }
-          workerEvalMiniBatchParams.get(workerId).add(evalParams);
+    private void storeWorkerMiniBatchMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
+      synchronized (workerEvalMiniBatchParams) {
+        if (!initialMetricsToSkip(evalParams) &&
+            isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
+          workerEvalMiniBatchParams.computeIfAbsent(workerId, x -> new ArrayList<>()).add(evalParams);
         }
       }
     }
 
     private void storeServerMetrics(final String serverId, final ServerEvaluatorParameters evalParams) {
-      if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
+      // Purpose: to make sure whether all workers participate training.
+      if (workerEvalMiniBatchParams.size() == numBlockByEvalIdForWorker.size()) {
         synchronized (serverEvalParams) {
-          // only collect the metric all workers have sent at least one metric after metric collection has begun
-          if (!serverEvalParams.containsKey(serverId)) {
-            serverEvalParams.put(serverId, new ArrayList<>());
-          }
           if (isValidNumBlocks(evalParams.getMetrics().getNumModelBlocks(), evalParams)) {
-            serverEvalParams.get(serverId).add(evalParams);
+            serverEvalParams.computeIfAbsent(serverId, x -> new ArrayList<>()).add(evalParams);
           }
         }
       }
@@ -293,8 +284,17 @@ public final class MetricManager {
       }
     }
 
-    private Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
-      return workerEvalEpochParams;
+    private boolean initialMetricsToSkip(final WorkerEvaluatorParameters evalParams) {
+      // count: how many metrics have been collected including the current one.
+      final int count = evalIdToMiniBatchCounter.compute(evalParams.getId(),
+          (key, value) -> value == null ? 1 : value + 1);
+
+      final boolean toSkip = count <= numInitialBatchMetricsToSkip;
+      if (toSkip) {
+        LOG.log(Level.INFO, "Skip initial metrics from {0} (Current Count: {1}/{2}).",
+            new Object[] {evalParams.getId(), count, numInitialBatchMetricsToSkip});
+      }
+      return toSkip;
     }
 
     private Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {

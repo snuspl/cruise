@@ -195,6 +195,7 @@ public final class ETDolphinLauncher {
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
+        NumInitialBatchMetricsToSkip.class, MinNumRequiredBatchMetrics.class,
 
         // metric processing params
         MovingAverageWindowSize.class, MetricWeightFactor.class,
