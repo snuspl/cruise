@@ -126,9 +126,10 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   private void pullModels(final List<Integer> words) {
-    final List<int[]> topicVectors = modelAccessor.pull(words);
+    // pull model and use it after translating it into sparse form
+    final List<int[]> denseTopicVectors = modelAccessor.pull(words);
 
-    final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
+    final int[] sparseTopicSummaryVector = denseToSparse(denseTopicVectors.remove(words.size() - 1));
     // i-th element of topicSummaryVector represents total number of assignments of i-th topic
     final int[] topicSummaryVector = new int[numTopics];
     for (int i = 0; i < sparseTopicSummaryVector.length; i++) {
@@ -137,12 +138,37 @@ final class LDATrainer implements Trainer<Document> {
       topicSummaryVector[topic] = count;
     }
 
-    final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
-    for (int i = 0; i < topicVectors.size(); ++i) {
-      wordTopicVectors.put(words.get(i), topicVectors.get(i));
+    final Map<Integer, int[]> wordTopicVectors = new HashMap<>(denseTopicVectors.size());
+    final int numTopicVectors = denseTopicVectors.size();
+    for (int i = 0; i < numTopicVectors; ++i) {
+      final int[] sparseTopicVector = denseToSparse(denseTopicVectors.remove(0));
+      wordTopicVectors.put(words.get(i), sparseTopicVector);
     }
 
     modelHolder.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
+  }
+
+  /**
+   * Translate dense array to sparse array.
+   * It's required since the trainer handles the model in the sparse form,
+   * while servers give the model in the dense form.
+   * @param denseArray an array in the form of dense array
+   * @return an array in the form of sparse array
+   */
+  private int[] denseToSparse(final int[] denseArray) {
+    final int numNonZeros = denseArray[denseArray.length - 1];
+
+    final int[] sparseArray = new int[2 * numNonZeros];
+    int nonZeroCount = 0;
+    for (int i = 0; i < denseArray.length - 1; i++) {
+      if (denseArray[i] != 0) {
+        sparseArray[2 * nonZeroCount] = i;
+        sparseArray[2 * nonZeroCount + 1] = denseArray[i];
+        nonZeroCount++;
+      }
+    }
+
+    return sparseArray;
   }
 
   /**
