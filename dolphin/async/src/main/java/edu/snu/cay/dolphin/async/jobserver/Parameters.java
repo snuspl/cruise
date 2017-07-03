@@ -15,15 +15,32 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-/**
- * Client for closing running job server. This is called by {#close_jobserver.sh}
- */
-public final class CloseJob {
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-  private CloseJob() {
+/**
+ * Parameters used in JobServer.
+ */
+final class Parameters {
+  static final String SUBMIT_COMMAND = "submit";
+  static final String FINISH_COMMAND = "finish";
+
+  private Parameters() {
+
   }
 
-  public static void main(final String[] args) {
-    JobRequestSender.closeJobServer(args);
+  @NamedParameter(doc = "A port number of HTTP request.", short_name = "port")
+  final class HttpPort implements Name<String> {
+
+  }
+
+  @NamedParameter(doc = "An address of HTTP request", short_name = "address")
+  final class HttpAddress implements Name<String> {
+
+  }
+
+  @NamedParameter(doc = "An identifier of App.")
+  final class AppIdentifier implements Name<String> {
+
   }
 }

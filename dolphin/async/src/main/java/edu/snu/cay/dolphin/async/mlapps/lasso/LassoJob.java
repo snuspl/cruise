@@ -13,42 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+import javax.inject.Inject;
+
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD with JobServer.
+ * Application launching code for Lasso with JobServer.
  */
-public final class NMFJob {
+public final class LassoJob {
 
-  /**
-   * Should not be instantiated.
-   */
-  private NMFJob() {
+  @Inject
+  private LassoJob() {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("MatrixFactorization", args, ETDolphinConfiguration.newBuilder()
-        .setTrainerClass(NMFTrainer.class)
-        .setInputParserClass(NMFETDataParser.class)
+    JobLauncher.submitJob("Lasso", args, ETDolphinConfiguration.newBuilder()
+        .setTrainerClass(LassoTrainer.class)
+        .setInputParserClass(LassoETParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
-        .setInputValueCodecClass(NMFDataCodec.class)
-        .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
+        .setInputValueCodecClass(LassoDataCodec.class)
+        .setModelUpdateFunctionClass(LassoETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(Rank.class)
+        .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(PrintMatrices.class)
-        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayRate.class)
+        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(NumFeaturesPerPartition.class)
         .build());
   }
 }

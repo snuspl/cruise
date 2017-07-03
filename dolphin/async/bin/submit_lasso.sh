@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_nmf.sh -max_num_epochs 50 -local true -number_servers 1 -num_workers 4 -max_num_eval_local 5 -input sample_nmf -mini_batch_size 4 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
+# ./submit_lasso.sh -address 127.0.1.1 -port 13823 -max_num_epochs 300 -num_workers 4 -number_servers 1 -mini_batch_size 50 -num_blocks_per_worker 9 -features 10 -max_num_eval_local 5 -input sample_lasso -test_data_path file://$(PWD)/sample_lasso_test -local true -lambda 0.5 -timeout 200000 -step_size 0.1 -decay_rate 0.95 -decay_period 5 -features_per_partition 2 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.nmf.NMFET
+ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoJob
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
+import edu.snu.cay.dolphin.async.jobserver.Parameters.AppIdentifier;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -65,7 +66,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver code for Dolphin on ET.
- * Upon start, it waits for HTTP request from {@link JobRequestSender}.
+ * It executes a job or finishes itself upon request from clients.
  */
 @Unit
 public final class JobServerDriver {
@@ -74,7 +75,7 @@ public final class JobServerDriver {
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final HttpServerInfo httpServerInfo;
-  private final JobServerTerminator jobServerTerminator;
+  private final JobServerStatusManager jobServerStatusManager;
 
   private final String reefJobId;
   private final boolean onLocal;
@@ -98,7 +99,7 @@ public final class JobServerDriver {
                           final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
                           final HttpServerInfo httpServerInfo,
-                          final JobServerTerminator jobServerTerminator,
+                          final JobServerStatusManager jobServerStatusManager,
                           final Injector jobBaseInjector,
                           @Parameter(DriverIdentifier.class) final String driverId,
                           @Parameter(JobIdentifier.class) final String reefJobId,
@@ -107,7 +108,7 @@ public final class JobServerDriver {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.httpServerInfo = httpServerInfo;
-    this.jobServerTerminator = jobServerTerminator;
+    this.jobServerStatusManager = jobServerStatusManager;
 
     this.reefJobId = reefJobId;
     this.onLocal = onLocal;
@@ -215,7 +216,7 @@ public final class JobServerDriver {
     // generate different dolphin job id for each job
     final int jobCount = jobCounter.getAndIncrement();
 
-    final String appId = jobInjector.getNamedInstance(JobRequestSender.AppIdentifier.class);
+    final String appId = jobInjector.getNamedInstance(AppIdentifier.class);
     final String dolphinJobId = appId + "-" + jobCount;
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
@@ -331,7 +332,7 @@ public final class JobServerDriver {
   public void shutdown() {
     LOG.log(Level.INFO, "Initiates shutdown of JobServer");
     if (isClosed.compareAndSet(false, true)) {
-      jobServerTerminator.finishJobServer();
+      jobServerStatusManager.finishJobServer();
     }
   }
 
