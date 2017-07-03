@@ -233,9 +233,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final int currentNumServers = serverParams.size();
     final double currAvgNumBatches = (double) numTotalMiniBatches / currentNumWorkers;
 
-    final double optimalCost = numWorkersCostMap.getOrDefault(optimalNumWorkers, Double.MAX_VALUE);
+    final double optimalCost = numWorkersCostMap.get(optimalNumWorkers);
 
-    // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
+    // we must apply the costs in metrics by currAvgNumBatches since these are mini-batch metrics
     final double currMeasuredCompCost = currAvgNumBatches * (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D));
     final double currMeasuredCommCost = currAvgNumBatches * (workerParams.stream()
