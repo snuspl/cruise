@@ -26,6 +26,8 @@ import javax.inject.Inject;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Receive HttpRequest so that it can handle the command list.
@@ -34,6 +36,14 @@ public final class JobServerHttpHandler implements HttpHandler {
   private String uriSpecification = "dolphin";
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
   private final ConfigurationSerializer confSerializer;
+
+  /**
+   * Command identifier and sub serializedJobConf map.
+   * It stores first sub configuration and wait for next request. Then handler
+   * combines it to submit job.
+   * Command identifier is determined by request time stamp and request remote host.
+   */
+  private final Map<String, String> jobConfMap = new ConcurrentHashMap<>();
 
   @Inject
   private JobServerHttpHandler(final InjectionFuture<JobServerDriver> jobServerDriverFuture,
@@ -68,7 +78,7 @@ public final class JobServerHttpHandler implements HttpHandler {
     final HttpResponse result;
     switch (target) {
     case Parameters.SUBMIT_COMMAND:
-      result = onSubmit(request.getParameter("conf"));
+      result = onSubmit(request.getRemoteHost(), request.getInputStream());
       break;
     case Parameters.FINISH_COMMAND:
       result = onFinish();
@@ -88,17 +98,29 @@ public final class JobServerHttpHandler implements HttpHandler {
     }
   }
 
-  private HttpResponse onSubmit(final String serializedConf) throws IOException {
-    final Configuration jobConf = confSerializer.fromString(serializedConf);
-    try {
-      final boolean isAccepted = jobServerDriverFuture.get().executeJob(jobConf);
-      if (isAccepted) {
-        return HttpResponse.ok("Job is successfully submitted");
-      } else {
-        return HttpResponse.ok("JobServer has been closed");
+  private HttpResponse onSubmit(final String remoteHost, final byte[] inputStream) throws IOException {
+
+    // Check previously sent body information
+    // When it receives second inputStream, it submit job configuration
+    final String body = new String(inputStream);
+    final String commandIdentifier = remoteHost + body.substring(0, 13);
+    final String subSerializedJobConf = body.substring(13);
+    if (!jobConfMap.containsKey(commandIdentifier)) {
+      jobConfMap.put(commandIdentifier, subSerializedJobConf);
+      return HttpResponse.ok("Second submission is required");
+    } else {
+      final String serializedConf = jobConfMap.get(commandIdentifier) + body.substring(13);
+      final Configuration jobConf = confSerializer.fromString(serializedConf);
+      try {
+        final boolean isAccepted = jobServerDriverFuture.get().executeJob(jobConf);
+        if (isAccepted) {
+          return HttpResponse.ok("Job is successfully submitted");
+        } else {
+          return HttpResponse.ok("JobServer has been closed");
+        }
+      } catch (InjectionException | IOException e) {
+        return HttpResponse.badRequest("Incomplete job configuration");
       }
-    } catch (InjectionException | IOException e) {
-      return HttpResponse.badRequest("Incomplete job configuration");
     }
   }
 

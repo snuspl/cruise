@@ -19,6 +19,7 @@ import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.jobserver.Parameters.*;
+import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.async.optimizer.impl.DummyOrchestrator;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
@@ -38,6 +39,7 @@ import org.apache.reef.tang.types.NamedParameterNode;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * JobLauncher, which submits specific ML job dynamically to running job server via HTTP request.
@@ -46,6 +48,8 @@ import java.util.List;
  */
 @ClientSide
 public final class JobLauncher {
+
+  private AtomicInteger jobCounter = new AtomicInteger(0);
 
   private JobLauncher() {
 
@@ -111,7 +115,7 @@ public final class JobLauncher {
 
     // parameters for master
     final List<Class<? extends Name<?>>> masterParamList = Arrays.asList(
-        MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class
+        MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class, ServerMetricFlushPeriodMs.class
     );
 
     // parameters for servers
@@ -119,7 +123,7 @@ public final class JobLauncher {
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumServerHandlerThreads.class, NumServerSenderThreads.class,
         ServerHandlerQueueSize.class, ServerSenderQueueSize.class,
-        NumServerBlocks.class
+        NumServerBlocks.class, ServerMetricFlushPeriodMs.class
     );
 
     // parameters for workers
