@@ -23,4 +23,3 @@ import org.apache.reef.tang.annotations.NamedParameter;
     default_value = "3")
 public final class MinNumRequiredBatchMetrics implements Name<Integer> {
 }
-

@@ -29,6 +29,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -73,7 +74,7 @@ public final class MetricManager {
   /**
    * Counter for tracking the number of skipped metrics per evaluator.
    */
-  private final Map<String, Integer> evalIdToMiniBatchCounter = new HashMap<>();
+  private final Map<String, Integer> evalIdToMiniBatchCounter = new ConcurrentHashMap<>();
 
   /**
    * Constructor of MetricManager.
