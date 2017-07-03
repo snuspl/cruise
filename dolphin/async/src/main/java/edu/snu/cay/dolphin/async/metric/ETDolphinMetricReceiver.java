@@ -39,8 +39,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   private final MetricManager metricManager;
 
-  private final int numTotalMiniBatches;
-
   private final String modelTableId;
   private final String inputTableId;
 
@@ -48,13 +46,11 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                          @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches) {
+                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
-    this.numTotalMiniBatches = numTotalMiniBatches;
   }
 
   @Override

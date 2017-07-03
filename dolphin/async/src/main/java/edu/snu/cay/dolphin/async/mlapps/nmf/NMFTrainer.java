@@ -107,8 +107,8 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
+    LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
-    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", numTotalMiniBatches);
   }
 
   @Override
