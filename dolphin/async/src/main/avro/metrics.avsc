@@ -131,9 +131,6 @@
     // number of data items (mapped to a key in MemoryStore) processed
     {"name": "processedDataItemCount", "type": "int", "default": 0},
 
-    // number of training data instances processed per mini-batch
-    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
-
     // number of mini-batches for this epoch, only used for epoch metrics
     {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
 

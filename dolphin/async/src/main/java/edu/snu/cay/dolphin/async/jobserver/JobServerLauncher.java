@@ -219,7 +219,7 @@ public final class JobServerLauncher {
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
         WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
         NumWorkerBlocks.class,
-        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class
+        NumTrainerThreads.class, MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class
     );
 
     final CommandLine cl = new CommandLine();
