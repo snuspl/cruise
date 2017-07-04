@@ -138,6 +138,4 @@ public final class ILPPlanGenerator {
   
   private static final Comparator<BlockDelta> NUM_BLOCKS_TO_MOVE_COMPARATOR =
       (o1, o2) -> o2.getNumBlocksToMove() - o1.getNumBlocksToMove();
-
-
 }
