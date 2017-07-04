@@ -102,6 +102,11 @@
       <artifactId>elastic-tables</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>com.gurobi</groupId>
+      <artifactId>gurobi-libraries</artifactId>
+      <version>7.0.2</version>
+    </dependency>
   </dependencies>
 
   <build>

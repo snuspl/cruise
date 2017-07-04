@@ -25,136 +25,256 @@ import java.util.logging.Logger;
 /**
  * Computes Dolphin's optimal cost and configuration (w.r.t. w, s, d, m).
  */
-final class ILPSolver {
+public final class ILPSolver {
   private static final Logger LOG = Logger.getLogger(ILPSolver.class.getName());
-
+  
   @Inject
   private ILPSolver() {
   }
-
-  ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                          final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+  
+  public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
+                                 final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
-    System.out.println("p: " + p);
-    System.out.println("cWProc: " + Arrays.toString(cWProc));
-    System.out.println("cWProc: " + Arrays.toString(bandwidth));
+    LOG.log(Level.INFO, "p: {0}", p);
+    LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
+    LOG.log(Level.INFO, "BandWidth: {0}", Arrays.toString(bandwidth));
+    LOG.log(Level.INFO, "mTotal: {0}, dTotal: {1}", new Object[]{mTotal, dTotal});
+    
+    // Gurobi environment configurations
     final GRBEnv env = new GRBEnv(filename);
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
-    model.set(GRB.DoubleParam.MIPGap, 1e-1);
-
-    final double maxCompCost = (double) dTotal * findMax(cWProc); // if the slowest worker computes all data
-    final double maxCommCost = (double) n * p * mTotal * dTotal / findMin(bandwidth);
-    // case 2: if the slowest server is a bottleneck
-    final double maxTotalCost = maxCompCost + maxCommCost;
-    System.out.println("Max compCost: " + maxCompCost + " Max commCost: " + maxCommCost);
-
+    model.set(GRB.DoubleParam.MIPGap, 5e-1);
+    
     // Variables
-    final int logD = log2(dTotal);
-    final GRBVar[][] d = new GRBVar[n][logD + 1];
     final GRBVar[] m = new GRBVar[n];
-    final GRBVar[] w = new GRBVar[n];
+    final GRBVar[] s = new GRBVar[n];
+    final GRBVar[] t = new GRBVar[n];
+    final GRBVar[][] sImJ = new GRBVar[n][n];
+    
     for (int i = 0; i < n; i++) {
-      for (int j = 0; j <= logD; j++) {
-        d[i][j] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("d[%d][%d]", i, j));
-      }
       m[i] = model.addVar(0.0, mTotal, 0.0, GRB.INTEGER, String.format("m[%d]", i));
-      w[i] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("w[%d]", i));
+      s[i] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("s[%d]", i));
+      t[i] = model.addVar(0.0, 1.0, 0.0, GRB.CONTINUOUS, String.format("t[%d]", i));
     }
-
-    // Constraints on the values.
-    addConstraintsOnValues(model, n, mTotal, dTotal, w, m, d);
-
-    final GRBVar maxCost = model.addVar(0.0, maxTotalCost, 0.0, GRB.CONTINUOUS, "maxCost");
-
-    // Compute max(p/bandwidth[j]*W*m[j])
-    final GRBVar maxPullTimePerBatch = model.addVar((double) p / findMax(bandwidth),
-        (double) p / findMin(bandwidth) * mTotal * n, 0.0, GRB.INTEGER, "maxPullTimePerBatch");
-
+    
+    // For fixed i, calculate sum_{j}( 1 / min(bandwidth[i], bandwidth[j]) )
+    final double[] bandwidthHarmonicSum = new double[n];
+    computeBandwidthHarmonicSum(bandwidthHarmonicSum, bandwidth, n);
+    
+    // basicConstraints function includes the following constraints.
+    // 1. Sum(m[i]) = M
+    // 2. Define s[i]*m[j] as a gurobi variable.
+    // 3. m[i] == 0 iff s[i] == 0
+    basicConstraints(model, m, mTotal, n, sImJ, s);
+    
+    // maxCommCost occurs when there is only one server and server is bottleneck for communication cost.
+    final double maxCommCost = (double) n * mTotal * p / findMin(bandwidth);
+    final double costNormalizationFactor = (double) (1 << 7) / maxCommCost;
+    final int logMaxCommCost = 7;
+    
+    // Express maxPullTimePerBatch with binary.
+    final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][logMaxCommCost + 1];
+    for (int j = 0; j < n; j++) {
+      for (int i = 0; i <= logMaxCommCost; i++) {
+        maxPullTimePerBatch[j][i] =
+            model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("maxPullTimePerBatch[%d][%d]", j, i));
+      }
+    }
+    
     // if a worker is the bottleneck
-    final GRBLinExpr transferTimeWExpr = new GRBLinExpr();
-    transferTimeWExpr.addConstant((double) p * mTotal / findMin(bandwidth));
-    model.addConstr(maxPullTimePerBatch, GRB.GREATER_EQUAL, transferTimeWExpr, "maxTransferTime>=p*M/BW[i]");
-
+    for (int i = 0; i < n; i++) {
+      final GRBLinExpr workerBottleneck = new GRBLinExpr();
+      for (int j = 0; j < n; j++) {
+        workerBottleneck.addTerm(costNormalizationFactor * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
+      }
+      model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, workerBottleneck,
+          String.format("maxTransferTime>=Sigma(p*m[j]/min(BW[%d], BW[j]))", i));
+    }
+    
     // if a server is the bottleneck
+    final GRBVar serverBottleneck =
+        model.addVar(0.0, costNormalizationFactor * mTotal * p * n / findMin(bandwidth), 0.0,
+            GRB.CONTINUOUS, "serverBottlenectCost");
     for (int j = 0; j < n; j++) {
       final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
-      // Instead of multiplying W, we can accumulate w[i] * (p/bandwidth[j]*m[j]) in order to leave linear terms only
+      sumWIMJExpr.addTerm(costNormalizationFactor * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        if (i == j) {
-          continue;
-        }
-        final GRBVar wImJ = binaryMultVar(model, GRB.INTEGER, w[i], m[j], mTotal, String.format("w[%d]m[%d]", i, j));
-        sumWIMJExpr.addTerm((double) p / bandwidth[j], wImJ);
+        sumWIMJExpr.addTerm(costNormalizationFactor * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
-      model.addConstr(maxPullTimePerBatch, GRB.GREATER_EQUAL, sumWIMJExpr,
-          String.format("maxPullTimePerBatch>=p/bandwidth[%d]*W*m[%d]", j, j));
+      model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
+          String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
     }
-
-    final GRBVar[] coeffSum = new GRBVar[n];
+    for (int  i = 0; i < n; i++) {
+      model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, serverBottleneck,
+          String.format("maxPullTimePerBatch>=p/bandwidth[%d]*W*m[%d]", i, i));
+    }
+    
+    // cost[i]*t[i] = 1
+    final GRBQuadExpr[] costItI = new GRBQuadExpr[n];
     for (int i = 0; i < n; i++) {
-      coeffSum[i] = model.addVar(0.0, findMax(cWProc) + (double) p * mTotal / findMin(bandwidth) * (n - 1),
-          0.0, GRB.CONTINUOUS, String.format("coeffSum[%d]", i));
-      final GRBLinExpr costSumExpr = new GRBLinExpr();
-      costSumExpr.addConstant(cWProc[i]);
-      costSumExpr.addTerm(1.0, maxPullTimePerBatch);
-      model.addConstr(coeffSum[i], GRB.EQUAL, costSumExpr, String.format("coeffSum[%d]=costSumExpr", i));
-      final GRBQuadExpr costIExpr = new GRBQuadExpr();
-      for (int j = 0; j < d[i].length; j++) {
-        costIExpr.addTerm(Math.pow(2, j), coeffSum[i], d[i][j]);
+      costItI[i] = new GRBQuadExpr();
+      for (int j = 0; j <= logMaxCommCost; j++) {
+        costItI[i].addTerm(Math.pow(2, j), t[i], maxPullTimePerBatch[i][j]);
       }
-
-      model.addQConstr(maxCost, GRB.GREATER_EQUAL, costIExpr, String.format("maxCost>=cost[%d]", i));
+      costItI[i].addTerm(costNormalizationFactor * cWProc[i], t[i]);
+      model.addQConstr(costItI[i], GRB.EQUAL, 1, String.format("cost[%d]*t[%d]=1", i, i));
     }
-
-    final GRBLinExpr totalCost = new GRBLinExpr();
-    totalCost.addTerm(1.0, maxCost);
-    model.setObjective(totalCost, GRB.MINIMIZE);
-
+    
+    // Want to maximize Sigma(t[i])
+    final GRBQuadExpr sumT = new GRBQuadExpr();
+    for (int i = 0; i < n; i++) {
+      sumT.addTerm(1.0, t[i]);
+      sumT.addTerm(-1.0, t[i], s[i]);
+    }
+    model.setObjective(sumT, GRB.MAXIMIZE);
+    
     model.write("dolphin-cost.lp");
     final long startTimeMs = System.currentTimeMillis();
-    model.setCallback(new DolphinSolverCallback(startTimeMs, n, d, m));
-
+    model.setCallback(new DolphinSolverCallback(startTimeMs, n, m));
+    
     // Optimize model
     model.optimize();
-
+    
     final int status = model.get(GRB.IntAttr.Status);
     if (status == GRB.Status.INFEASIBLE) {
       onInfeasible(model);
       return null;
     }
-
-    final double cost = model.get(GRB.DoubleAttr.ObjVal);
+    
+    final double cost = model.get(GRB.DoubleAttr.ObjVal) / costNormalizationFactor;
     final int[] mVal = new int[n];
     final int[] dVal = new int[n];
     final int[] wVal = new int[n];
-
-    for (int i = 0; i < n; i++) {
-      mVal[i] = (int) Math.round(m[i].get(GRB.DoubleAttr.X));
-      dVal[i] = valueOf(d[i]);
-      wVal[i] = (int) Math.round(w[i].get(GRB.DoubleAttr.X));
-    }
-
-    printResult(startTimeMs, cost, mVal, dVal);
-
+    
+    computeMDWvalues(mVal, dVal, wVal, m, s, n, bandwidth, cWProc, p, dTotal);
+    
+    printResult(startTimeMs, cost, mVal);
+    
     model.update();
     model.write("dolphin-cost-opt.lp");
-
+    
     // Dispose of model and environment
     model.dispose();
     env.dispose();
-
+    
     return new ConfDescriptor(dVal, mVal, wVal, cost);
   }
   
-  private static int valueOf(final GRBVar[] binRep) throws GRBException {
-    int sum = 0;
-    for (int i = 0; i < binRep.length; i++) {
-      sum += (int) Math.pow(2, i) * Math.round(binRep[i].get(GRB.DoubleAttr.X));
+  private void computeMDWvalues(final int[] mVal, final int[] dVal, final int[] wVal, final GRBVar[] m,
+                                final GRBVar[] s, final int n, final double[] bandwidth, final double[] cWProc,
+                                final int p, final int dTotal) throws GRBException {
+    for (int i = 0; i < n; i++) {
+      mVal[i] = (int) Math.round(m[i].get(GRB.DoubleAttr.X));
+      wVal[i] = 1 - (int) Math.round(s[i].get(GRB.DoubleAttr.X));
     }
-    return sum;
+    
+    // when server is bottleneck
+    double commCostServer = 0.0;
+    for (int j = 0; j < n; j++) {
+      if (mVal[j] == 0) {
+        continue;
+      }
+      double commCostServerCandidate = 0.0;
+      for (int i = 0; i < n; i++) {
+        if (mVal[i] == 0) {
+          commCostServerCandidate += (double) mVal[j] * p / Math.min(bandwidth[i], bandwidth[j]);
+        }
+      }
+      if (commCostServer < commCostServerCandidate) {
+        commCostServer = commCostServerCandidate;
+      }
+    }
+    
+    final double[] estimatedCost = new double[n];
+    for (int i = 0; i < n; i++) {
+      if (mVal[i] != 0) {
+        continue;
+      }
+      double commCostWorker = 0.0;
+      for (int j = 0; j < n; j++) {
+        if (mVal[j] != 0) {
+          commCostWorker += (double) mVal[j] * p / Math.min(bandwidth[i], bandwidth[j]);
+        }
+      }
+      estimatedCost[i] = cWProc[i] + Math.max(commCostWorker, commCostServer);
+    }
+    
+    double harmonicEstimatedCostSum = 0.0;
+    for (int i = 0; i < n; i++) {
+      if (mVal[i] != 0) {
+        continue;
+      }
+      harmonicEstimatedCostSum += 1.0 / estimatedCost[i];
+    }
+    
+    // Determine mVal[i] proportional to the 1 / estimatedCost[i]
+    for (int i = 0; i < n; i++) {
+      if (mVal[i] != 0) {
+        dVal[i] = 0;
+      } else {
+        dVal[i] = (int) ((double) dTotal / estimatedCost[i] / harmonicEstimatedCostSum);
+      }
+    }
+    
+    int sumD = 0;
+    for (int i = 0; i < n; i++) {
+      sumD += dVal[i];
+    }
+    int diff = 0;
+    if (sumD < dTotal) {
+      diff = dTotal - sumD;
+    }
+    while (diff != 0) {
+      for (int i = 0; i < n; i++) {
+        if (dVal[i] != 0) {
+          dVal[i]++;
+          diff--;
+        }
+        if (diff == 0) {
+          break;
+        }
+      }
+    }
   }
-
+  
+  private void basicConstraints(final GRBModel model, final GRBVar[] m, final int mTotal, final int n,
+                                final GRBVar[][] sImJ, final GRBVar[] s) throws GRBException {
+    // Sum(m[i])=M
+    final GRBLinExpr sumModel = sum(m);
+    model.addConstr(sumModel, GRB.EQUAL, mTotal, "sum(m[i])=M");
+    
+    // Define sImJ
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n; j++) {
+        sImJ[i][j] = binaryMultVar(model, GRB.INTEGER, s[i], m[j], mTotal, String.format("s[%d]m[%d]", i, j));
+      }
+    }
+    
+    // Assume that number of servers for optimum condition is less than n/2.
+    final GRBLinExpr sumS = new GRBLinExpr();
+    for (int i = 0; i < n; i++) {
+      sumS.addTerm(1.0, s[i]);
+    }
+    model.addConstr(sumS, GRB.LESS_EQUAL, n / 2, "sum(s[i])<n/2");
+    
+    // m[i] == 0 iff s[i] == 0
+    final GRBLinExpr sumSM = new GRBLinExpr();
+    for (int i = 0; i < n; i++) {
+      sumSM.addTerm(1.0, sImJ[i][i]);
+    }
+    model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
+  }
+  
+  private void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth, final int n) {
+    for (int i = 0; i < n; i++) {
+      bandwidthHarmonicSum[i] = 0;
+      for (int j = 0; j < n; j++) {
+        bandwidthHarmonicSum[i] += 1.0 / Math.min(bandwidth[i], bandwidth[j]);
+      }
+    }
+  }
+  
   private void onInfeasible(final GRBModel model) throws GRBException {
     model.computeIIS();
     final StringBuilder msgBuilder = new StringBuilder();
@@ -166,68 +286,7 @@ final class ILPSolver {
     }
     LOG.log(Level.WARNING, "The following constraint(s) cannot be satisfied: {0}", msgBuilder.toString());
   }
-
-  private void addConstraintsOnValues(final GRBModel model,
-                                      final int n,
-                                      final int mTotal,
-                                      final int dTotal,
-                                      final GRBVar[] w,
-                                      final GRBVar[] m, final GRBVar[][] d) throws GRBException {
-    final GRBLinExpr sumModel = sum(m);
-    model.addConstr(sumModel, GRB.EQUAL, mTotal, "sum(m[i])=M");
-    final GRBLinExpr sumData = sum(d);
-    model.addConstr(sumData, GRB.EQUAL, dTotal, "sum(d[i])=D");
-
-    final GRBVar[] wIdI = binaryMultVarsSum(model, GRB.INTEGER, w, d, dTotal, "wIdI");
-    final GRBLinExpr[] sImI = new GRBLinExpr[n];
-    for (int i = 0; i < n; i++) {
-      sImI[i] = new GRBLinExpr();
-      sImI[i].addTerm(1.0, m[i]);
-      sImI[i].addTerm(-1.0, binaryMultVar(model, GRB.INTEGER, w[i], m[i], mTotal, String.format("wm[%d]", i)));
-    }
-
-    final double[] coeff = new double[n];
-    for (int i = 0; i < coeff.length; i++) {
-      coeff[i] = 1.0;
-    }
-
-    final GRBLinExpr sumWD = new GRBLinExpr();
-    sumWD.addTerms(coeff, wIdI);
-
-    final GRBLinExpr sumSM = new GRBLinExpr();
-    for (int i = 0; i < n; i++) {
-      sumSM.add(sImI[i]);
-    }
-
-    model.addConstr(sumWD, GRB.EQUAL, dTotal, "sum(w[i]*d[i])=D");
-    model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
-  }
-
-  /**
-   * @return A variable that denotes b * y, where b is a binary variable and y is a variable with a known upper bound.
-   */
-  private static GRBVar binaryMultVar(final GRBModel model,
-                                      final char type,
-                                      final GRBVar binaryVar, final GRBLinExpr var,
-                                      final double upperBound, final String varName) throws GRBException {
-    final GRBVar w = model.addVar(0.0, upperBound, 0.0, type, varName);
-
-    final GRBLinExpr rhs1 = new GRBLinExpr();
-    rhs1.addTerm(upperBound, binaryVar);
-    model.addConstr(w, GRB.LESS_EQUAL, rhs1, String.format("%s<=u*x_j", varName));
-
-    model.addConstr(w, GRB.GREATER_EQUAL, 0.0, String.format("%s>=0", varName));
-    model.addConstr(w, GRB.LESS_EQUAL, var, String.format("%s<=y", varName));
-
-    final GRBLinExpr rhs2 = new GRBLinExpr();
-    rhs2.addTerm(upperBound, binaryVar);
-    rhs2.addConstant(-upperBound);
-    rhs2.add(var);
-    model.addConstr(w, GRB.GREATER_EQUAL, rhs2, String.format("%s>=U(x_j-1)+y", varName));
-
-    return w;
-  }
-
+  
   /**
    * @return A variable that denotes b * y, where b is a binary variable and y is a variable with a known upper bound.
    */
@@ -236,41 +295,23 @@ final class ILPSolver {
                                       final GRBVar binaryVar, final GRBVar var,
                                       final double upperBound, final String varName) throws GRBException {
     final GRBVar w = model.addVar(0.0, upperBound, 0.0, type, varName);
-
+    
     final GRBLinExpr rhs1 = new GRBLinExpr();
     rhs1.addTerm(upperBound, binaryVar);
     model.addConstr(w, GRB.LESS_EQUAL, rhs1, String.format("%s<=u*x_j", varName));
-
+    
     model.addConstr(w, GRB.GREATER_EQUAL, 0.0, String.format("%s>=0", varName));
     model.addConstr(w, GRB.LESS_EQUAL, var, String.format("%s<=y", varName));
-
+    
     final GRBLinExpr rhs2 = new GRBLinExpr();
     rhs2.addTerm(upperBound, binaryVar);
     rhs2.addConstant(-upperBound);
     rhs2.addTerm(1.0, var);
     model.addConstr(w, GRB.GREATER_EQUAL, rhs2, String.format("%s>=U(x_j-1)+y", varName));
-
+    
     return w;
   }
-
-  /**
-   * Computes (binaryVars[0] * vars[0] + ... + binaryVars[i] * vars[i] + ...).
-   */
-  private static GRBVar[] binaryMultVarsSum(final GRBModel model, final char type,
-                                            final GRBVar[] binaryVars, final GRBVar[][] vars,
-                                            final double upperBound, final String prefix) throws GRBException {
-    assert binaryVars.length == vars.length;
-
-    final GRBVar[] results = new GRBVar[binaryVars.length];
-    for (int i = 0; i < binaryVars.length; i++) {
-      final GRBLinExpr perNodeVal = binToExpr(vars[i]);
-      final GRBVar result = binaryMultVar(model, type, binaryVars[i], perNodeVal, upperBound,
-          String.format("%s[%d]", prefix, i));
-      results[i] = result;
-    }
-    return results;
-  }
-
+  
   /**
    * @return The linear expression that denotes the sum of variables.
    */
@@ -281,15 +322,7 @@ final class ILPSolver {
     }
     return expr;
   }
-
-  private static GRBLinExpr sum(final GRBVar[][] vars) throws GRBException {
-    final GRBLinExpr expr = new GRBLinExpr();
-    for (final GRBVar[] perNodeVal : vars) {
-      expr.add(binToExpr(perNodeVal));
-    }
-    return expr;
-  }
-
+  
   /**
    * @return The the value of a variable written in binary representation.
    */
@@ -300,7 +333,7 @@ final class ILPSolver {
     }
     return expr;
   }
-
+  
   /**
    * @return the minimum element in {@code arr}.
    */
@@ -313,32 +346,15 @@ final class ILPSolver {
     }
     return min;
   }
-
-  /**
-   * @return the maximum element in {@code arr}.
-   */
-  private static double findMax(final double[] arr) {
-    double max = Double.NEGATIVE_INFINITY;
-    for (final double elem : arr) {
-      if (elem > max) {
-        max = elem;
-      }
-    }
-    return max;
-  }
-
-  private static int log2(final int x) {
-    return (int) (Math.log(x) / Math.log(2));
-  }
-
+  
   private static void printResult(final long startTimeMs,
                                   final double cost,
-                                  final int[] mVal, final int[] dVal) throws GRBException {
+                                  final int[] mVal) throws GRBException {
     final long elapsedTime = System.currentTimeMillis() - startTimeMs;
-    LOG.log(Level.INFO, "Cost: {\"time\": {0}, \"cost\": {1}, \"d\": {2}, \"m\": {3}}",
-        new Object[] {elapsedTime, cost, encodeArray(dVal), encodeArray(mVal)});
+    LOG.log(Level.INFO, "Cost: {\"time\": {0}, \"cost\": {1}, \"m\": {2}",
+        new Object[]{elapsedTime, cost, encodeArray(mVal)});
   }
-
+  
   private static String encodeArray(final int[] arr) {
     final StringBuilder sb = new StringBuilder().append('[');
     for (int i = 0; i < arr.length; i++) {
@@ -350,40 +366,31 @@ final class ILPSolver {
     sb.append(']');
     return sb.toString();
   }
-
+  
   private static class DolphinSolverCallback extends GRBCallback {
     private final long startTimeMs;
     private final int n;
     private final GRBVar[] m;
-    private final GRBVar[][] d;
-
-    DolphinSolverCallback(final long startTimeMs, final int n, final GRBVar[][] d, final GRBVar[] m) {
+    
+    DolphinSolverCallback(final long startTimeMs, final int n, final GRBVar[] m) {
       this.startTimeMs = startTimeMs;
       this.n = n;
-      this.d = d;
       this.m = m;
     }
-
+    
     @Override
     protected void callback() {
       try {
         if (where == GRB.CB_MIPSOL) {
           final long elapsedTimeMs = System.currentTimeMillis() - startTimeMs;
           final double cost = getDoubleInfo(GRB.CB_MIPSOL_OBJ);
-          final int[] dVal = new int[n];
           final int[] mVal = new int[n];
-
+          
           for (int i = 0; i < n; i++) {
-            final double[] dDI = getSolution(d[i]);
-            double val = 0;
-            for (int j = 0; j < dDI.length; j++) {
-              val += (1 << j) * dDI[j];
-            }
-            dVal[i] = (int) val;
             mVal[i] = (int) Math.round(getSolution(m)[i]);
           }
-
-          printResult(elapsedTimeMs, cost, mVal, dVal);
+          
+          printResult(elapsedTimeMs, cost, mVal);
         }
       } catch (GRBException e) {
         throw new RuntimeException(e);
