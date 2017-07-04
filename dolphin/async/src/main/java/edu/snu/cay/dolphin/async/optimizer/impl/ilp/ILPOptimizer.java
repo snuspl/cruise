@@ -70,7 +70,7 @@ public final class ILPOptimizer implements Optimizer {
         evalParamsMap.get(Constants.NAMESPACE_SERVER).size() + evalParamsMap.get(Constants.NAMESPACE_WORKER).size();
     // We don't consider dynamic availability for now.
 
-    final int p = (int) Math.round(optimizerModelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MODEL_BLOCK));
+    final int p = (int) Math.round(optimizerModelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MINI_BATCH));
 
     final int n = evalParamsMap.get(Constants.NAMESPACE_SERVER).size()
         + evalParamsMap.get(Constants.NAMESPACE_WORKER).size();

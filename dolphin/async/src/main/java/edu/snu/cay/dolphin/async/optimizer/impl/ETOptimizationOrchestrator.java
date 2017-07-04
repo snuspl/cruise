@@ -222,7 +222,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerMiniBatchMetrics);
-
     final int numRunningServers = modelTable.getPartitionInfo().size();
     final int numRunningWorkers = inputTable.getPartitionInfo().size();
 
@@ -272,14 +271,11 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
-    final double numAvgPullSizePerModelBlock =
-        getAvgPullSizePerModelBlock(currentWorkerMiniBatchMetrics, numModelBlocks);
 
     // A map containing additional parameters for optimizer.
     final Map<String, Double> optimizerModelParams = new HashMap<>();
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
-    optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MODEL_BLOCK, numAvgPullSizePerModelBlock);
     optimizerModelParams.put(Constants.NUM_MODEL_BLOCKS, (double) numModelBlocks);
     optimizerModelParams.put(Constants.NUM_DATA_BLOCKS, (double) numDataBlocks);
 
@@ -424,24 +420,5 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       }
     }
     return totalPullData / count;
-  }
-
-  /**
-   * Calculates the average number of bytes of pull data per mini-batch across workers.
-   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}.
-   * @return the average number of bytes of pull data per mini-batch across workers.
-   */
-  private double getAvgPullSizePerModelBlock(final Map<String, List<EvaluatorParameters>> evalParams,
-                                             final int numModelBlocks) {
-    double totalPullData = 0D;
-    for (final List<EvaluatorParameters> evalParamList : evalParams.values()) {
-      for (final EvaluatorParameters<WorkerMetrics> param : evalParamList) {
-        // do not include mini-batches which processed data less than mini-batch size
-        if ((int) param.getMetrics().getMiniBatchSize() == param.getMetrics().getProcessedDataItemCount()) {
-          totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
-        }
-      }
-    }
-    return totalPullData / numModelBlocks;
   }
 }

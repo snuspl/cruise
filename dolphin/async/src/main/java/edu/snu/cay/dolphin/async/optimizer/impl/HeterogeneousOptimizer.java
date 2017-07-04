@@ -56,7 +56,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
   @Inject
   private HeterogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                                  @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
-                                 @Parameter(Parameters.OptimizationBenefitThreshold.class) final double optBenefitThreshold,
+                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
+                                   final double optBenefitThreshold,
                                  final BandwidthInfoParser bandwidthInfoParser) {
     this.numTotalMiniBatches = numTotalMiniBatches;
     this.defNetworkBandwidth = defNetworkBandwidth;
