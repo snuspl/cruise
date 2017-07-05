@@ -73,9 +73,9 @@ public final class ILPPlanGenerator {
     }
     
     // generate transfer plans for worker
-    generateTransferPlans(Constants.NAMESPACE_WORKER, oldDataBlockNum, newDataBlockNum, planBuilder);
+    generateTransferPlans(Constants.NAMESPACE_WORKER, oldDataBlockNum, newDataBlockNum, planBuilder, evalIds);
     // generate transfer plans for server
-    generateTransferPlans(Constants.NAMESPACE_SERVER, oldModelBlockNum, newModelBlockNum, planBuilder);
+    generateTransferPlans(Constants.NAMESPACE_SERVER, oldModelBlockNum, newModelBlockNum, planBuilder, evalIds);
     
     return planBuilder.build();
   }
@@ -92,7 +92,7 @@ public final class ILPPlanGenerator {
    * @param newBlockNum number of blocks in each evaluator after optimization is applied.
    */
   private static void generateTransferPlans(final String namespace, final int[] oldBlockNum, final int[] newBlockNum,
-                                            final ILPPlanDescriptor.Builder planBuilder) {
+                                            final ILPPlanDescriptor.Builder planBuilder, final String[] evalIds) {
     final int numTotalEval = oldBlockNum.length;
     final PriorityQueue<BlockDelta> senderPriorityQueue =
         new PriorityQueue<>(numTotalEval, NUM_BLOCKS_TO_MOVE_COMPARATOR);
@@ -116,7 +116,7 @@ public final class ILPPlanGenerator {
       final int numToMove = Math.min(sender.getNumBlocksToMove(), receiver.getNumBlocksToMove());
       
       planBuilder.addTransferStep(namespace,
-          new TransferStepImpl(Integer.toString(sender.getEvalId()), Integer.toString(receiver.getEvalId()),
+          new TransferStepImpl(evalIds[sender.getEvalId()], evalIds[receiver.getEvalId()],
               new DataInfoImpl(numToMove)));
       
       if (numToSend == numToReceive) {

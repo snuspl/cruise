@@ -127,8 +127,8 @@ public final class PlanCompiler {
 
       srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch.getLeft());
       workerTransferSteps = evalIdsToTransfersForSwitch.getRight();
-
-    } else if (numSwitchesFromWorkerToServer > 0) { // worker -> server
+    }
+    if (numSwitchesFromWorkerToServer > 0) { // worker -> server
       final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
           translateToSwitch(workersToDel, serversToAdd, serverTransferSteps, numSwitchesFromWorkerToServer);
 

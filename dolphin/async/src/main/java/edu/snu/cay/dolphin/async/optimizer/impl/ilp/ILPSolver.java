@@ -158,6 +158,9 @@ public final class ILPSolver {
     model.dispose();
     env.dispose();
     
+    LOG.log(Level.INFO, "dVal : " + encodeArray(dVal));
+    LOG.log(Level.INFO, "wVal : " + encodeArray(wVal));
+    
     return new ConfDescriptor(dVal, mVal, wVal, cost);
   }
   
@@ -350,9 +353,10 @@ public final class ILPSolver {
   private static void printResult(final long startTimeMs,
                                   final double cost,
                                   final int[] mVal) throws GRBException {
-    final long elapsedTime = System.currentTimeMillis() - startTimeMs;
-    LOG.log(Level.INFO, "Cost: {\"time\": {0}, \"cost\": {1}, \"m\": {2}",
-        new Object[]{elapsedTime, cost, encodeArray(mVal)});
+    final double elapsedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0D;
+    LOG.log(Level.INFO, "Cost: {\"time\": {0}, \"cost\": {1}}", new Object[]{elapsedTime, cost});
+    LOG.log(Level.INFO, "mVal : " + encodeArray(mVal));
+        
   }
   
   private static String encodeArray(final int[] arr) {

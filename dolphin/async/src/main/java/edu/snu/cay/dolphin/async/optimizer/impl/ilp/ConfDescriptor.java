@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
 /**
- * Created by yunseong on 6/4/17.
+ * Define optimal configuration computed from optimizer solvers.
  */
 final class ConfDescriptor {
   private final int[] d;
