@@ -104,6 +104,10 @@ final class ETWorkerTask<V> implements Task {
 
       final Collection<V> epochData = new LinkedList<>();
 
+      final Runtime runtime = Runtime.getRuntime();
+      LOG.log(Level.INFO, "TotalMem: {0}, MaxMem: {1}, FreeMem: {2}",
+          new Object[]{runtime.totalMemory(), runtime.maxMemory(), runtime.freeMemory()});
+
       int miniBatchIdx = 0;
       while (true) {
         if (abortFlag.get()) {
