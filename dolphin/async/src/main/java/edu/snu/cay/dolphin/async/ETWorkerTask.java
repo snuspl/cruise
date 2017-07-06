@@ -87,6 +87,8 @@ final class ETWorkerTask<V> implements Task {
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
     trainer.initGlobalSettings();
+    
+    workerGlobalBarrier.init();
 
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier

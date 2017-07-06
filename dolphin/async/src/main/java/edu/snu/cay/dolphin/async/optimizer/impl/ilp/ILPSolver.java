@@ -354,7 +354,7 @@ public final class ILPSolver {
                                   final double cost,
                                   final int[] mVal) throws GRBException {
     final double elapsedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0D;
-    LOG.log(Level.INFO, "Cost: {\"time\": {0}, \"cost\": {1}}", new Object[]{elapsedTime, cost});
+    LOG.log(Level.INFO, "Cost: time: {0}, cost: {1}", new Object[]{elapsedTime, cost});
     LOG.log(Level.INFO, "mVal : " + encodeArray(mVal));
         
   }

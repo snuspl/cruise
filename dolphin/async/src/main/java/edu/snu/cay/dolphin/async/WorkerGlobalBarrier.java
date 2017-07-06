@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
-  private final StateMachine stateMachine;
+  private StateMachine stateMachine;
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
@@ -50,6 +50,10 @@ final class WorkerGlobalBarrier {
     INIT,
     RUN,
     CLEANUP
+  }
+  
+  public void init() {
+    this.stateMachine = initStateMachine();
   }
 
   private static StateMachine initStateMachine() {

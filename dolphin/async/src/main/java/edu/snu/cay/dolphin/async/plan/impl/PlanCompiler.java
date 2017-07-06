@@ -73,16 +73,21 @@ public final class PlanCompiler {
                                                                    final List<TransferStep> transferSteps,
                                                                    final int numEvalsToSwitch) {
     final Map<String, String> addIdToDelId = new HashMap<>(numEvalsToSwitch);
-    final List<String> delSublist = evalsToDel.subList(0, numEvalsToSwitch);
-    final List<String> addSubList = evalsToAdd.subList(0, numEvalsToSwitch);
-    for (int idx = 0; idx < numEvalsToSwitch; idx++) {
-      addIdToDelId.put(addSubList.get(idx), delSublist.get(idx));
+    final List<String> delSublist = new LinkedList<>();
+    
+    // Find machines that will be switched.
+    for (int idx = 0; idx < evalsToDel.size(); idx++) {
+      if (evalsToAdd.contains(evalsToDel.get(idx))) {
+        addIdToDelId.put(evalsToDel.get(idx), evalsToDel.get(idx));
+        evalsToAdd.remove(evalsToDel.get(idx));
+        delSublist.add(evalsToDel.get(idx));
+      }
     }
-
+    evalsToDel.removeAll(delSublist);
+  
     final List<String> executorIdsToSwitch = new ArrayList<>(delSublist);
     delSublist.clear();
-    addSubList.clear();
-
+    
     final List<TransferStep> transferStepForSwitch = new ArrayList<>(transferSteps.size());
     for (final TransferStep transferStep : transferSteps) {
       // Change the destination of TransferSteps to the executors that will be switched,
