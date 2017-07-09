@@ -26,8 +26,8 @@ import javax.inject.Inject;
 @DriverSide
 public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
-  private final InjectionFuture<MiniBatchManager> miniBatchManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
+  private final InjectionFuture<MiniBatchManager> miniBatchManagerFuture;
 
   @Inject
   private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
@@ -46,11 +46,11 @@ public final class MasterSideMsgHandler {
     case ProgressMsg:
       progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
       break;
-    case BatchMsg:
-      miniBatchManagerFuture.get().onBatchReq(srcId, dolphinMsg.getBatchMsg().getReqMsg());
-      break;
     case SyncMsg:
       workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg());
+      break;
+    case BatchMsg:
+      miniBatchManagerFuture.get().onBatchReq(srcId, dolphinMsg.getBatchMsg().getReqMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());

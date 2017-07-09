@@ -123,7 +123,7 @@ final class ETWorkerTask<V> implements Task {
         if (!miniBatchController.inquireBatch(epochIdx, miniBatchIdx)) {
           break;
         }
-
+        
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
         
         modelAccessor.getAndResetMetrics();
