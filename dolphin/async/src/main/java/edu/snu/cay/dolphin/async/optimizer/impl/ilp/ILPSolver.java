@@ -45,7 +45,7 @@ public final class ILPSolver {
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
     model.set(GRB.DoubleParam.MIPGap, 2e-1);
-    model.set(GRB.IntParam.Threads, 2);
+    model.set(GRB.IntParam.Threads, 1);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
