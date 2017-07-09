@@ -44,8 +44,7 @@ public final class ILPSolver {
     final GRBEnv env = new GRBEnv(filename);
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
-    model.set(GRB.DoubleParam.MIPGap, 1e-1);
-    model.set(GRB.IntParam.Threads, 4);
+    model.set(GRB.DoubleParam.MIPGap, 7e-1);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
@@ -71,26 +70,25 @@ public final class ILPSolver {
     
     // maxCommCost occurs when there is only one server and server is bottleneck for communication cost.
     final double maxCommCost = (double) n * mTotal * p / findMin(bandwidth);
-    final double normalizationTerm = (1 << 7) / maxCommCost;
-    final int logMaxCommCost = 7;
+    final double normalizationTerm = (double) (1 << 5) / maxCommCost;
+    final int logMaxCommCost = 5;
     
     // Express maxPullTimePerBatch with binary.
-    final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][logMaxCommCost + 1];
+    final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][logMaxCommCost];
     for (int j = 0; j < n; j++) {
-      for (int i = 0; i <= logMaxCommCost; i++) {
+      for (int i = 0; i < logMaxCommCost; i++) {
         maxPullTimePerBatch[j][i] =
             model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("maxPullTimePerBatch[%d][%d]", j, i));
       }
     }
     
-    final GRBLinExpr[] workerBottleneck = new GRBLinExpr[n];
     // if a worker is the bottleneck
     for (int i = 0; i < n; i++) {
-      workerBottleneck[i] = new GRBLinExpr();
+      final GRBLinExpr workerBottleneck = new GRBLinExpr();
       for (int j = 0; j < n; j++) {
-        workerBottleneck[i].addTerm(normalizationTerm * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
+        workerBottleneck.addTerm(normalizationTerm * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
       }
-      model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, workerBottleneck[i],
+      model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, workerBottleneck,
           String.format("maxTransferTime>=Sigma(p*m[j]/min(BW[%d], BW[j]))", i));
     }
     
@@ -99,67 +97,29 @@ public final class ILPSolver {
         model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
             GRB.CONTINUOUS, "serverBottlenectCost");
     
-    final GRBLinExpr[] sumWIMJExpr = new GRBLinExpr[n];
     for (int j = 0; j < n; j++) {
-      sumWIMJExpr[j] = new GRBLinExpr();
-      sumWIMJExpr[j].addTerm(normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
+      final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
+      sumWIMJExpr.addTerm(normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr[j].addTerm(normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr.addTerm(normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
-      model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr[j],
+      model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
           String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
     }
-    
-    final GRBVar[] forServerBottleneck = new GRBVar[n];
-    final GRBVar[] forServerBottleneckBin = new GRBVar[n];
-    final GRBQuadExpr forServerBottleneckExpr = new GRBQuadExpr();
-    final GRBLinExpr forServerBottleneckBinExpr = new GRBLinExpr();
-    for (int i = 0; i < n; i++) {
-      forServerBottleneck[i] = model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
-          GRB.CONTINUOUS, String.format("forServerBottleneck[%d]", i));
-      model.addConstr(sumWIMJExpr[i], GRB.EQUAL, forServerBottleneck[i], String.format("forServerBottleneck[%d]==sumWIMJExpr[%d]", i, i));
-      forServerBottleneckBin[i] =
-          model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("forServerBottleneckBin[%d]", i));
-      forServerBottleneckExpr.addTerm(1.0, forServerBottleneck[i], forServerBottleneckBin[i]);
-      forServerBottleneckBinExpr.addTerm(1.0, forServerBottleneckBin[i]);
-    }
-    model.addQConstr(forServerBottleneckExpr, GRB.GREATER_EQUAL, serverBottleneck,
-        "serverBottleneck<Sigma(bin*serverCost");
-    model.addConstr(forServerBottleneckBinExpr, GRB.EQUAL, 1.0, "serverBottleneckBinSigma");
     
     for (int  i = 0; i < n; i++) {
       model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, serverBottleneck,
           String.format("maxPullTimePerBatch>=p/bandwidth[%d]*W*m[%d]", i, i));
     }
     
-    for (int i = 0; i < n; i++) {
-      final GRBVar forMaxConstr = model.addVar(0.0, normalizationTerm * p * mTotal / findMin(bandwidth), 0.0,
-          GRB.CONTINUOUS, String.format("forMaxConstr[%d]", i));
-      final GRBVar[] forMaxConstrBin = new GRBVar[2];
-      final GRBQuadExpr maxConstr = new GRBQuadExpr();
-      final GRBLinExpr binConstr = new GRBLinExpr();
-      for (int j = 0; j < 2; j++) {
-        forMaxConstrBin[j] =
-            model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("forMaxConstrBin[%d][%d]", i, j));
-        binConstr.addTerm(1.0, forMaxConstrBin[j]);
-      }
-      model.addConstr(forMaxConstr, GRB.EQUAL, workerBottleneck[i],
-          String.format("forMaxConstr[%d]==workerBottleneck[%d]", i, i));
-      maxConstr.addTerm(1.0, forMaxConstrBin[0], forMaxConstr);
-      maxConstr.addTerm(1.0, forMaxConstrBin[1], serverBottleneck);
-      model.addQConstr(maxConstr, GRB.GREATER_EQUAL, binToExpr(maxPullTimePerBatch[i]),
-          String.format("maxPullTimePerBatch[%d]<=Sigma(forMaxConstrBin[%d]*forMaxConstr[%d]", i, i, i));
-      model.addConstr(binConstr, GRB.EQUAL, 1.0, String.format("Sigma[%d](forMaxConstrBin)=1", i));
-    }
-    
     // cost[i]*t[i] = 1
     final GRBQuadExpr[] costItI = new GRBQuadExpr[n];
     for (int i = 0; i < n; i++) {
       costItI[i] = new GRBQuadExpr();
-      for (int j = 0; j <= logMaxCommCost; j++) {
+      for (int j = 0; j < logMaxCommCost; j++) {
         costItI[i].addTerm(Math.pow(2, j), t[i], maxPullTimePerBatch[i][j]);
       }
-      costItI[i].addTerm(cWProc[i], t[i]);
+      costItI[i].addTerm(normalizationTerm * cWProc[i], t[i]);
       model.addQConstr(costItI[i], GRB.EQUAL, 1, String.format("cost[%d]*t[%d]=1", i, i));
     }
     
@@ -283,7 +243,7 @@ public final class ILPSolver {
     }
   }
   
-  private void basicConstraints(final GRBModel model, final GRBVar[] m, final int mTotal, final int n,
+  private static void basicConstraints(final GRBModel model, final GRBVar[] m, final int mTotal, final int n,
                                        final GRBVar[][] sImJ, final GRBVar[] s) throws GRBException {
     // Sum(m[i])=M
     final GRBLinExpr sumModel = sum(m);
@@ -313,7 +273,7 @@ public final class ILPSolver {
     }
   }
   
-  private void onInfeasible(final GRBModel model) throws GRBException {
+  private static void onInfeasible(final GRBModel model) throws GRBException {
     model.computeIIS();
     final StringBuilder msgBuilder = new StringBuilder();
     for (final GRBConstr c : model.getConstrs()) {
