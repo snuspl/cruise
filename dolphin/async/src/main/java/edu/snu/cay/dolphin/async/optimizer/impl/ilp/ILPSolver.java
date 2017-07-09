@@ -33,7 +33,7 @@ public final class ILPSolver {
   }
   
   public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                                 final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+                                        final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
     LOG.log(Level.INFO, "p: {0}", p);
     LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
@@ -70,6 +70,7 @@ public final class ILPSolver {
     
     // maxCommCost occurs when there is only one server and server is bottleneck for communication cost.
     final double maxCommCost = (double) n * mTotal * p / findMin(bandwidth);
+    final double normalizationTerm = (1 << 7) / maxCommCost;
     final int logMaxCommCost = 7;
     
     // Express maxPullTimePerBatch with binary.
@@ -86,7 +87,7 @@ public final class ILPSolver {
     for (int i = 0; i < n; i++) {
       workerBottleneck[i] = new GRBLinExpr();
       for (int j = 0; j < n; j++) {
-        workerBottleneck[i].addTerm(p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
+        workerBottleneck[i].addTerm(normalizationTerm * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
       }
       model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, workerBottleneck[i],
           String.format("maxTransferTime>=Sigma(p*m[j]/min(BW[%d], BW[j]))", i));
@@ -94,15 +95,15 @@ public final class ILPSolver {
     
     // if a server is the bottleneck
     final GRBVar serverBottleneck =
-        model.addVar(0.0, mTotal * p * n / findMin(bandwidth), 0.0,
+        model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
             GRB.CONTINUOUS, "serverBottlenectCost");
     
     final GRBLinExpr[] sumWIMJExpr = new GRBLinExpr[n];
     for (int j = 0; j < n; j++) {
       sumWIMJExpr[j] = new GRBLinExpr();
-      sumWIMJExpr[j].addTerm(p * bandwidthHarmonicSum[j], m[j]);
+      sumWIMJExpr[j].addTerm(normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr[j].addTerm(-p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr[j].addTerm(normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
       model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr[j],
           String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
@@ -113,7 +114,7 @@ public final class ILPSolver {
     final GRBQuadExpr forServerBottleneckExpr = new GRBQuadExpr();
     final GRBLinExpr forServerBottleneckBinExpr = new GRBLinExpr();
     for (int i = 0; i < n; i++) {
-      forServerBottleneck[i] = model.addVar(0.0, mTotal * p * n / findMin(bandwidth), 0.0,
+      forServerBottleneck[i] = model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
           GRB.CONTINUOUS, String.format("forServerBottleneck[%d]", i));
       model.addConstr(sumWIMJExpr[i], GRB.EQUAL, forServerBottleneck[i], String.format("forServerBottleneck[%d]==sumWIMJExpr[%d]", i, i));
       forServerBottleneckBin[i] =
@@ -131,7 +132,7 @@ public final class ILPSolver {
     }
     
     for (int i = 0; i < n; i++) {
-      final GRBVar forMaxConstr = model.addVar(0.0, p * mTotal / findMin(bandwidth), 0.0,
+      final GRBVar forMaxConstr = model.addVar(0.0, normalizationTerm * p * mTotal / findMin(bandwidth), 0.0,
           GRB.CONTINUOUS, String.format("forMaxConstr[%d]", i));
       final GRBVar[] forMaxConstrBin = new GRBVar[2];
       final GRBQuadExpr maxConstr = new GRBQuadExpr();
@@ -204,9 +205,9 @@ public final class ILPSolver {
     return new ConfDescriptor(dVal, mVal, wVal, cost);
   }
   
-  private void computeMDWvalues(final int[] mVal, final int[] dVal, final int[] wVal, final GRBVar[] m,
-                                final GRBVar[] s, final int n, final double[] bandwidth, final double[] cWProc,
-                                final int p, final int dTotal) throws GRBException {
+  private static void computeMDWvalues(final int[] mVal, final int[] dVal, final int[] wVal, final GRBVar[] m,
+                                       final GRBVar[] s, final int n, final double[] bandwidth, final double[] cWProc,
+                                       final int p, final int dTotal) throws GRBException {
     for (int i = 0; i < n; i++) {
       mVal[i] = (int) Math.round(m[i].get(GRB.DoubleAttr.X));
       wVal[i] = 1 - (int) Math.round(s[i].get(GRB.DoubleAttr.X));
@@ -282,7 +283,7 @@ public final class ILPSolver {
   }
   
   private void basicConstraints(final GRBModel model, final GRBVar[] m, final int mTotal, final int n,
-                                final GRBVar[][] sImJ, final GRBVar[] s) throws GRBException {
+                                       final GRBVar[][] sImJ, final GRBVar[] s) throws GRBException {
     // Sum(m[i])=M
     final GRBLinExpr sumModel = sum(m);
     model.addConstr(sumModel, GRB.EQUAL, mTotal, "sum(m[i])=M");
@@ -302,7 +303,7 @@ public final class ILPSolver {
     model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
   }
   
-  private void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth, final int n) {
+  private static void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth, final int n) {
     for (int i = 0; i < n; i++) {
       bandwidthHarmonicSum[i] = 0;
       for (int j = 0; j < n; j++) {
@@ -320,7 +321,7 @@ public final class ILPSolver {
         msgBuilder.append('\n');
       }
     }
-    LOG.log(Level.WARNING, "The following constraint(s) cannot be satisfied: {0}", msgBuilder.toString());
+    System.out.println("The following constraint(s) cannot be satisfied: " + msgBuilder.toString());
   }
   
   /**
@@ -387,9 +388,8 @@ public final class ILPSolver {
                                   final double cost,
                                   final int[] mVal) throws GRBException {
     final double elapsedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0D;
-    LOG.log(Level.INFO, "Cost: time: {0}, cost: {1}", new Object[]{elapsedTime, cost});
-    LOG.log(Level.INFO, "mVal : " + encodeArray(mVal));
-        
+    System.out.println("Cost: time: " + elapsedTime + ", cost: " + cost);
+    System.out.println("mVal : " + encodeArray(mVal));
   }
   
   private static String encodeArray(final int[] arr) {
