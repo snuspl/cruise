@@ -33,7 +33,8 @@ public final class ILPSolver {
   }
   
   public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                                        final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+                                        final int _p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+    final int p = _p / 10;
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
     LOG.log(Level.INFO, "p: {0}", p);
     LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
@@ -45,6 +46,7 @@ public final class ILPSolver {
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
     model.set(GRB.DoubleParam.MIPGap, 7e-1);
+    model.set(GRB.IntParam.Threads, 10);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
@@ -70,8 +72,8 @@ public final class ILPSolver {
     
     // maxCommCost occurs when there is only one server and server is bottleneck for communication cost.
     final double maxCommCost = (double) n * mTotal * p / findMin(bandwidth);
-    final double normalizationTerm = (double) (1 << 5) / maxCommCost;
-    final int logMaxCommCost = 5;
+    final double normalizationTerm = (double) (1 << 7) / maxCommCost;
+    final int logMaxCommCost = 7;
     
     // Express maxPullTimePerBatch with binary.
     final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][logMaxCommCost];
@@ -113,14 +115,13 @@ public final class ILPSolver {
     }
     
     // cost[i]*t[i] = 1
-    final GRBQuadExpr[] costItI = new GRBQuadExpr[n];
     for (int i = 0; i < n; i++) {
-      costItI[i] = new GRBQuadExpr();
+      final GRBQuadExpr costItI = new GRBQuadExpr();
       for (int j = 0; j < logMaxCommCost; j++) {
-        costItI[i].addTerm(Math.pow(2, j), t[i], maxPullTimePerBatch[i][j]);
+        costItI.addTerm(Math.pow(2, j), t[i], maxPullTimePerBatch[i][j]);
       }
-      costItI[i].addTerm(normalizationTerm * cWProc[i], t[i]);
-      model.addQConstr(costItI[i], GRB.EQUAL, 1, String.format("cost[%d]*t[%d]=1", i, i));
+      costItI.addTerm(normalizationTerm * cWProc[i], t[i]);
+      model.addQConstr(costItI, GRB.EQUAL, 1, String.format("cost[%d]*t[%d]=1", i, i));
     }
     
     // Want to maximize Sigma(t[i])
