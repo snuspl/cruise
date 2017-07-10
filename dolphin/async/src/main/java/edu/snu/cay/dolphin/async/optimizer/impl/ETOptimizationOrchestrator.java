@@ -109,6 +109,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
     this.workerStateManager = workerStateManager;
+    this.progressTracker = progressTracker;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
