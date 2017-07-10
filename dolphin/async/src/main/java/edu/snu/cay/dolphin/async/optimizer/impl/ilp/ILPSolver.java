@@ -33,8 +33,7 @@ public final class ILPSolver {
   }
   
   public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                                        final int _p, final double[] cWProc, final double[] bandwidth) throws GRBException {
-    final int p = _p / 10;
+                                        final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
     LOG.log(Level.INFO, "p: {0}", p);
     LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
@@ -47,6 +46,7 @@ public final class ILPSolver {
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
     model.set(GRB.DoubleParam.MIPGap, 7e-1);
     model.set(GRB.IntParam.Threads, 10);
+    model.set(GRB.DoubleParam.TimeLimit, 90);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
@@ -96,14 +96,14 @@ public final class ILPSolver {
     
     // if a server is the bottleneck
     final GRBVar serverBottleneck =
-        model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
+        model.addVar(0.0, 0.2 * normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
             GRB.CONTINUOUS, "serverBottlenectCost");
     
     for (int j = 0; j < n; j++) {
       final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
-      sumWIMJExpr.addTerm(normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
+      sumWIMJExpr.addTerm(0.2 * normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr.addTerm(normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr.addTerm(0.2 * normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
       model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
           String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
