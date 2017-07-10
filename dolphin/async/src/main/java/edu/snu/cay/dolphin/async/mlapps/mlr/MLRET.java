@@ -49,7 +49,6 @@ public final class MLRET {
         .addParameterClass(Lambda.class)
         .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(ModelGaussian.class)
-        .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
         .build());
   }

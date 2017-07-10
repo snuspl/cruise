@@ -156,7 +156,14 @@ public final class DolphinParameters {
                   default_value = "2")
   public final class NumWorkerSenderThreads implements Name<Integer> {
   }
-  
+
+  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
+                  "a positive value.",
+                  short_name = "decay_period",
+                  default_value = "5")
+  public static final class DecayPeriod implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "The path of test data",
                   short_name = "test_data_path",
                   default_value = TestDataPath.NONE)

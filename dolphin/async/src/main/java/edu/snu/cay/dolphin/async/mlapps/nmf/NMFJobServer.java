@@ -47,7 +47,6 @@ public final class NMFJobServer {
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .addParameterClass(PrintMatrices.class)
-        .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
         .build());
   }

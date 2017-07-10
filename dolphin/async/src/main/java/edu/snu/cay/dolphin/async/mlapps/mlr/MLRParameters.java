@@ -57,13 +57,6 @@ final class MLRParameters {
   static final class DecayRate implements Name<Float> {
   }
 
-  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
-      "a positive value.",
-      short_name = "decay_period",
-      default_value = "5")
-  static final class DecayPeriod implements Name<Integer> {
-  }
-
   static final class MetricKeys {
 
     // The key denoting the sum of loss computed from the training data instances.

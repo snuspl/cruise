@@ -48,13 +48,6 @@ final class LassoParameters {
   static final class DecayRate implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
-          "a positive value.",
-          short_name = "decay_period",
-          default_value = "5")
-  static final class DecayPeriod implements Name<Integer> {
-  }
-  
   @NamedParameter(doc = "number of features for each model partition", short_name = "features_per_partition")
   static final class NumFeaturesPerPartition implements Name<Integer> {
   }

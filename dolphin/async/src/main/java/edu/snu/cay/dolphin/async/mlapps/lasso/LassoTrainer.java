@@ -87,7 +87,7 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final float stepSize,
                        @Parameter(DecayRate.class) final double decayRate,
-                       @Parameter(DecayPeriod.class) final int decayPeriod,
+                       @Parameter(DolphinParameters.DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {

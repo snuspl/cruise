@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
-import edu.snu.cay.dolphin.async.mlapps.lda.*;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
@@ -49,7 +48,6 @@ public final class LassoET {
         .addParameterClass(Lambda.class)
         .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayRate.class)
-        .addParameterClass(DecayPeriod.class)
         .addParameterClass(NumFeaturesPerPartition.class)
         .build());
   }
