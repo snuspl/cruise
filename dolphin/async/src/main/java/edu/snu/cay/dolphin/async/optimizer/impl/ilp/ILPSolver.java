@@ -55,7 +55,7 @@ public final class ILPSolver {
     final GRBVar[][] sImJ = new GRBVar[n][n];
     
     for (int i = 0; i < n; i++) {
-      m[i] = model.addVar(0.0, mTotal, 0.0, GRB.INTEGER, String.format("m[%d]", i));
+      m[i] = model.addVar(0.0, mTotal / 2, 0.0, GRB.INTEGER, String.format("m[%d]", i));
       s[i] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("s[%d]", i));
       t[i] = model.addVar(0.0, 1.0, 0.0, GRB.CONTINUOUS, String.format("t[%d]", i));
     }
@@ -96,14 +96,14 @@ public final class ILPSolver {
     
     // if a server is the bottleneck
     final GRBVar serverBottleneck =
-        model.addVar(0.0, 0.2 * normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
+        model.addVar(0.0, 0.5 * normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
             GRB.CONTINUOUS, "serverBottlenectCost");
     
     for (int j = 0; j < n; j++) {
       final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
-      sumWIMJExpr.addTerm(0.2 * normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
+      sumWIMJExpr.addTerm(0.5 * normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr.addTerm(0.2 * normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr.addTerm(0.5 * normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
       model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
           String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
