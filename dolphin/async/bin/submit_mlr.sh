@@ -14,8 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./submit_mlr.sh -address 127.0.1.1 -port 13823 -num_workers 4 -number_servers 2 -local true -input sample_mlr -max_num_eval_local 6 -test_data_path file://$(PWD)/sample_mlr_test -max_num_epochs 20 -mini_batch_size 54 -num_worker_blocks 10 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -timeout 200000 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
-
+# ./submit_mlr.sh -address 127.0.1.1 -port 13823 -num_workers 4 -number_servers 2 -input sample_mlr -test_data_path file://$(PWD)/sample_mlr_test -max_num_epochs 20 -mini_batch_size 54 -num_worker_blocks 10 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -server_metric_flush_period_ms 1000
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'

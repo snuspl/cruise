@@ -14,9 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./submit_nmf.sh -address 127.0.1.1 -port 13823 -max_num_epochs 50 -number_servers 1 -num_workers 4 -input sample_nmf
-# -mini_batch_size 4 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -decay_period 5 -decay_rate 0.9
-# -num_trainer_threads 1 -server_metric_flush_period_ms 1000
+# ./submit_nmf.sh -address 127.0.1.1 -port 13823 -max_num_epochs 50 -number_servers 1 -num_workers 4 -input sample_nmf -mini_batch_size 4 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
