@@ -115,7 +115,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(InitialStepSize.class) final float initStepSize,
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
-                     @Parameter(DecayPeriod.class) final int decayPeriod,
+                     @Parameter(DolphinParameters.DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final VectorFactory vectorFactory) {

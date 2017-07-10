@@ -42,13 +42,6 @@ final class NMFParameters {
   static final class DecayRate implements Name<Float> {
   }
 
-  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
-      "a positive value.",
-      short_name = "decay_period",
-      default_value = "5")
-  static final class DecayPeriod implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "maximum value for each element", short_name = "max_val", default_value = "1e6")
   static final class MaxValue implements Name<Float> {
   }
