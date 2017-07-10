@@ -42,7 +42,6 @@ final class WorkerGlobalBarrier {
 
   @Inject
   private WorkerGlobalBarrier(final WorkerSideMsgSender workerSideMsgSender) {
-    this.stateMachine = initStateMachine();
     this.workerSideMsgSender = workerSideMsgSender;
   }
 
@@ -53,11 +52,7 @@ final class WorkerGlobalBarrier {
   }
   
   public void init() {
-    this.stateMachine = initStateMachine();
-  }
-
-  private static StateMachine initStateMachine() {
-    return StateMachine.newBuilder()
+    this.stateMachine = StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
         .addState(State.RUN, "Workers are running their tasks. Optimization can take place")
         .addState(State.CLEANUP, "Workers are cleaning up the task")
