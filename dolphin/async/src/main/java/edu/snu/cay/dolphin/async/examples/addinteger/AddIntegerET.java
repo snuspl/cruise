@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
+import edu.snu.cay.dolphin.async.mlapps.serialization.IntegerCodec;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -44,6 +45,8 @@ public final class AddIntegerET {
     return ETDolphinLauncher.launch("AddIntegerET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
         .setInputParserClass(ExampleDataParser.class)
+        .setModelKeyCodecClass(IntegerCodec.class)
+        .setModelValueCodecClass(IntegerCodec.class)
         .setModelUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)

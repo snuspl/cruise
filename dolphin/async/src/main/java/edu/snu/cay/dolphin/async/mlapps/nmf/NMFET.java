@@ -18,7 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.IntegerCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.LongCodec;
 
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
@@ -37,10 +38,10 @@ public final class NMFET {
     ETDolphinLauncher.launch("NMFET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(LongCodec.class)
         .setInputValueCodecClass(NMFDataCodec.class)
         .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(Rank.class)

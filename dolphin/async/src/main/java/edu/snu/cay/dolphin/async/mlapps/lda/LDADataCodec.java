@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.mlapps.serialization.ByteArrayOutputStream;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -43,7 +44,7 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
          DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(document, daos);
-      return baos.toByteArray();
+      return baos.getByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }

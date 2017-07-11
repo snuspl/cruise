@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.IntegerCodec;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -45,6 +46,7 @@ public final class AddVectorET {
         .setTrainerClass(AddVectorTrainer.class)
         .setModelUpdateFunctionClass(AddVectorUpdateFunction.class)
         .setInputParserClass(ExampleDataParser.class)
+        .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)
