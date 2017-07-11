@@ -151,7 +151,7 @@ public final class ILPOptimizer implements Optimizer {
       final String id = workerEvalParams.getId();
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
-      final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth / 8D);
+      final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       final double wProc = workerEvalParams.getMetrics().getTotalCompTime();
       machineDescriptors.add(
           new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, wProc, NUM_EMPTY_BLOCK));

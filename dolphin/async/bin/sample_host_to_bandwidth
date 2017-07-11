@@ -15,4 +15,38 @@
 # name: sample_host_to_bandwidth
 # description: A sample file that consists of a mapping from hostname to network bandwidth.
 # Each line should be written as "hostname bandwidth" (see below).
-localhost 1.074e9
+localhost 1.24e9
+snuq-1 7.40e8
+snuq-2 7.40e8
+snuq-3 7.40e8
+snuq-4 7.40e8
+snuq-5 7.40e8
+snuq-6 7.40e8
+snuq-7 7.40e8
+snuq-8 7.40e8
+snuq-9 7.40e8
+snuq-10 7.40e8
+snuq-11 7.40e8
+snuq-12 7.40e8
+snuq-13 7.40e8
+snuq-14 7.40e8
+snuq-15 7.40e8
+snuq-16 7.40e8
+snuq-17 1.24e9
+snuq-18 1.24e9
+snuq-19 1.24e9
+snuq-20 1.24e9
+snuq-21 1.24e9
+snuq-22 1.24e9
+snuq-23 1.24e9
+snuq-24 1.24e9
+snuq-25 1.24e9
+snuq-26 1.24e9
+snuq-27 1.24e9
+snuq-28 1.24e9
+snuq-29 1.24e9
+snuq-30 1.24e9
+snuq-31 1.24e9
+snuq-32 1.24e9
+snuq-33 1.24e9
+snuq-m 1.24e9
