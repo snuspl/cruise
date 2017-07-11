@@ -135,6 +135,7 @@ public final class ProgressTracker implements ProgressProvider {
       return workers;
     });
 
+    // it assumes that workers will always finish the first epoch
     if (stateMachine.getCurrentState().equals(State.INIT)) {
       if (workerIdToEpochIdx.size() == numWorkers) {
         LOG.log(Level.INFO, "State Transition: {0} -> {1}", new Object[]{State.INIT, State.RUN});
