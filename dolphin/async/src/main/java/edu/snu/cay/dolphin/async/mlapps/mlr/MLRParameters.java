@@ -35,10 +35,6 @@ final class MLRParameters {
   static final class InitialStepSize implements Name<Float> {
   }
 
-  @NamedParameter(doc = "regularization constant", short_name = "lambda")
-  static final class Lambda implements Name<Float> {
-  }
-
   @NamedParameter(doc = "number of features for each model partition",
       short_name = "features_per_partition")
   static final class NumFeaturesPerPartition implements Name<Integer> {
@@ -48,20 +44,6 @@ final class MLRParameters {
       short_name = "model_gaussian",
       default_value = "0.001")
   static final class ModelGaussian implements Name<Float> {
-  }
-
-  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative). this value must be larger than 0 " +
-      "and less than or equal to 1. if decay_rate=1.0, decaying process is turned off.",
-      short_name = "decay_rate",
-      default_value = "0.9")
-  static final class DecayRate implements Name<Float> {
-  }
-
-  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
-      "a positive value.",
-      short_name = "decay_period",
-      default_value = "5")
-  static final class DecayPeriod implements Name<Integer> {
   }
 
   static final class MetricKeys {

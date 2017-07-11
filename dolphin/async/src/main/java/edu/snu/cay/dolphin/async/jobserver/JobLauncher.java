@@ -115,6 +115,10 @@ public final class JobLauncher {
         MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class, ServerMetricFlushPeriodMs.class
     );
 
+    final List<Class<? extends Name<?>>> appParamList = Arrays.asList(
+        Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class
+    );
+
     // parameters for servers
     final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
@@ -138,6 +142,7 @@ public final class JobLauncher {
     );
 
     final CommandLine cl = new CommandLine();
+    appParamList.forEach(cl::registerShortNameOfClass);
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     userParamList.forEach(cl::registerShortNameOfClass);

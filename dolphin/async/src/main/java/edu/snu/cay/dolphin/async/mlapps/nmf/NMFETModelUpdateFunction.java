@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -36,7 +37,7 @@ public final class NMFETModelUpdateFunction implements UpdateFunction<Integer, V
 
   @Inject
   private NMFETModelUpdateFunction(final NMFModelGenerator modelGenerator,
-                                   @Parameter(NMFParameters.StepSize.class) final float stepSize) {
+                                   @Parameter(DolphinParameters.StepSize.class) final float stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

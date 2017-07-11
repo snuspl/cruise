@@ -45,7 +45,6 @@ final class HttpSender {
    *                       It is serialized to send via HTTP POST body parameters.
    */
   static void sendSubmitCommand(final String address, final String port, final String serializedJobConf) {
-    Logger.getLogger(HttpSender.class.getName()).log(Level.INFO, "serializedJobConf is : {0}", serializedJobConf);
     final HttpClient httpClient = HttpClientBuilder.create().build();
     final String url = "http://" + address + ":" + port + "/dolphin/v1/" + Parameters.SUBMIT_COMMAND;
     // using time stamp for connection protocol header

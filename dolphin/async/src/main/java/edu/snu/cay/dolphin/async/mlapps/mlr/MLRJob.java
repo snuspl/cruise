@@ -46,11 +46,8 @@ public final class MLRJob {
         .addParameterClass(NumClasses.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)
-        .addParameterClass(Lambda.class)
         .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(ModelGaussian.class)
-        .addParameterClass(DecayPeriod.class)
-        .addParameterClass(DecayRate.class)
         .build());
   }
 }
