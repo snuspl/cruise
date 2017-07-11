@@ -96,14 +96,14 @@ public final class ILPSolver {
     
     // if a server is the bottleneck
     final GRBVar serverBottleneck =
-        model.addVar(0.0, 0.5 * normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
+        model.addVar(0.0, 0.1 * normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
             GRB.CONTINUOUS, "serverBottlenectCost");
     
     for (int j = 0; j < n; j++) {
       final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
-      sumWIMJExpr.addTerm(0.5 * normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
+      sumWIMJExpr.addTerm(0.1 * normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr.addTerm(0.5 * normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr.addTerm(0.1 * normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
       model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
           String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
@@ -283,7 +283,7 @@ public final class ILPSolver {
         msgBuilder.append('\n');
       }
     }
-    System.out.println("The following constraint(s) cannot be satisfied: " + msgBuilder.toString());
+    LOG.log(Level.INFO, "The following constraint(s) cannot be satisfied: {0}", msgBuilder.toString());
   }
   
   /**
@@ -350,8 +350,8 @@ public final class ILPSolver {
                                   final double cost,
                                   final int[] mVal) throws GRBException {
     final double elapsedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0D;
-    System.out.println("Cost: time: " + elapsedTime + ", cost: " + cost);
-    System.out.println("mVal : " + encodeArray(mVal));
+    LOG.log(Level.INFO, "Cost: time: {0}, cost: {1}", new Object[]{elapsedTime, cost});
+    LOG.log(Level.INFO, "mVal : {0}", encodeArray(mVal));
   }
   
   private static String encodeArray(final int[] arr) {
