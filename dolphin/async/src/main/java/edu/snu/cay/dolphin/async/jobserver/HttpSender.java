@@ -24,8 +24,6 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 
 import java.io.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Using Apache HTTP Network Service, it sends HTTP requests to specified URL.
