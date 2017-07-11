@@ -44,7 +44,6 @@ import org.apache.reef.tang.types.NamedParameterNode;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,7 +51,7 @@ import java.util.logging.Logger;
 /**
  * Main entry point for launching a JobServer for Dolphin applications.
  * See {@link JobServerLauncher#run(String[])}.
- * This is called by {#run_jobserver.sh}
+ * This is called by {#start_jobserver.sh}
  */
 @ClientSide
 public final class JobServerLauncher {
@@ -88,9 +87,7 @@ public final class JobServerLauncher {
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // driver configuration
-      final Configuration driverConf = getDriverConfiguration(clientParameterInjector
-          .getNamedInstance(DriverMemory.class), onLocal);
-
+      final Configuration driverConf = getDriverConfiguration(driverParamConf, onLocal);
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
       status = DriverLauncher.getLauncher(runTimeConf)
@@ -120,10 +117,10 @@ public final class JobServerLauncher {
       throws ParseException, InjectionException, IOException, ClassNotFoundException {
 
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
-        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
+        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, Timeout.class);
 
     // parameters for driver (job server)
-    final List<Class<? extends Name<?>>> driverParamList = Collections.emptyList();
+    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(DriverMemory.class);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
@@ -132,7 +129,6 @@ public final class JobServerLauncher {
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
     final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
-
     return Pair.of(clientConf, driverConf);
   }
 
@@ -171,12 +167,15 @@ public final class JobServerLauncher {
   /**
    * @return a configuration for job server driver
    */
-  private static Configuration getDriverConfiguration(final int driverMemSize,
-                                                      final boolean onLocal) {
+  private static Configuration getDriverConfiguration(final Configuration driverParamConf,
+                                                      final boolean onLocal) throws InjectionException {
+
+    final Injector driverParamInjector = Tang.Factory.getTang().newInjector(driverParamConf);
+
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobServerDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "JobServer")
-        .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
+        .set(DriverConfiguration.DRIVER_MEMORY, driverParamInjector.getNamedInstance(DriverMemory.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, JobServerDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, JobServerDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, JobServerDriver.FailedContextHandler.class)

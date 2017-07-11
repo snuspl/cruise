@@ -39,7 +39,6 @@ import org.apache.reef.tang.types.NamedParameterNode;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * JobLauncher, which submits specific ML job dynamically to running job server via HTTP request.
@@ -48,8 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @ClientSide
 public final class JobLauncher {
-
-  private AtomicInteger jobCounter = new AtomicInteger(0);
 
   private JobLauncher() {
 
@@ -65,6 +62,7 @@ public final class JobLauncher {
                                final String[] args,
                                final ETDolphinConfiguration dolphinConf) {
     try {
+
       final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
       final Configuration masterParamConf = configurations.get(0);
       final Configuration serverParamConf = configurations.get(1);
@@ -96,7 +94,6 @@ public final class JobLauncher {
 
       // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
-
       // send http request
       final ConfigurationSerializer configurationSerializer = new AvroConfigurationSerializer();
       final Injector httpConfInjector = Tang.Factory.getTang().newInjector(httpConf);
@@ -131,42 +128,31 @@ public final class JobLauncher {
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
         WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
-        NumWorkerBlocks.class, NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class
+        NumWorkerBlocks.class, NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class,
+        InputDir.class
+    );
+
+    // parameters for http networks
+    final List<Class<? extends Name<?>>> httpParamList = Arrays.asList(
+        HttpAddress.class, HttpPort.class
     );
 
     final CommandLine cl = new CommandLine();
-    cl.registerShortNameOfClass(HttpAddress.class);
-    cl.registerShortNameOfClass(HttpPort.class);
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
-    cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
     userParamList.forEach(cl::registerShortNameOfClass);
+    httpParamList.forEach(cl::registerShortNameOfClass);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
-
     // master side parameters are already registered. So it can be extracted
     // from commandLineConf unless it wasn't registered.
     final Configuration masterConf = extractParameterConf(masterParamList, commandLineConf);
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
+    final Configuration httpConf = extractParameterConf(httpParamList, commandLineConf);
 
-    // handle special parameters that need to be processed from commandline parameters
-    final Injector commandlineParamInjector = Tang.Factory.getTang().newInjector(commandLineConf);
-    final Configuration inputPathConf;
-    final String inputPath = commandlineParamInjector.getNamedInstance(InputDir.class);
-    inputPathConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(InputDir.class, inputPath)
-        .build();
-
-    // http configuration, target of http request is specified by this configuration.
-    final Configuration httpConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(HttpAddress.class, commandlineParamInjector.getNamedInstance(HttpAddress.class))
-        .bindNamedParameter(HttpPort.class, commandlineParamInjector.getNamedInstance(HttpPort.class))
-        .build();
-
-    return Arrays.asList(masterConf, serverConf,
-        Configurations.merge(workerConf, inputPathConf), userConf, httpConf);
+    return Arrays.asList(masterConf, serverConf, workerConf, userConf, httpConf);
   }
 
   /**
