@@ -61,7 +61,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final ETTaskRunner taskRunner;
 
   private final ProgressTracker progressTracker;
-
+  
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
   private final String modelTableId;
@@ -107,8 +107,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.metricManager = metricManager;
     this.etMaster = etMaster;
     this.taskRunner = taskRunner;
-    this.workerStateManager = workerStateManager;
     this.progressTracker = progressTracker;
+    this.workerStateManager = workerStateManager;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
