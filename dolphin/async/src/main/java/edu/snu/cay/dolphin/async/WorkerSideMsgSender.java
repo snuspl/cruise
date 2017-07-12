@@ -92,4 +92,21 @@ final class WorkerSideMsgSender {
 
     networkConnection.send(driverId, dolphinMsg);
   }
+
+  void sendBatchReqMsg(final int epochIdx) throws NetworkException {
+    final BatchMsg batchMsg = BatchMsg.newBuilder()
+        .setType(batchMsgType.BatchReqMsg)
+        .setReqMsg(BatchReqMsg.newBuilder()
+            .setEpochIdx(epochIdx)
+            .build())
+        .build();
+
+    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(dolphinJobId)
+        .setType(dolphinMsgType.BatchMsg)
+        .setBatchMsg(batchMsg)
+        .build();
+
+    networkConnection.send(driverId, dolphinMsg);
+  }
 }

@@ -39,6 +39,7 @@ final class ETWorkerTask<V> implements Task {
   private final int startingEpoch;
   private final int maxNumEpochs;
 
+  private final MiniBatchController miniBatchController;
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<V> trainingDataProvider;
@@ -57,6 +58,7 @@ final class ETWorkerTask<V> implements Task {
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                       final MiniBatchController miniBatchController,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<V> trainingDataProvider,
@@ -67,6 +69,7 @@ final class ETWorkerTask<V> implements Task {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
+    this.miniBatchController = miniBatchController;
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
@@ -101,9 +104,18 @@ final class ETWorkerTask<V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
+        if (abortFlag.get()) {
+          LOG.log(Level.INFO, "The task is getting closed.");
+          return null;
+        }
+
         final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
+        }
+
+        if (!miniBatchController.inquireBatch(epochIdx, miniBatchIdx)) {
+          break;
         }
 
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});

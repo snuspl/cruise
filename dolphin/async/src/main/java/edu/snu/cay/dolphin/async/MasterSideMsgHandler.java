@@ -26,12 +26,15 @@ import javax.inject.Inject;
 @DriverSide
 public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
+  private final InjectionFuture<MiniBatchManager> miniBatchManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
 
   @Inject
   private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
+                               final InjectionFuture<MiniBatchManager> miniBatchManagerFuture,
                                final InjectionFuture<ProgressTracker> progressTrackerFuture) {
     this.workerStateManagerFuture = workerStateManagerFuture;
+    this.miniBatchManagerFuture = miniBatchManagerFuture;
     this.progressTrackerFuture = progressTrackerFuture;
   }
 
@@ -42,6 +45,9 @@ public final class MasterSideMsgHandler {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
       progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
+      break;
+    case BatchMsg:
+      miniBatchManagerFuture.get().onBatchReq(srcId, dolphinMsg.getBatchMsg().getReqMsg());
       break;
     case SyncMsg:
       workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg());

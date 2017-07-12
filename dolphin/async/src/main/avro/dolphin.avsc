@@ -26,6 +26,39 @@
 },
 
 {
+ "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "BatchReqMsg",
+  "fields":
+  [
+    {"name": "epochIdx", "type": "int"}
+  ]
+},
+
+{
+ "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "BatchResMsg",
+  "fields":
+  [
+    {"name": "allow", "type": "boolean"}
+  ]
+},
+
+{
+ "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "BatchMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "batchMsgType",
+        "symbols": ["BatchReqMsg", "BatchResMsg"]}},
+    {"name": "reqMsg", "type": ["null", "BatchReqMsg"], "default": null},
+    {"name": "resMsg", "type": ["null", "BatchResMsg"], "default": null}
+  ]
+},
+
+{
   "namespace": "edu.snu.cay.dolphin.async",
   "type": "record",
   "name": "SyncMsg",
@@ -48,8 +81,9 @@
   [
     {"name": "jobId", "type": "string"},
     {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
-        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
+        "symbols": ["ProgressMsg", "BatchMsg", "SyncMsg", "ReleaseMsg"]}},
     {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
+    {"name": "batchMsg", "type": ["null", "BatchMsg"], "default": null},
     {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null}
   ]
 }

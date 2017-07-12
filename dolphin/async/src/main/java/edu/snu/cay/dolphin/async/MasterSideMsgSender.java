@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
+  private final String dolphinJobId;
   private final DolphinMsg releaseMsg;
   private final NetworkConnection<DolphinMsg> networkConnection;
 
@@ -39,6 +40,7 @@ final class MasterSideMsgSender {
   private MasterSideMsgSender(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                               final NetworkConnection<DolphinMsg> networkConnection) {
     LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
+    this.dolphinJobId = dolphinJobId;
     this.networkConnection = networkConnection;
     this.releaseMsg = DolphinMsg.newBuilder()
         .setJobId(dolphinJobId)
@@ -55,6 +57,27 @@ final class MasterSideMsgSender {
       networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
+    }
+  }
+
+  void sendBatchResMsg(final String workerId, final boolean allow) {
+    final BatchMsg batchMsg = BatchMsg.newBuilder()
+        .setType(batchMsgType.BatchResMsg)
+        .setResMsg(BatchResMsg.newBuilder()
+            .setAllow(allow)
+            .build())
+        .build();
+
+    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(dolphinJobId)
+        .setType(dolphinMsgType.BatchMsg)
+        .setBatchMsg(batchMsg)
+        .build();
+
+    try {
+      networkConnection.send(workerId, dolphinMsg);
+    } catch (NetworkException e) {
+      LOG.log(Level.INFO, String.format("Fail to send batch res msg to worker %s.", workerId), e);
     }
   }
 }
