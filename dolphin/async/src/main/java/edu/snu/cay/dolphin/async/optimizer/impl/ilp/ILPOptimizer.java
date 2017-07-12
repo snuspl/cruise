@@ -89,12 +89,12 @@ public final class ILPOptimizer implements Optimizer {
     final String[] evalIds = new String[n];
 
     double avgCWProcPerCore = 0.0;
-    int totalCoreNum = 0;
+    double totalHarmonicCoreSum = 0.0;
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
       avgCWProcPerCore += workerDescriptor.getcWProc();
-      totalCoreNum += hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
+      totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    avgCWProcPerCore /= (double) totalCoreNum;
+    avgCWProcPerCore /= totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -103,7 +103,7 @@ public final class ILPOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      cWProc[idx] = avgCWProcPerCore * hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
+      cWProc[idx] = avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
       idx++;
     }
 
@@ -176,7 +176,7 @@ public final class ILPOptimizer implements Optimizer {
       final String id = serverEvalParams.getId();
       final int numModelBlocks = serverEvalParams.getDataInfo().getNumBlocks();
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
-      final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth / 8D);
+      final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       machineDescriptors.add(
           new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, -1.0, numModelBlocks, hostname));
     }

@@ -81,6 +81,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final int movingAverageWindowSize;
 
   private final int minNumReqBatchMetrics;
+  
+  int optimizeCount = 0;
 
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
@@ -109,7 +111,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
     this.workerStateManager = workerStateManager;
-    this.progressTracker = progressTracker;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
@@ -203,10 +204,15 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
    * 7) Once the execution is complete, restart metric collection.
    */
   private synchronized Map<String, Pair<Set<String>, Set<String>>> optimize() {
+    
     final Map<String, Pair<Set<String>, Set<String>>> emptyResult = new HashMap<>();
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
-
+    
+    if (optimizeCount >= 1) {
+      return emptyResult;
+    }
+    
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
@@ -289,14 +295,15 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
         new Object[]{optimizationCount, evaluatorParameters});
 
-    // 5) Calculate the optimal plan with the metrics
-    final Plan plan;
-    try {
-      plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
-    } catch (final RuntimeException e) {
-      LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
-      return emptyResult;
-    }
+      // 5) Calculate the optimal plan with the metrics
+      final Plan plan;
+      try {
+        optimizeCount++;
+        plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
+      } catch (final RuntimeException e) {
+        LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
+        return emptyResult;
+      }
 
     // 6) Pause metric collection.
     metricManager.stopMetricCollection();

@@ -119,6 +119,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   @Override
   public void runMiniBatch(final Collection<NMFData> miniBatchTrainingData) {
+    LOG.log(Level.INFO, "numTrainerTheads: {0}", numTrainerThreads);
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
     final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());

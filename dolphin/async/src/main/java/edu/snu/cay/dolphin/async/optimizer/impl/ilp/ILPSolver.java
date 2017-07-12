@@ -33,7 +33,8 @@ public final class ILPSolver {
   }
   
   public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                                        final int p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+                                        final int _p, final double[] cWProc, final double[] bandwidth) throws GRBException {
+    final int p = _p / mTotal;
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
     LOG.log(Level.INFO, "p: {0}", p);
     LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
@@ -46,7 +47,6 @@ public final class ILPSolver {
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
     model.set(GRB.DoubleParam.MIPGap, 5e-1);
     model.set(GRB.IntParam.Threads, 10);
-    model.set(GRB.DoubleParam.TimeLimit, 100);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
@@ -55,7 +55,7 @@ public final class ILPSolver {
     final GRBVar[][] sImJ = new GRBVar[n][n];
     
     for (int i = 0; i < n; i++) {
-      m[i] = model.addVar(0.0, mTotal / 2, 0.0, GRB.INTEGER, String.format("m[%d]", i));
+      m[i] = model.addVar(0.0, mTotal, 0.0, GRB.INTEGER, String.format("m[%d]", i));
       s[i] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("s[%d]", i));
       t[i] = model.addVar(0.0, 1.0, 0.0, GRB.CONTINUOUS, String.format("t[%d]", i));
     }
