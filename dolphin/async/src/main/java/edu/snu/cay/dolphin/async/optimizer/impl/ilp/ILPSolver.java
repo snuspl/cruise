@@ -44,7 +44,7 @@ public final class ILPSolver {
     final GRBEnv env = new GRBEnv(filename);
     final GRBModel model = new GRBModel(env);
     model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
-    model.set(GRB.DoubleParam.MIPGap, 2e-1);
+    model.set(GRB.DoubleParam.MIPGap, 5e-1);
     model.set(GRB.IntParam.Threads, 10);
     model.set(GRB.DoubleParam.TimeLimit, 100);
     
@@ -263,6 +263,11 @@ public final class ILPSolver {
       sumSM.addTerm(1.0, sImJ[i][i]);
     }
     model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
+    for (int i = 0; i < n; i++) {
+      final GRBLinExpr fiveS = new GRBLinExpr();
+      fiveS.addTerm(5.0, s[i]);
+      model.addConstr(m[i], GRB.GREATER_EQUAL, fiveS, String.format("m[%d]>=s[%d}", i, i));
+    }
   }
   
   private static void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth, final int n) {

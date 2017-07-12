@@ -19,6 +19,7 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.impl.BandwidthInfoParser;
+import edu.snu.cay.dolphin.async.optimizer.impl.CoreInfoParser;
 import edu.snu.cay.dolphin.async.optimizer.impl.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.impl.WorkerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
@@ -39,18 +40,24 @@ import java.util.*;
 public final class ILPOptimizer implements Optimizer {
   private static final int NUM_EMPTY_BLOCK = 0;
   private final double defNetworkBandwidth;
+  private final int defCoreNum;
   private final double optBenefitThreshold;
   private final Map<String, Double> hostToBandwidth;
+  private final Map<String, Integer> hostToCoreNum;
   private final ILPSolver ilpSolver;
 
   @Inject
   private ILPOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
+                       @Parameter(Parameters.DefaultCoreNum.class) final int defCoreNum,
                        @Parameter(Parameters.OptimizationBenefitThreshold.class) final double optBenefitThreshold,
                        final ILPSolver ilpSolver,
-                       final BandwidthInfoParser bandwitdthInfoParser) {
+                       final BandwidthInfoParser bandwitdthInfoParser,
+                       final CoreInfoParser coreInfoParser) {
     this.defNetworkBandwidth = defNetworkBandwidth;
+    this.defCoreNum = defCoreNum;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
+    this.hostToCoreNum = coreInfoParser.parseCoreInfo();
     this.ilpSolver = ilpSolver;
   }
 
@@ -81,10 +88,13 @@ public final class ILPOptimizer implements Optimizer {
     final double[] bandwidth = new double[n];
     final String[] evalIds = new String[n];
 
-    double avgCWProc = 0.0;
+    double avgCWProcPerCore = 0.0;
+    int totalCoreNum = 0;
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
-      avgCWProc += workerDescriptor.getcWProc() / workerDescriptors.size();
+      avgCWProcPerCore += workerDescriptor.getcWProc();
+      totalCoreNum += hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
+    avgCWProcPerCore /= (double) totalCoreNum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -93,7 +103,7 @@ public final class ILPOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      cWProc[idx] = avgCWProc;
+      cWProc[idx] = avgCWProcPerCore * hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
       idx++;
     }
 
@@ -154,7 +164,7 @@ public final class ILPOptimizer implements Optimizer {
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       final double wProc = workerEvalParams.getMetrics().getTotalCompTime();
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, wProc, NUM_EMPTY_BLOCK));
+          new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, wProc, NUM_EMPTY_BLOCK, hostname));
     }
     return machineDescriptors;
   }
@@ -168,7 +178,7 @@ public final class ILPOptimizer implements Optimizer {
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth / 8D);
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, -1.0, numModelBlocks));
+          new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, -1.0, numModelBlocks, hostname));
     }
     return machineDescriptors;
   }
@@ -181,6 +191,8 @@ public final class ILPOptimizer implements Optimizer {
 
     private int numTrainingDataBlocks; // d
     private int numModelBlocks; // m
+    
+    private String hostname;
 
     MachineDescriptor(final double bandwidth) {
       this.bandwidth = bandwidth;
@@ -191,13 +203,15 @@ public final class ILPOptimizer implements Optimizer {
                       final EvaluatorRole role,
                       final int numTrainingDataBlocks,
                       final double cWProc,
-                      final int numModelDataBlocks) {
+                      final int numModelDataBlocks,
+                      final String hostname) {
       this.id = id;
       this.bandwidth = bandwidth;
       this.cWProc = cWProc;
       this.role = role;
       this.numTrainingDataBlocks = numTrainingDataBlocks;
       this.numModelBlocks = numModelDataBlocks;
+      this.hostname = hostname;
     }
 
     String getId() {
@@ -223,6 +237,8 @@ public final class ILPOptimizer implements Optimizer {
     int getNumModelBlocks() {
       return numModelBlocks;
     }
+    
+    String getHostName() {return hostname;}
   }
 }
 

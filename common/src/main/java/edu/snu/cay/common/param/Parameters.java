@@ -88,6 +88,13 @@ public final class Parameters {
       default_value = "1.074e9")
   public final class DefaultNetworkBandwidth implements Name<Double> {
   }
+  
+  @NamedParameter(doc = "Network bandwidth of machines to be used if not specified. " +
+      "Its default value is 1G (approx. 1.07E9) bps.",
+      short_name = "default_core_num",
+      default_value = "1")
+  public final class DefaultCoreNum implements Name<Integer> {
+  }
 
   @NamedParameter(doc = "A file path of which contains a mapping from hostname to network bandwidth (in bits per sec).",
       short_name = "host_to_bandwidth_file_path",
@@ -96,6 +103,16 @@ public final class Parameters {
     public static final String NONE = "";
 
     private HostToBandwidthFilePath() {
+    }
+  }
+  
+  @NamedParameter(doc = "A file path of which contains a mapping from hostname to network bandwidth (in bits per sec).",
+      short_name = "host_to_core_file_path",
+      default_value = HostToCoreFilePath.NONE)
+  public final class HostToCoreFilePath implements Name<String> {
+    public static final String NONE = "";
+    
+    private HostToCoreFilePath() {
     }
   }
 }
