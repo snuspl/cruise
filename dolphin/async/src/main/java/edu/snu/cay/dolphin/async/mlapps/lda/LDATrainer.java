@@ -58,8 +58,7 @@ final class LDATrainer implements Trainer<Document> {
                      final ModelHolder<LDAModel> modelHolder,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
-                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
-                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads) {
+                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.trainingDataProvider = trainingDataProvider;
@@ -75,7 +74,7 @@ final class LDATrainer implements Trainer<Document> {
 
     this.modelHolder = modelHolder;
 
-    LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
+    LOG.log(Level.INFO, "Number of Trainer threads = {0}", Runtime.getRuntime().availableProcessors());
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }

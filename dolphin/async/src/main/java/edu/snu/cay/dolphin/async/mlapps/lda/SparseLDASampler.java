@@ -63,7 +63,6 @@ final class SparseLDASampler {
                            @Parameter(Beta.class) final double beta,
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
-                           @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                            final ModelHolder<LDAModel> modelHolder) {
     this.alpha = alpha;
     this.beta = beta;
@@ -71,7 +70,7 @@ final class SparseLDASampler {
     this.numVocabs = numVocabs;
     this.modelHolder = modelHolder;
 
-    this.numTrainerThreads = numTrainerThreads;
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
   }
 

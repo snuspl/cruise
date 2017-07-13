@@ -80,25 +80,4 @@ final class MasterSideMsgSender {
       LOG.log(Level.INFO, String.format("Fail to send batch res msg to worker %s.", workerId), e);
     }
   }
-
-  void sendBatchResMsg(final String workerId, final boolean allow) {
-    final BatchMsg batchMsg = BatchMsg.newBuilder()
-        .setType(batchMsgType.BatchResMsg)
-        .setResMsg(BatchResMsg.newBuilder()
-            .setAllow(allow)
-            .build())
-        .build();
-
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.BatchMsg)
-        .setBatchMsg(batchMsg)
-        .build();
-
-    try {
-      networkConnection.send(workerId, dolphinMsg);
-    } catch (NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send batch res msg to worker %s.", workerId), e);
-    }
-  }
 }

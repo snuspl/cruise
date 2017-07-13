@@ -119,8 +119,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(NumTotalMiniBatches.class) final int numTotalMiniBatches,
-                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;
@@ -144,7 +143,7 @@ final class MLRTrainer implements Trainer<MLRData> {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
     
-    this.numTrainerThreads = numTrainerThreads;
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
     
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);

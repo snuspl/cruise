@@ -209,7 +209,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     
-    if (optimizeCount >= 1) {
+    if (optimizeCount >= 2) {
       return emptyResult;
     }
     
