@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.reef.io.serialization.SerializableCodec;
 
 import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;

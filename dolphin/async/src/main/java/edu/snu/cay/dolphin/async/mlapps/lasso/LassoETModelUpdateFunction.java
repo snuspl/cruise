@@ -17,14 +17,13 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeaturesPerPartition;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Random;
 
-import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
  * An {@link UpdateFunction} for the LassoREEF application.

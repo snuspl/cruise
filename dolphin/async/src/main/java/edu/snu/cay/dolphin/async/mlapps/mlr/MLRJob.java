@@ -44,10 +44,7 @@ public final class MLRJob {
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(NumClasses.class)
-        .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)
-        .addParameterClass(NumFeaturesPerPartition.class)
-        .addParameterClass(ModelGaussian.class)
         .build());
   }
 }

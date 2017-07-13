@@ -165,6 +165,10 @@ public final class DolphinParameters {
     }
   }
 
+  @NamedParameter(doc = "input dimension", short_name = "features", default_value = "0")
+  public static final class NumFeatures implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "step size for stochastic gradient descent", short_name = "step_size", default_value = "0.0")
   public static final class StepSize implements Name<Float> {
   }
@@ -186,4 +190,17 @@ public final class DolphinParameters {
                   default_value = "5")
   public static final class DecayPeriod implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
+                  short_name = "model_gaussian",
+                  default_value = "0.001")
+  public static final class ModelGaussian implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "number of features for each model partition",
+                  short_name = "features_per_partition",
+                  default_value = "0")
+  public static final class NumFeaturesPerPartition implements Name<Integer> {
+  }
+
 }

@@ -35,6 +35,7 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.wake.remote.transport.*;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
@@ -110,7 +111,7 @@ public final class JobLauncher {
   }
 
   private static List<Configuration> parseCommandLine(
-      final String[] args, final List<Class<? extends Name<?>>> userParamList)
+      final String[] args, final List<Class<? extends Name<?>>> customAppParamList)
       throws IOException, InjectionException, ClassNotFoundException {
 
     // parameters for master
@@ -119,8 +120,9 @@ public final class JobLauncher {
     );
 
     // parameters for ML apps
-    final List<Class<? extends Name<?>>> appParamList = Arrays.asList(
-        Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class
+    final List<Class<? extends Name<?>>> commonAppParamList = Arrays.asList(
+        NumFeatures.class, Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class,
+        ModelGaussian.class, NumFeaturesPerPartition.class
     );
 
     // parameters for servers
@@ -146,11 +148,15 @@ public final class JobLauncher {
     );
 
     final CommandLine cl = new CommandLine();
-    appParamList.forEach(cl::registerShortNameOfClass);
+    commonAppParamList.forEach(cl::registerShortNameOfClass);
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
-    userParamList.forEach(cl::registerShortNameOfClass);
+    customAppParamList.forEach(cl::registerShortNameOfClass);
     networkParamList.forEach(cl::registerShortNameOfClass);
+
+    // user param list is composed by common app parameters and custom app parameters
+    final List<Class<? extends Name<?>>> userParamList = new ArrayList<>(commonAppParamList);
+    userParamList.addAll(customAppParamList);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     // master side parameters are already registered. So it can be extracted

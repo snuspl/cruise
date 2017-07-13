@@ -21,6 +21,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -77,13 +78,13 @@ final class NMFTrainer implements Trainer<NMFData> {
   private NMFTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      final VectorFactory vectorFactory,
                      @Parameter(Rank.class) final int rank,
-                     @Parameter(DolphinParameters.StepSize.class) final float stepSize,
-                     @Parameter(DolphinParameters.Lambda.class) final float lambda,
-                     @Parameter(DolphinParameters.DecayRate.class) final float decayRate,
-                     @Parameter(DolphinParameters.DecayPeriod.class) final int decayPeriod,
-                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(StepSize.class) final float stepSize,
+                     @Parameter(Lambda.class) final float lambda,
+                     @Parameter(DecayRate.class) final float decayRate,
+                     @Parameter(DecayPeriod.class) final int decayPeriod,
+                     @Parameter(MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
-                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
                      final TrainingDataProvider<NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;

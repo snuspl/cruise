@@ -17,8 +17,8 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.NumFeatures;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

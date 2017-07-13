@@ -27,23 +27,8 @@ final class MLRParameters {
   static final class NumClasses implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "input dimension", short_name = "features")
-  static final class NumFeatures implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
   static final class InitialStepSize implements Name<Float> {
-  }
-
-  @NamedParameter(doc = "number of features for each model partition",
-      short_name = "features_per_partition")
-  static final class NumFeaturesPerPartition implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
-      short_name = "model_gaussian",
-      default_value = "0.001")
-  static final class ModelGaussian implements Name<Float> {
   }
 
   static final class MetricKeys {

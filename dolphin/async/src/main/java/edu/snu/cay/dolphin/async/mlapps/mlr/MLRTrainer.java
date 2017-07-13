@@ -23,6 +23,7 @@ import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -113,11 +114,11 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                      @Parameter(InitialStepSize.class) final float initStepSize,
-                     @Parameter(DolphinParameters.Lambda.class) final float lambda,
-                     @Parameter(DolphinParameters.DecayRate.class) final float decayRate,
-                     @Parameter(DolphinParameters.DecayPeriod.class) final int decayPeriod,
-                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(Lambda.class) final float lambda,
+                     @Parameter(DecayRate.class) final float decayRate,
+                     @Parameter(DecayPeriod.class) final int decayPeriod,
+                     @Parameter(MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;

@@ -43,13 +43,6 @@ public final class LassoJob {
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(NumFeatures.class)
-        .addParameterClass(StepSize.class)
-        .addParameterClass(Lambda.class)
-        .addParameterClass(ModelGaussian.class)
-        .addParameterClass(DecayRate.class)
-        .addParameterClass(DecayPeriod.class)
-        .addParameterClass(NumFeaturesPerPartition.class)
         .build());
   }
 }
