@@ -22,20 +22,10 @@ import org.apache.reef.tang.annotations.NamedParameter;
  * Parameters used in JobServer.
  */
 final class Parameters {
-  static final String SUBMIT_COMMAND = "submit";
-  static final String FINISH_COMMAND = "finish";
+  static final String SUBMIT_COMMAND = "SUBMIT";
+  static final String SHUTDOWN_COMMAND = "SHUTDOWN";
 
   private Parameters() {
-
-  }
-
-  @NamedParameter(doc = "A port number of HTTP request.", short_name = "port")
-  final class HttpPort implements Name<String> {
-
-  }
-
-  @NamedParameter(doc = "An address of HTTP request", short_name = "address")
-  final class HttpAddress implements Name<String> {
 
   }
 
@@ -43,4 +33,23 @@ final class Parameters {
   final class AppIdentifier implements Name<String> {
 
   }
+
+  /**
+   * Adress for job server commands.
+   */
+  @NamedParameter(doc = "Address for job server commands",
+      short_name = "address", default_value = "localhost")
+  final class Address implements Name<String> {
+
+  }
+
+  /**
+   * Port for job server commands.
+   */
+  @NamedParameter(doc = "Port for job server commands",
+      short_name = "port", default_value = "7008")
+  class Port implements Name<Integer> {
+
+  }
+
 }

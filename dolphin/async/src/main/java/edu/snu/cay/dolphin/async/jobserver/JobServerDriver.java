@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
-import edu.snu.cay.dolphin.async.jobserver.Parameters.AppIdentifier;
+import edu.snu.cay.dolphin.async.jobserver.Parameters.*;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -34,6 +34,7 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.ConfigurationUtils;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
@@ -48,8 +49,8 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -64,6 +65,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.async.jobserver.Parameters.SHUTDOWN_COMMAND;
+import static edu.snu.cay.dolphin.async.jobserver.Parameters.SUBMIT_COMMAND;
+
 /**
  * Driver code for Dolphin on ET.
  * It executes a job or finishes itself upon request from clients.
@@ -74,7 +78,6 @@ public final class JobServerDriver {
 
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
-  private final HttpServerInfo httpServerInfo;
   private final JobServerStatusManager jobServerStatusManager;
 
   private final String reefJobId;
@@ -89,42 +92,35 @@ public final class JobServerDriver {
 
   private final Injector jobBaseInjector;
 
-  private ConfigurationSerializer confSerializer;
-
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Inject
   private JobServerDriver(final ETMaster etMaster,
-                          final ConfigurationSerializer confSerializer,
                           final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
-                          final HttpServerInfo httpServerInfo,
                           final JobServerStatusManager jobServerStatusManager,
                           final Injector jobBaseInjector,
                           @Parameter(DriverIdentifier.class) final String driverId,
                           @Parameter(JobIdentifier.class) final String reefJobId,
                           @Parameter(Parameters.OnLocal.class) final boolean onLocal)
       throws IOException, InjectionException {
+
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
-    this.httpServerInfo = httpServerInfo;
     this.jobServerStatusManager = jobServerStatusManager;
-
     this.reefJobId = reefJobId;
     this.onLocal = onLocal;
 
     networkConnection.setup(driverId);
 
     this.jobBaseInjector = jobBaseInjector;
-
-    this.confSerializer = confSerializer;
   }
 
   /**
    * Gets a {@link DolphinMaster} with {@code dolphinJobId}.
    * @param dolphinJobId a dolphin job identifier
    */
-  public DolphinMaster getDolphinMaster(final String dolphinJobId) {
+  DolphinMaster getDolphinMaster(final String dolphinJobId) {
     return dolphinMasterMap.get(dolphinJobId);
   }
 
@@ -197,7 +193,7 @@ public final class JobServerDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      showHttpInfoToClient(httpServerInfo.getLocalAddress(), httpServerInfo.getPort());
+      sendMessageToClient("Now, Job Server is ready to receive commands");
     }
   }
 
@@ -205,9 +201,9 @@ public final class JobServerDriver {
    * Executes a job with the given configuration.
    * @param jobConfToExecute a job configuration to execute
    */
-  public boolean executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
+  private boolean executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
     if (isClosed.get()) {
-      LOG.log(Level.INFO, "JobServer has been shut down and will not accept jobs.");
+      LOG.log(Level.INFO, "Job Server has been shut down and will not accept jobs.");
       return false;
     }
 
@@ -226,17 +222,17 @@ public final class JobServerDriver {
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
 
-    jobMessageObserver.sendMessageToClient(String.format("Job [%s] has been accepted", dolphinJobId).getBytes());
+    sendMessageToClient(String.format("Job [%s] has been accepted", dolphinJobId));
 
     final String serializedParamConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedParamConf.class);
     final String serializedServerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedServerConf.class);
     final String serializedWorkerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedWorkerConf.class);
 
     // configuration commonly used in both workers and servers
-    final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
+    final Configuration userParamConf = ConfigurationUtils.fromString(serializedParamConf);
 
     // prepare server-side configurations
-    final Configuration serverConf = confSerializer.fromString(serializedServerConf);
+    final Configuration serverConf = ConfigurationUtils.fromString(serializedServerConf);
     final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
     final int numServers = serverInjector.getNamedInstance(NumServers.class);
     final int numServerCores = serverInjector.getNamedInstance(NumServerCores.class);
@@ -254,7 +250,7 @@ public final class JobServerDriver {
         serverInjector, numServerBlocks, userParamConf);
 
     // prepare worker-side configurations
-    final Configuration workerConf = confSerializer.fromString(serializedWorkerConf);
+    final Configuration workerConf = ConfigurationUtils.fromString(serializedWorkerConf);
     final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
     final int numWorkers = workerInjector.getNamedInstance(NumWorkers.class);
     final int numWorkerCores = workerInjector.getNamedInstance(NumWorkerCores.class);
@@ -313,6 +309,7 @@ public final class JobServerDriver {
           servers.forEach(AllocatedExecutor::close);
         } finally {
           LOG.log(Level.INFO, "Job execution has been finished. JobId: {0}", dolphinJobId);
+          sendMessageToClient(String.format("Job execution has been finished, JobId : %s", dolphinJobId));
           dolphinMasterMap.remove(dolphinJobId);
         }
 
@@ -333,6 +330,40 @@ public final class JobServerDriver {
     LOG.log(Level.INFO, "Initiates shutdown of JobServer");
     if (isClosed.compareAndSet(false, true)) {
       jobServerStatusManager.finishJobServer();
+    }
+  }
+
+  /**
+   * Handles command message from client.
+   * There are following commands:
+   *    submit                    to submit a new job.
+   *    shutdown                  to shutdown the job server.
+   */
+  final class ClientMessageHandler implements EventHandler<byte[]> {
+
+    @Override
+    public void onNext(final byte[] bytes) {
+      final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
+      final String input = codec.decode(bytes);
+      final String[] result = input.split("\\s+", 2);
+      final String command = result[0];
+      final String serializedConf = result[1];
+      switch (command) {
+      case SUBMIT_COMMAND:
+        try {
+          if (!executeJob(ConfigurationUtils.fromString(serializedConf))) {
+            sendMessageToClient("Job Server has already been shut down and will not accept any jobs.");
+          }
+        } catch (InjectionException | IOException e) {
+          throw new RuntimeException(e);
+        }
+        break;
+      case SHUTDOWN_COMMAND:
+        shutdown();
+        break;
+      default:
+        throw new RuntimeException("There is unexpected command");
+      }
     }
   }
 
@@ -369,27 +400,14 @@ public final class JobServerDriver {
     }
   }
 
-  /**
-   * Send http info to the client.
-   * @param localAddress address of web server
-   * @param portNumber port of web server
-   */
-  private void showHttpInfoToClient(final String localAddress, final int portNumber) {
-    final String httpMsg = String.format(
-        "\nIP address : %s\n" +
-        "Port : %d\n" +
-        "Usage : http://%s:%d/dolphin/v1/{command}\n" +
-        "Available commands :\n" +
-        "1) To submit a job. 'submit'\n" +
-        "2) To shutdown jobserver: 'finish'",
-        localAddress, portNumber, localAddress, portNumber);
-    jobMessageObserver.sendMessageToClient(httpMsg.getBytes());
-  }
-
   private String processInputPath(final String inputDir) throws InjectionException {
     if (!onLocal) {
       return inputDir;
     }
     return "file:///home/cmslab/Git/cay/dolphin/async/bin/" + inputDir;
+  }
+
+  private void sendMessageToClient(final String message) {
+    jobMessageObserver.sendMessageToClient(message.getBytes());
   }
 }

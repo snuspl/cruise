@@ -31,23 +31,26 @@ import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
-import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.tang.types.NamedParameterNode;
+import org.apache.reef.wake.remote.transport.*;
 
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 
 /**
- * JobLauncher, which submits specific ML job dynamically to running job server via HTTP request.
+ * JobLauncher, which submits specific ML job dynamically to running job server via {@link Transport}.
  * All parameters related to job are determined by command line.
- * Note that it supports only NMF job in this stage.
+ * Note that it supports NMF, MLR and LDA job in this stage.
  */
 @ClientSide
 public final class JobLauncher {
 
+  private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
   private JobLauncher() {
 
   }
@@ -68,7 +71,7 @@ public final class JobLauncher {
       final Configuration serverParamConf = configurations.get(1);
       final Configuration workerParamConf = configurations.get(2);
       final Configuration userParamConf = configurations.get(3);
-      final Configuration httpConf = configurations.get(4);
+      final Configuration networkConf = configurations.get(4);
 
       // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
@@ -94,14 +97,14 @@ public final class JobLauncher {
 
       // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
-      // send http request
-      final ConfigurationSerializer configurationSerializer = new AvroConfigurationSerializer();
-      final Injector httpConfInjector = Tang.Factory.getTang().newInjector(httpConf);
-      final String targetAddress = httpConfInjector.getNamedInstance(HttpAddress.class);
-      final String targetPort = httpConfInjector.getNamedInstance(HttpPort.class);
-      HttpSender.sendSubmitCommand(targetAddress, targetPort, configurationSerializer.toString(jobConf));
 
-    } catch (IOException | InjectionException | ClassNotFoundException e) {
+      final Injector senderInjector = Tang.Factory.getTang().newInjector(networkConf);
+      final JobCommandSender jobCommandSender = senderInjector.getInstance(JobCommandSender.class);
+      jobCommandSender.sendJobCommand(Parameters.SUBMIT_COMMAND, Configurations.toString(jobConf));
+
+      LOG.log(Level.INFO, "Job Command : {0} [{1}]", new Object[]{Parameters.SUBMIT_COMMAND, appId});
+
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -115,6 +118,7 @@ public final class JobLauncher {
         MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class, ServerMetricFlushPeriodMs.class
     );
 
+    // parameters for ML apps
     final List<Class<? extends Name<?>>> appParamList = Arrays.asList(
         Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class
     );
@@ -136,9 +140,9 @@ public final class JobLauncher {
         InputDir.class
     );
 
-    // parameters for http networks
-    final List<Class<? extends Name<?>>> httpParamList = Arrays.asList(
-        HttpAddress.class, HttpPort.class
+    // parameters for network
+    final List<Class<? extends Name<?>>> networkParamList = Arrays.asList(
+        Address.class, Port.class
     );
 
     final CommandLine cl = new CommandLine();
@@ -146,7 +150,7 @@ public final class JobLauncher {
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     userParamList.forEach(cl::registerShortNameOfClass);
-    httpParamList.forEach(cl::registerShortNameOfClass);
+    networkParamList.forEach(cl::registerShortNameOfClass);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     // master side parameters are already registered. So it can be extracted
@@ -155,28 +159,9 @@ public final class JobLauncher {
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
-    final Configuration httpConf = extractParameterConf(httpParamList, commandLineConf);
+    final Configuration networkConf = extractParameterConf(networkParamList, commandLineConf);
 
-    return Arrays.asList(masterConf, serverConf, workerConf, userConf, httpConf);
-  }
-
-  /**
-   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
-   */
-  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
-                                                    final Configuration totalConf) {
-    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
-    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
-      final NamedParameterNode parameterNode
-          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
-      final String parameterValue = totalConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in the total configuration, parameterValue will be null
-      if (parameterValue != null) {
-        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
-      }
-    }
-    return parameterConfBuilder.build();
+    return Arrays.asList(masterConf, serverConf, workerConf, userConf, networkConf);
   }
 
   /**
@@ -187,13 +172,12 @@ public final class JobLauncher {
                                                    final Configuration serverConf,
                                                    final Configuration workerConf,
                                                    final Configuration userParamConf) {
-    final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
     return Configurations.merge(masterConf, Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(AppIdentifier.class, appId)
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
-        .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, confSerializer.toString(serverConf))
-        .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, confSerializer.toString(workerConf))
-        .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, confSerializer.toString(userParamConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, Configurations.toString(serverConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, Configurations.toString(workerConf))
+        .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, Configurations.toString(userParamConf))
         .build());
   }
 }

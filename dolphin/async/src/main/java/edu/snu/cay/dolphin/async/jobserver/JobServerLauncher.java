@@ -15,207 +15,261 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import edu.snu.cay.common.client.DriverLauncher;
-import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
-import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
-import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.ClientSide;
-import org.apache.reef.client.DriverConfiguration;
-import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.driver.parameters.DriverIdleSources;
-import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
-import org.apache.reef.io.network.naming.NameServerConfiguration;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
-import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
-import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
-import org.apache.reef.tang.*;
-import org.apache.reef.util.EnvironmentUtils;
-import org.apache.reef.wake.IdentifierFactory;
-import org.apache.reef.webserver.HttpHandlerConfiguration;
-
-import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.client.*;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.tang.formats.CommandLine;
-import org.apache.reef.tang.types.NamedParameterNode;
+import org.apache.reef.util.Optional;
+import org.apache.reef.wake.EventHandler;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import javax.inject.Inject;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main entry point for launching a JobServer for Dolphin applications.
- * See {@link JobServerLauncher#run(String[])}.
- * This is called by {#start_jobserver.sh}
+ * Improved version of {@link edu.snu.cay.common.client.DriverLauncher}.
+ * It sends job command messages which are sent from other sources to {@link JobServerDriver}
+ * using {@link JobCommandListener}.
  */
 @ClientSide
-public final class JobServerLauncher {
+@Unit
+public final class JobServerLauncher implements AutoCloseable {
+
   private static final Logger LOG = Logger.getLogger(JobServerLauncher.class.getName());
 
-  /**
-   * Should not be instantiated.
-   */
-  private JobServerLauncher() {
+  private static final Configuration CLIENT_CONFIG = ClientConfiguration.CONF
+      .set(ClientConfiguration.ON_JOB_SUBMITTED, SubmittedJobHandler.class)
+      .set(ClientConfiguration.ON_JOB_RUNNING, RunningJobHandler.class)
+      .set(ClientConfiguration.ON_JOB_COMPLETED, CompletedJobHandler.class)
+      .set(ClientConfiguration.ON_JOB_FAILED, FailedJobHandler.class)
+      .set(ClientConfiguration.ON_RUNTIME_ERROR, RuntimeErrorHandler.class)
+      .set(ClientConfiguration.ON_JOB_MESSAGE, StringJobMessageHandler.class)
+      .build();
+
+  private final REEF reef;
+
+  private LauncherStatus status = LauncherStatus.INIT;
+
+  private String jobId;
+  private RunningJob theJob;
+  private JobCommandListener jobCommandListener;
+
+  @Inject
+  private JobServerLauncher(final REEF reef,
+                            final JobCommandListener jobCommandListener) {
+    this.reef = reef;
+    this.jobCommandListener = jobCommandListener;
   }
 
   /**
-   * Run a job server on the Dolphin on ET framework with an additional configuration for the driver.
-   * @param args command line arguments
-   * @param customDriverConf additional Tang configuration to be injected at the driver
+   * Instantiate a launcher for the given Configuration.
+   *
+   * @param runtimeConfiguration the resourcemanager configuration to be used
+   * @return a DriverLauncher based on the given resourcemanager configuration
+   * @throws InjectionException on configuration errors
    */
-  public static LauncherStatus run(final String[] args, final Configuration customDriverConf) {
-    LauncherStatus status;
+  public static JobServerLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
+    return Tang.Factory.getTang()
+        .newInjector(runtimeConfiguration, CLIENT_CONFIG)
+        .getInstance(JobServerLauncher.class);
+  }
 
-    try {
-      // parse command line arguments, separate them into client & driver configuration
-      final Pair<Configuration, Configuration> configurations = parseCommandLine(args);
+  /**
+   * Kills the running job.
+   */
+  @Override
+  public void close() throws Exception {
+    synchronized (this) {
+      LOG.log(Level.FINER, "Close launcher: job {0} with status {1}", new Object[] {theJob, status});
+      if (this.status.isRunning()) {
+        status = LauncherStatus.FORCE_CLOSED;
+      }
+      if (null != theJob) {
+        theJob.close();
+      }
+      notify();
+    }
+    LOG.log(Level.FINEST, "Close launcher: shutdown REEF");
+    jobCommandListener.close();
+    reef.close();
+    LOG.log(Level.FINEST, "Close launcher: done");
+  }
 
-      final Configuration clientParamConf = configurations.getLeft(); // only client uses it
-      final Configuration driverParamConf = configurations.getRight(); // only driver uses it
-      final Injector clientParameterInjector = Tang.Factory.getTang().newInjector(clientParamConf);
-      // runtime configuration
-      final boolean onLocal = clientParameterInjector.getNamedInstance(OnLocal.class);
-      final Configuration runTimeConf = onLocal ?
-          getLocalRuntimeConfiguration(
-              clientParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
-              clientParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
-          getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
+  /**
+   * Submit REEF job asynchronously and do not wait for its completion.
+   *
+   * @param driverConfig configuration of hte driver to submit to the RM.
+   * @return ID of the new application.
+   */
+  public String submit(final Configuration driverConfig, final long waitTime) {
+    reef.submit(driverConfig);
+    waitForStatus(waitTime, LauncherStatus.SUBMITTED);
+    return jobId;
+  }
 
-      // driver configuration
-      final Configuration driverConf = getDriverConfiguration(driverParamConf, onLocal);
-      final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
+  /**
+   * Wait for one of the specified statuses of the REEF job.
+   * This method is called after the job is submitted to the RM via submit().
+   * @param waitTime wait time in milliseconds.
+   * @param statuses array of statuses to wait for.
+   * @return the state of the job after the wait.
+   */
+  private LauncherStatus waitForStatus(final long waitTime, final LauncherStatus... statuses) {
 
-      status = DriverLauncher.getLauncher(runTimeConf)
-          .run(Configurations.merge(driverConf, customDriverConf,
-              driverParamConf), timeout);
+    final long endTime = System.currentTimeMillis() + waitTime;
 
-    } catch (final Exception e) {
-      status = LauncherStatus.failed(e);
-      // This log is for giving more detailed info about failure, which status object does not show
-      LOG.log(Level.WARNING, "Exception occurred", e);
+    final HashSet<LauncherStatus> statSet = new HashSet<>(statuses.length * 2);
+    Collections.addAll(statSet, statuses);
+    Collections.addAll(statSet, LauncherStatus.FAILED, LauncherStatus.FORCE_CLOSED);
+
+    LOG.log(Level.FINEST, "Wait for status: {0}", statSet);
+    final LauncherStatus finalStatus;
+
+    synchronized (this) {
+      while (!statSet.contains(status)) {
+        try {
+          final long delay = endTime - System.currentTimeMillis();
+          if (delay <= 0) {
+            break;
+          }
+          LOG.log(Level.FINE, "Wait for {0} milliSeconds", delay);
+          this.wait(delay);
+        } catch (final InterruptedException ex) {
+          LOG.log(Level.FINE, "Interrupted: {0}", ex);
+        }
+      }
+
+      finalStatus = status;
     }
 
-    LOG.log(Level.INFO, "REEF job completed: {0}", status);
+    LOG.log(Level.FINEST, "Final status: {0}", finalStatus);
+    return finalStatus;
+  }
+
+  /**
+   * Run a job with a waiting timeout after which it will be killed, if it did not complete yet.
+   *
+   * @param driverConfig the configuration for the driver. See DriverConfiguration for details.
+   * @param timeOut timeout on the job.
+   * @return the state of the job after execution.
+   */
+  public LauncherStatus run(final Configuration driverConfig, final long timeOut) throws Exception {
+
+    final long startTime = System.currentTimeMillis();
+
+    reef.submit(driverConfig);
+    this.waitForStatus(timeOut - System.currentTimeMillis() + startTime, LauncherStatus.COMPLETED);
+
+    if (System.currentTimeMillis() - startTime >= timeOut) {
+      LOG.log(Level.WARNING, "The Job timed out.");
+      synchronized (this) {
+        this.status = LauncherStatus.FORCE_CLOSED;
+      }
+    }
+
+    jobCommandListener.close();
+    reef.close();
+    return this.getStatus();
+  }
+
+  /**
+   * @return the current status of the job.
+   */
+  public synchronized LauncherStatus getStatus() {
     return status;
   }
 
   /**
-   * Run a job server on the Dolphin on ET framework.
-   * @param args command line arguments
+   * Update job status and notify the waiting thread.
    */
-  public static LauncherStatus run(final String[] args) {
-    return run(args, Tang.Factory.getTang().newConfigurationBuilder().build());
+  private synchronized void setStatusAndNotify(final LauncherStatus newStatus) {
+    LOG.log(Level.FINEST, "Set status: {0} -> {1}", new Object[] {status, newStatus});
+    status = newStatus;
+    notify();
   }
 
-  @SuppressWarnings("unchecked")
-  private static Pair<Configuration, Configuration> parseCommandLine(final String[] args)
-      throws ParseException, InjectionException, IOException, ClassNotFoundException {
-
-    final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
-        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, Timeout.class);
-
-    // parameters for driver (job server)
-    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(DriverMemory.class);
-
-    final CommandLine cl = new CommandLine();
-    clientParamList.forEach(cl::registerShortNameOfClass);
-    driverParamList.forEach(cl::registerShortNameOfClass);
-
-    final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
-    final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
-    final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
-    return Pair.of(clientConf, driverConf);
+  @Override
+  public String toString() {
+    return String.format("DriverLauncher: { jobId: %s, status: %s }", jobId, status);
   }
 
   /**
-   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
+   * Job driver notifies us that the job has been submitted to the Resource Manager.
    */
-  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
-                                                    final Configuration totalConf) {
-    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
-    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
-      final NamedParameterNode parameterNode
-          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
-      final String parameterValue = totalConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in the total configuration, parameterValue will be null
-      if (parameterValue != null) {
-        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
-      }
+  public final class SubmittedJobHandler implements EventHandler<SubmittedJob> {
+    @Override
+    public void onNext(final SubmittedJob job) {
+      LOG.log(Level.INFO, "REEF job submitted: {0}.", job.getId());
+      jobId = job.getId();
+      setStatusAndNotify(LauncherStatus.SUBMITTED);
     }
-    return parameterConfBuilder.build();
-  }
-
-  private static Configuration getYarnRuntimeConfiguration(final double heapSlack) {
-    return YarnClientConfiguration.CONF
-        .set(YarnClientConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
-        .build();
-  }
-
-  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal, final double heapSlack) {
-    return LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, Integer.toString(maxNumEvalLocal))
-        .set(LocalRuntimeConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
-        .build();
   }
 
   /**
-   * @return a configuration for job server driver
+   * Job driver notifies us that the job is running.
    */
-  private static Configuration getDriverConfiguration(final Configuration driverParamConf,
-                                                      final boolean onLocal) throws InjectionException {
-
-    final Injector driverParamInjector = Tang.Factory.getTang().newInjector(driverParamConf);
-
-    final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobServerDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "JobServer")
-        .set(DriverConfiguration.DRIVER_MEMORY, driverParamInjector.getNamedInstance(DriverMemory.class))
-        .set(DriverConfiguration.ON_DRIVER_STARTED, JobServerDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, JobServerDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, JobServerDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, JobServerDriver.FailedTaskHandler.class)
-        .build();
-
-    final Configuration jobServerConf = Configurations.merge(
-        HttpHandlerConfiguration.CONF
-            .set(HttpHandlerConfiguration.HTTP_HANDLERS, JobServerHttpHandler.class)
-            .build(),
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
-            .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
-            .build()
-    );
-
-    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
-
-    final Configuration metricServiceConf = MetricServiceDriverConf.CONF
-        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, LoggingMetricReceiver.class)
-        .build();
-
-    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
-
-    return Configurations.merge(driverConf, jobServerConf, etMasterConfiguration, metricServiceConf,
-        driverNetworkConf, getNCSConfiguration());
+  public final class RunningJobHandler implements EventHandler<RunningJob> {
+    @Override
+    public void onNext(final RunningJob job) {
+      LOG.log(Level.INFO, "The Job {0} is running.", job.getId());
+      theJob = job;
+      setStatusAndNotify(LauncherStatus.RUNNING);
+      jobCommandListener.setRunningJob(theJob);
+    }
   }
 
-  private static Configuration getNCSConfiguration() {
-    final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
-    final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
-    final Configuration idFactoryImplConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
-
-    return Configurations.merge(nameServerConfiguration, nameClientConfiguration, idFactoryImplConfiguration);
+  /**
+   * Job driver notifies us that the job had failed.
+   */
+  public final class FailedJobHandler implements EventHandler<FailedJob> {
+    @Override
+    public void onNext(final FailedJob job) {
+      final Optional<Throwable> ex = job.getReason();
+      LOG.log(Level.SEVERE, "Received an error for job " + job.getId(), ex);
+      theJob = null;
+      setStatusAndNotify(LauncherStatus.failed(ex));
+    }
   }
 
-  public static void main(final String[] args) {
-    JobServerLauncher.run(args);
+  /**
+   * Job driver notifies us that the job had completed successfully.
+   */
+  public final class CompletedJobHandler implements EventHandler<CompletedJob> {
+    @Override
+    public void onNext(final CompletedJob job) {
+      LOG.log(Level.INFO, "The Job {0} is done.", job.getId());
+      theJob = null;
+      setStatusAndNotify(LauncherStatus.COMPLETED);
+    }
   }
 
+  /**
+   * Handler an error in the job driver.
+   */
+  public final class RuntimeErrorHandler implements EventHandler<FailedRuntime> {
+    @Override
+    public void onNext(final FailedRuntime error) {
+      LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
+      theJob = null;
+      setStatusAndNotify(LauncherStatus.failed(error.getReason()));
+    }
+  }
+
+  /**
+   * Handler of {@link JobMessage} from driver.
+   * It logs job message to console.
+   */
+  public final class StringJobMessageHandler implements EventHandler<JobMessage> {
+
+    @Override
+    public void onNext(final JobMessage message) {
+      final String decodedMessage = new String(message.get(), StandardCharsets.UTF_8);
+      LOG.log(Level.INFO, "Job message: {0}", decodedMessage);
+    }
+  }
 }

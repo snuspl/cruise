@@ -19,13 +19,14 @@ import org.apache.reef.runtime.common.driver.idle.DriverIdleManager;
 import org.apache.reef.runtime.common.driver.idle.DriverIdlenessSource;
 import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.tang.InjectionFuture;
+import edu.snu.cay.dolphin.async.jobserver.JobServerDriver.ClientMessageHandler;
 
 import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
  * It determines a termination of job server.
- * If {@link JobServerHttpHandler} receives HTTP request to shut down the job server.
+ * If {@link ClientMessageHandler} receives command to shut down the job server.
  * The server calls {@link #finishJobServer()}.
  */
 public final class JobServerStatusManager implements DriverIdlenessSource {
@@ -53,7 +54,7 @@ public final class JobServerStatusManager implements DriverIdlenessSource {
   /**
    * Sends {@link IdleMessage} to {@link DriverIdleManager} to terminate a job.
    */
-  public void finishJobServer() {
+  void finishJobServer() {
     isJobServerRunning = false;
     driverIdleManagerFuture.get().onPotentiallyIdle(FINISH_MSG);
   }

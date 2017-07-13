@@ -18,33 +18,32 @@ package edu.snu.cay.dolphin.async.jobserver;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 
-import java.io.IOException;
-
 /**
- * Client for closing running job server. This is called by {#close_jobserver.sh}
+ * Client for shutting down running job server. This is called by {#stop_jobserver.sh}
  */
 public final class JobServerCloser {
+
+  private static final String EMPTY_JOB_CONF = "empty-conf";
 
   private JobServerCloser() {
   }
 
   public static void main(final String[] args) {
+
     try {
+
       final CommandLine cl = new CommandLine();
-      cl.registerShortNameOfClass(Parameters.HttpAddress.class);
-      cl.registerShortNameOfClass(Parameters.HttpPort.class);
+      cl.registerShortNameOfClass(Parameters.Address.class);
+      cl.registerShortNameOfClass(Parameters.Port.class);
 
-      // http configuration, target of http request is specified by this configuration.
-      final Configuration httpConf = cl.processCommandLine(args).getBuilder().build();
-      final Injector httpParamInjector = Tang.Factory.getTang().newInjector(httpConf);
-      final String address = httpParamInjector.getNamedInstance(Parameters.HttpAddress.class);
-      final String port = httpParamInjector.getNamedInstance(Parameters.HttpPort.class);
-      HttpSender.sendFinishCommand(address, port);
+      final Configuration networkConf = cl.processCommandLine(args).getBuilder().build();
+      final Injector injector = Tang.Factory.getTang().newInjector(networkConf);
+      final JobCommandSender sender = injector.getInstance(JobCommandSender.class);
+      sender.sendJobCommand(Parameters.SHUTDOWN_COMMAND, EMPTY_JOB_CONF);
 
-    } catch (IOException | InjectionException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }

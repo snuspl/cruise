@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./stop_jobserver.sh -address 127.0.1.1 -port 13823
+# ./stop_jobserver.sh 
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
