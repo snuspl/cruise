@@ -295,6 +295,7 @@ public final class PlanCompiler {
           dag.addVertex(serverStartOp);
           dag.addEdge(workerStopOp, serverStartOp);
 
+          dag.addEdge(workerStopOp, unsubscribeOp);
           dag.addEdge(associateOp, serverStartOp);
         }
       }
