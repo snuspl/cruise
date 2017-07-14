@@ -117,7 +117,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
@@ -157,7 +157,7 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
+    LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
   }
 

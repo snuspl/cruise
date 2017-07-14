@@ -105,7 +105,7 @@ final class Document {
     final int oldTopic = assignments[index];
     topicCounts.compute(oldTopic, (key, oldValue) -> {
       if (oldValue == null || oldValue == 0) {
-        throw new RuntimeException(String.format("The TopicCounts for %d-th word is %d", index, oldValue));
+        return 0; // it happens due to inconsistency by migration of worker-side model
       } else {
         return oldValue - 1;
       }

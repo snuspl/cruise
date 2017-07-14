@@ -80,6 +80,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private final int movingAverageWindowSize;
 
+  private final int minNumReqBatchMetrics;
+
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -96,7 +98,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      @Parameter(NumExtraResources.class) final int numExtraResources,
                                      @Parameter(NumInitialResources.class) final int numInitialResources,
                                      @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
-                                     @Parameter(MovingAverageWindowSize.class) final int movingAverageWindowSize) {
+                                     @Parameter(MovingAverageWindowSize.class) final int movingAverageWindowSize,
+                                     @Parameter(MinNumRequiredBatchMetrics.class) final int minNumReqBatchMetrics) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.planCompiler = planCompiler;
@@ -111,6 +114,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.numAvailableEvals = numInitialResources;
     this.metricWeightFactor = metricWeightFactor;
     this.movingAverageWindowSize = movingAverageWindowSize;
+    this.minNumReqBatchMetrics = minNumReqBatchMetrics;
     
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
     if (numExtraResources > 0 && extraResourcesPeriodSec > 0) {
@@ -200,10 +204,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
 
     // 1) Check that metrics have arrived from all evaluators.
-    // Servers: for each window / Workers: for each epoch, but mini-batch metrics are used for the actual optimization.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerEpochMetrics =
-        metricManager.getWorkerEpochMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
         metricManager.getWorkerMiniBatchMetrics();
 
@@ -216,9 +217,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       throw new RuntimeException(e);
     }
 
-    // Optimization is skipped if there are missing epoch metrics,
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
-    final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
+    final int numWorkerMetricSources = getNumMetricSources(currentWorkerMiniBatchMetrics);
 
     final int numRunningServers = modelTable.getPartitionInfo().size();
     final int numRunningWorkers = inputTable.getPartitionInfo().size();
@@ -232,34 +232,45 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       return emptyResult;
     }
 
-    // 2) Process the received metrics (e.g., calculate the EMA of metrics).
+    final int minNumServerMetrics = getMinNumMetrics(currentServerMetrics);
+    final int minNumWorkerMetrics = getMinNumMetrics(currentWorkerMiniBatchMetrics);
+
+    // 2) Check whether each evaluator has sent the sufficient number of metrics.
+    if (minNumWorkerMetrics < minNumReqBatchMetrics || minNumServerMetrics < minNumReqBatchMetrics) {
+      LOG.log(Level.INFO, "Skip this round, because the number of collected metrics are not sufficient. " +
+          " (at least {0} metrics for each evaluator should be collected)." +
+          " The current minimum number of metrics across Workers: {1}. Minimum number of metrics across Servers: {2}",
+          new Object[] {minNumReqBatchMetrics, minNumWorkerMetrics, minNumServerMetrics});
+      return emptyResult;
+    }
+
+    // 3) Process the received metrics (e.g., calculate the EMA of metrics).
     final List<EvaluatorParameters> processedServerMetrics =
         MetricProcessor.processServerMetrics(currentServerMetrics, metricWeightFactor, movingAverageWindowSize);
 
     final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processWorkerMetrics(
         currentWorkerMiniBatchMetrics, metricWeightFactor, movingAverageWindowSize);
 
-    // 3) Check that the processed metrics suffice to undergo an optimization cycle.
+    // 4) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed metrics of size less than the number of evaluators running in each space implies that
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
-      LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
+      LOG.log(Level.INFO, "Skip this round, because the processed metrics do not suffice" +
+              " to undergo an optimization cycle. Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
+          new Object[]{processedServerMetrics.size(), numRunningServers, processedWorkerMetrics.size(),
+              numRunningWorkers});
       return emptyResult;
     }
 
     // Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
-    final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
-    final double numAvgMiniBatch = getAvgNumMiniBatchPerEpoch(currentWorkerEpochMetrics);
 
     // A map containing additional parameters for optimizer.
     final Map<String, Double> optimizerModelParams = new HashMap<>();
-    optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
-    optimizerModelParams.put(Constants.AVG_NUM_MINI_BATCH_PER_EPOCH, numAvgMiniBatch);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -271,7 +282,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
           new Object[]{optimizationCount, evaluatorParameters});
 
-      // 4) Calculate the optimal plan with the metrics
+      // 5) Calculate the optimal plan with the metrics
       final Plan plan;
       try {
         plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
@@ -280,15 +291,15 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         return emptyResult;
       }
 
-      // 5) Pause metric collection.
+      // 6) Pause metric collection.
       metricManager.stopMetricCollection();
 
       final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
 
-      final Set<String> workersBeforeOpt = new HashSet<>(inputTable.getPartitionInfo().keySet());
-      final Set<String> serversBeforeOpt = new HashSet<>(modelTable.getPartitionInfo().keySet());
+      final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
+      final Set<String> serversBeforeOpt = getRunningExecutors(modelTable);
 
-      // 6) Execute the obtained plan.
+      // 7) Execute the obtained plan.
       try {
         LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
 
@@ -297,14 +308,13 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
           planExecutionResultFuture.get();
           LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
 
-          final Set<String> workersAfterOpt = new HashSet<>(inputTable.getPartitionInfo().keySet());
-          final Set<String> serversAfterOpt = new HashSet<>(modelTable.getPartitionInfo().keySet());
+          final Set<String> workersAfterOpt = getRunningExecutors(inputTable);
+          final Set<String> serversAfterOpt = getRunningExecutors(modelTable);
 
           final Set<String> addedWorkers = new HashSet<>(workersAfterOpt);
           addedWorkers.removeAll(workersBeforeOpt);
           final Set<String> addedServers = new HashSet<>(serversAfterOpt);
           addedServers.removeAll(serversBeforeOpt);
-
           final Set<String> deletedWorkers = new HashSet<>(workersBeforeOpt);
           deletedWorkers.removeAll(workersAfterOpt);
           final Set<String> deletedServers = new HashSet<>(serversBeforeOpt);
@@ -325,7 +335,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         }
 
       } finally {
-        // 7) Once the execution is complete, restart metric collection.
+        // 8) Once the execution is complete, restart metric collection.
         metricManager.loadMetricValidationInfo(
             getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
         metricManager.startMetricCollection();
@@ -337,6 +347,19 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     } catch (final InterruptedException | ExecutionException e) {
       throw new RuntimeException("Exception while executing optimization", e);
     }
+  }
+
+  /**
+   * @return the minimum number of metrics across all evaluators.
+   */
+  private int getMinNumMetrics(final Map<String, List<EvaluatorParameters>> metrics) {
+    return metrics.values().stream()
+        .map(List::size)
+        .reduce(Integer.MAX_VALUE, Math::min);
+  }
+
+  private Set<String> getRunningExecutors(final AllocatedTable table) {
+    return new HashSet<>(table.getPartitionInfo().keySet());
   }
 
   private Map<String, Integer> getValidationInfo(final Map<String, Set<Integer>> executorToBlocks) {
@@ -353,22 +376,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       }
     }
     return validMetricSources;
-  }
-
-  /**
-   * Calculates the total number of data instances across workers.
-   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}
-   *                   in which the first item contains the number of data instances contained in the worker.
-   * @return the total number of data instances across workers.
-   */
-  private int getTotalNumDataInstances(final Map<String, List<EvaluatorParameters>> evalParams) {
-    int numDataInstances = 0;
-    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
-
-      final WorkerEvaluatorParameters firstWorkerEpochMetric = (WorkerEvaluatorParameters) entry.getValue().get(0);
-      numDataInstances += firstWorkerEpochMetric.getMetrics().getProcessedDataItemCount();
-    }
-    return numDataInstances;
   }
 
   /**
@@ -400,18 +407,10 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     int count = 0;
     for (final List<EvaluatorParameters> evalParamList : evalParams.values()) {
       for (final EvaluatorParameters<WorkerMetrics> param : evalParamList) {
-        // do not include mini-batches which processed data less than mini-batch size
-        if ((int) param.getMetrics().getMiniBatchSize() == param.getMetrics().getProcessedDataItemCount()) {
-          totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
-          count++;
-        }
+        totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
+        count++;
       }
     }
     return totalPullData / count;
-  }
-
-  private double getAvgNumMiniBatchPerEpoch(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return evalParams.entrySet().stream().mapToDouble(entry ->
-        ((WorkerMetrics) entry.getValue().get(0).getMetrics()).getNumMiniBatchForEpoch()).average().orElse(0D);
   }
 }

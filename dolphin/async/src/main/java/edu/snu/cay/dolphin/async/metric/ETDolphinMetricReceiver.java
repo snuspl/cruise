@@ -39,8 +39,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   private final MetricManager metricManager;
 
-  private final int miniBatchSize;
-
   private final String modelTableId;
   private final String inputTableId;
 
@@ -48,13 +46,11 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                          @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize) {
+                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
-    this.miniBatchSize = miniBatchSize;
   }
 
   @Override
@@ -123,7 +119,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                                             final EpochMetrics epochMetrics) {
     return WorkerMetrics.newBuilder()
               .setEpochIdx(epochMetrics.getEpochIdx())
-              .setMiniBatchSize(miniBatchSize)
               .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
               .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
               .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(inputTableId))
@@ -149,7 +144,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
               .setNumDataBlocks(tableToNumBlocks.get(inputTableId))
               .setEpochIdx(batchMetrics.getEpochIdx())
               .setMiniBatchIdx(batchMetrics.getBatchIdx())
-              .setMiniBatchSize(miniBatchSize)
               .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
               .setTotalTime(batchMetrics.getBatchTimeSec())
               .setTotalCompTime(batchMetrics.getBatchCompTimeSec())

@@ -195,6 +195,7 @@ public final class ETDolphinLauncher {
 
         // optimization params
         DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
+        NumInitialBatchMetricsToSkip.class, MinNumRequiredBatchMetrics.class,
 
         // metric processing params
         MovingAverageWindowSize.class, MetricWeightFactor.class,
@@ -209,7 +210,7 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
 
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
-        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class);
+        NumTrainerThreads.class, MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);

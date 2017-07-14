@@ -23,8 +23,8 @@ import java.io.*;
 
 /**
  * Codec for sparse integer array.
- * This codec is highly optimized for use case in LDA algorithm,
- * which represents model in different form between worker and server.
+ * This codec translates array with dense form into sparse form to save network bandwidth.
+ * When decoding, it restores the array back to dense form.
  */
 final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
   @Inject
@@ -53,6 +53,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
   @Override
   public void encodeToStream(final int[] array, final DataOutputStream dos) {
     try {
+      dos.writeInt(array.length);
       dos.writeInt(array[array.length - 1]);
       for (int i = 0; i < array.length - 1; ++i) {
         if (array[i] != 0) {
@@ -75,22 +76,22 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
   }
 
   /**
-   * Decode byte array sent from server and construct model for worker.
-   * The returning array only contains nonzero elements.
-   * More precisely, (2 * i)-th element of the array represents a topic index with nonzero value,
-   * and corresponding (2 * i + 1)-th element of the array represents
-   * number of assignments of topic index which described above.
+   * Decode byte array with sparse form into dense form integer array again.
+   * It exactly reconstructs an input array at {@link #encodeToStream(int[], DataOutputStream)}.
    * @param dis input stream from which this codec reads
    * @return model for worker
    */
   @Override
   public int[] decodeFromStream(final DataInputStream dis) {
     try {
+      final int arrayLength = dis.readInt();
       final int numNonZeros = dis.readInt();
-      final int[] result = new int[2 * numNonZeros];
-      for (int i = 0; i < 2 * numNonZeros; ++i) {
-        result[i] = dis.readInt();
+
+      final int[] result = new int[arrayLength];
+      for (int i = 0; i < numNonZeros; ++i) {
+        result[dis.readInt()] = dis.readInt();
       }
+      result[arrayLength - 1] = numNonZeros;
       return result;
     } catch (final IOException e) {
       throw new RuntimeException(e);

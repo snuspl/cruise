@@ -116,7 +116,7 @@ public final class JobLauncher {
 
     // parameters for master
     final List<Class<? extends Name<?>>> masterParamList = Arrays.asList(
-        MaxNumEpochs.class, MiniBatchSize.class, NumWorkers.class, ServerMetricFlushPeriodMs.class
+        MaxNumEpochs.class, NumTotalMiniBatches.class, NumWorkers.class, ServerMetricFlushPeriodMs.class
     );
 
     // parameters for ML apps
@@ -138,8 +138,8 @@ public final class JobLauncher {
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
         WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
-        NumWorkerBlocks.class, NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class, TestDataPath.class,
-        InputDir.class
+        NumWorkerBlocks.class, NumTrainerThreads.class, MaxNumEpochs.class,
+        NumTotalMiniBatches.class, TestDataPath.class, InputDir.class
     );
 
     // parameters for network
