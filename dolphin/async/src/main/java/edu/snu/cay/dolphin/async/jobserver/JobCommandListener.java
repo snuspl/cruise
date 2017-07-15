@@ -35,7 +35,7 @@ public final class JobCommandListener implements EventHandler<TransportEvent>, A
 
   private static final Logger LOG = Logger.getLogger(JobCommandListener.class.getName());
   private final transient Transport transport;
-  private transient RunningJob runningJob;
+  private transient RunningJob reefJob;
 
   @Inject
   private JobCommandListener(final TransportFactory tpFactory,
@@ -50,8 +50,8 @@ public final class JobCommandListener implements EventHandler<TransportEvent>, A
 
   @Override
   public void onNext(final TransportEvent transportEvent) {
-    if (runningJob != null) {
-      runningJob.send(transportEvent.getData());
+    if (reefJob != null) {
+      reefJob.send(transportEvent.getData());
     }
   }
 
@@ -60,8 +60,12 @@ public final class JobCommandListener implements EventHandler<TransportEvent>, A
     transport.close();
   }
 
-  void setRunningJob(final RunningJob runningJob) {
-    this.runningJob = runningJob;
+  /**
+   * Registers REEF job to send client message.
+   * When it receives transport event from other sources, it passes messages to registered job.
+   */
+  void setReefJob(final RunningJob reefJob) {
+    this.reefJob = reefJob;
   }
 
 }

@@ -219,7 +219,7 @@ public final class JobServerLauncher implements AutoCloseable {
       LOG.log(Level.INFO, "The Job {0} is running.", job.getId());
       theJob = job;
       setStatusAndNotify(LauncherStatus.RUNNING);
-      jobCommandListener.setRunningJob(theJob);
+      jobCommandListener.setReefJob(theJob);
     }
   }
 

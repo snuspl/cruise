@@ -36,9 +36,11 @@ import java.util.logging.Logger;
 final class JobCommandSender {
 
   private static final Logger LOG = Logger.getLogger(JobCommandSender.class.getName());
+  private static final String EMPTY_JOB_CONF = "empty";
   private final TransportFactory tpFactory;
   private final String address;
   private final transient int port;
+  private final ObjectSerializableCodec<String> codec;
 
   @Inject
   private JobCommandSender(final TransportFactory tpFactory,
@@ -47,10 +49,10 @@ final class JobCommandSender {
     this.tpFactory = tpFactory;
     this.address = address;
     this.port = port;
+    this.codec = new ObjectSerializableCodec<>();
   }
 
   void sendJobCommand(final String command, final String serializedConf) throws Exception {
-    final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
 
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
         new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
@@ -60,6 +62,19 @@ final class JobCommandSender {
     try (Transport transport = tpFactory.newInstance(address, 0, stage, stage, 1, 10000)) {
       final Link<String> link = transport.open(new InetSocketAddress(address, port), codec, null);
       final String message = command + " " + serializedConf;
+      link.write(message);
+    }
+  }
+
+  void shutdown() throws Exception {
+    final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
+        new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
+      throw new RuntimeException(throwable);
+    });
+
+    try (Transport transport = tpFactory.newInstance(address, 0, stage, stage, 1, 10000)) {
+      final Link<String> link = transport.open(new InetSocketAddress(address, port), codec, null);
+      final String message = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
       link.write(message);
     }
   }

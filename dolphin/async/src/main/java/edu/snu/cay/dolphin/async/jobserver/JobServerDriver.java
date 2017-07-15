@@ -79,6 +79,7 @@ public final class JobServerDriver {
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final JobServerStatusManager jobServerStatusManager;
+  private final ObjectSerializableCodec<String> codec;
 
   private final String reefJobId;
   private final boolean onLocal;
@@ -114,6 +115,7 @@ public final class JobServerDriver {
     networkConnection.setup(driverId);
 
     this.jobBaseInjector = jobBaseInjector;
+    this.codec = new ObjectSerializableCodec<>();
   }
 
   /**
@@ -343,7 +345,6 @@ public final class JobServerDriver {
 
     @Override
     public void onNext(final byte[] bytes) {
-      final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
       final String input = codec.decode(bytes);
       final String[] result = input.split("\\s+", 2);
       final String command = result[0];

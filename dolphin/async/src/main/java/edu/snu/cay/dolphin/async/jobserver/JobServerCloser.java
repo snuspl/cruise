@@ -25,8 +25,6 @@ import org.apache.reef.tang.formats.CommandLine;
  */
 public final class JobServerCloser {
 
-  private static final String EMPTY_JOB_CONF = "empty-conf";
-
   private JobServerCloser() {
   }
 
@@ -41,7 +39,7 @@ public final class JobServerCloser {
       final Configuration networkConf = cl.processCommandLine(args).getBuilder().build();
       final Injector injector = Tang.Factory.getTang().newInjector(networkConf);
       final JobCommandSender sender = injector.getInstance(JobCommandSender.class);
-      sender.sendJobCommand(Parameters.SHUTDOWN_COMMAND, EMPTY_JOB_CONF);
+      sender.shutdown();
 
     } catch (Exception e) {
       throw new RuntimeException(e);
