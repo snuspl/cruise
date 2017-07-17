@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
@@ -39,7 +38,9 @@ import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.driver.parameters.DriverIdleSources;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
@@ -153,7 +154,11 @@ public final class JobServerLauncher {
 
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
-      status = DriverLauncher.getLauncher(runTimeConf)
+      final Configuration customClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(JobMessageHandler.class, JobMessageLogger.class)
+          .build();
+
+      status = DriverLauncher.getLauncher(Configurations.merge(runTimeConf, customClientConf))
           .run(Configurations.merge(driverConf, customDriverConf,
               driverParamConf, workerParamConf, serverParamConf, userParamConf), timeout);
 
