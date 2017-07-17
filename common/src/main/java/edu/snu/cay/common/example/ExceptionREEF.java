@@ -28,8 +28,8 @@ import java.util.logging.Logger;
 
 /**
  * A client code for Exception check app.
- * It checks that any exception thrown in user-thread can terminate REEF job
- * by using {@link edu.snu.cay.utils.CatchableExecutors}.
+ * It checks that any exception thrown in user-thread, especially {@link java.util.concurrent.ExecutorService}
+ * can terminate REEF job by using {@link edu.snu.cay.utils.CatchableExecutors}.
  */
 public final class ExceptionREEF {
 

@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -164,7 +165,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       this.valueType = FeatureType.CATEGORICAL;
     }
     this.numTrainerThreads = numTrainerThreads;
-    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
+    this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
   }
 
   @Override

@@ -30,6 +30,7 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -42,7 +43,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -103,7 +103,7 @@ public final class PregelDriver {
         throw new RuntimeException(e);
       }
 
-      Executors.newSingleThreadExecutor().submit(() -> {
+      CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_2_ID), executors).get();

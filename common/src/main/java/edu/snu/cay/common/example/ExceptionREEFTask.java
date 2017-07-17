@@ -43,18 +43,15 @@ public final class ExceptionREEFTask implements Task {
   public byte[] call(final byte[] bytes) throws Exception {
 
     CatchableExecutors.newSingleThreadExecutor().submit(() -> {
-      for (int i = 1; i <= 100; i++) {
-        LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
-      }
+      LOG.log(Level.INFO, "Before error");
 
       // it occurs divide-by-zero exception
       final int errorNumber = 1 / 0;
 
-      for (int i = 101; i <= 200; i++) {
-        LOG.log(Level.INFO, "Test print : [{0} / 200]", i);
-      }
+      LOG.log(Level.INFO, "After error");
     });
 
+    // exception from background-thread should be caught even without calling future.get()
     Thread.sleep(1000);
     return null;
   }

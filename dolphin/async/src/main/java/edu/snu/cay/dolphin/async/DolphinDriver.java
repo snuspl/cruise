@@ -53,7 +53,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -230,7 +229,7 @@ public final class DolphinDriver {
         final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getServerExecutorConf()).get();
         final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getWorkerExecutorConf()).get();
 
-        Executors.newSingleThreadExecutor().submit(() -> {
+        new Thread(() -> {
           final Future<AllocatedTable> modelTableFuture = etMaster.createTable(serverTableConf, servers);
           final Future<AllocatedTable> inputTableFuture = etMaster.createTable(workerTableConf, workers);
 
