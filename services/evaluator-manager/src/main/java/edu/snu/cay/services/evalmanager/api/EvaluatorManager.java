@@ -18,7 +18,7 @@
  */
 package edu.snu.cay.services.evalmanager.api;
 
-import edu.snu.cay.services.evalmanager.impl.HomogeneousEvalManager;
+import edu.snu.cay.services.evalmanager.impl.HeterogeneousEvalManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -35,7 +35,7 @@ import java.util.List;
  * without error-prone if-else statements in their REEF handlers.
  */
 @DriverSide
-@DefaultImplementation(HomogeneousEvalManager.class)
+@DefaultImplementation(HeterogeneousEvalManager.class)
 public interface EvaluatorManager {
 
   /**
