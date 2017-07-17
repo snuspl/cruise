@@ -235,7 +235,9 @@ public final class PlanCompiler {
       final String srcNamespace = entry.getKey();
       final Collection<String> executors = entry.getValue();
 
-      // server -> worker
+      // server -> worker:
+      // Stop (S) -> Unassociate (M) -> Subscribe (M) -> Start (W)
+      //                                Associate (I) ->
       if (srcNamespace.equals(NAMESPACE_SERVER)) {
         for (final String executor : executors) {
           final StopOp serverStopOp = new StopOp(executor);
@@ -264,7 +266,9 @@ public final class PlanCompiler {
           dag.addEdge(subscribeOp, workerStartOp);
         }
 
-        // worker -> server
+        // worker -> server:
+        // Stop (W) -> Unsubscribe (M) -> Associate (M) -> Start (S)
+        //          -> Unassociate (I)
       } else {
         for (final String executor : executors) {
           final StopOp workerStopOp = new StopOp(executor);
