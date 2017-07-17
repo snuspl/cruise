@@ -15,10 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.formats.CommandLine;
 
 /**
  * Client for shutting down running job server. This is called by {#stop_jobserver.sh}
@@ -31,13 +29,7 @@ public final class JobServerCloser {
   public static void main(final String[] args) {
 
     try {
-
-      final CommandLine cl = new CommandLine();
-      cl.registerShortNameOfClass(Parameters.Address.class);
-      cl.registerShortNameOfClass(Parameters.Port.class);
-
-      final Configuration networkConf = cl.processCommandLine(args).getBuilder().build();
-      final Injector injector = Tang.Factory.getTang().newInjector(networkConf);
+      final Injector injector = Tang.Factory.getTang().newInjector();
       final JobCommandSender sender = injector.getInstance(JobCommandSender.class);
       sender.shutdown();
 

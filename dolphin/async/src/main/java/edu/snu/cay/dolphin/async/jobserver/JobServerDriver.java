@@ -54,7 +54,6 @@ import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -299,7 +298,7 @@ public final class JobServerDriver {
         final AllocatedTable inputTable = inputTableFuture.get();
 
         modelTable.subscribe(workers).get();
-        inputTable.load(workers, processInputPath(inputPath)).get();
+        inputTable.load(workers, inputPath).get();
 
         try {
           LOG.log(Level.FINE, "Spawn new dolphinMaster with ID {0}", dolphinJobId);
@@ -400,13 +399,6 @@ public final class JobServerDriver {
       // TODO #677: Handle failure from Evaluators properly
       throw new RuntimeException(failedTask.asError());
     }
-  }
-
-  private String processInputPath(final String inputDir) throws InjectionException {
-    if (!onLocal) {
-      return inputDir;
-    }
-    return "file:///" + new File("..//..//..//").getAbsolutePath() + "/" + inputDir;
   }
 
   private void sendMessageToClient(final String message) {

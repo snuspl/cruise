@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.impl.LoggingEventHandler;
 import org.apache.reef.wake.impl.ThreadPoolStage;
@@ -38,23 +37,18 @@ final class JobCommandSender {
   private static final Logger LOG = Logger.getLogger(JobCommandSender.class.getName());
   private static final String EMPTY_JOB_CONF = "empty";
   private final TransportFactory tpFactory;
-  private final String address;
-  private final transient int port;
   private final ObjectSerializableCodec<String> codec;
 
   @Inject
-  private JobCommandSender(final TransportFactory tpFactory,
-                           @Parameter(Parameters.Address.class) final String address,
-                           @Parameter(Parameters.Port.class) final int port) {
+  private JobCommandSender(final TransportFactory tpFactory) {
     this.tpFactory = tpFactory;
-    this.address = address;
-    this.port = port;
     this.codec = new ObjectSerializableCodec<>();
   }
 
   /**
-   * Sends job submit command to {@link JobServerClient}. Client will pass command message to {@link JobServerDriver}
-   * to call a method {@code JobServerDrier.executeJob(String)}.
+   * Sends a job submit command message to {@link JobServerClient}.
+   * Client will pass command message to {@link JobServerDriver} to call
+   * a method {@code JobServerDrier.executeJob(String)}.
    * @param serializedConf a serialized job configuration.
    */
   void sendJobCommand(final String serializedConf) throws Exception {
@@ -64,16 +58,16 @@ final class JobCommandSender {
       throw new RuntimeException(throwable);
     });
 
-    try (Transport transport = tpFactory.newInstance(address, 0, stage, stage, 1, 10000)) {
-      final Link<String> link = transport.open(new InetSocketAddress(address, port), codec, null);
+    try (Transport transport = tpFactory.newInstance("localhost", 0, stage, stage, 1, 10000)) {
+      final Link<String> link = transport.open(new InetSocketAddress("localhost", Parameters.PORT_NUMBER), codec, null);
       final String message = Parameters.SUBMIT_COMMAND + " " + serializedConf;
       link.write(message);
     }
   }
 
   /**
-   * Sends shut down command to {@link JobServerClient}. Client will pass command message to {@link JobServerDriver}
-   * to call a method {@code JobServerDriver.shutdown()}.
+   * Sends a shut down command message to {@link JobServerClient}.
+   * Client will pass command message to {@link JobServerDriver} to call a method {@code JobServerDriver.shutdown()}.
    */
   void shutdown() throws Exception {
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
@@ -81,8 +75,8 @@ final class JobCommandSender {
       throw new RuntimeException(throwable);
     });
 
-    try (Transport transport = tpFactory.newInstance(address, 0, stage, stage, 1, 10000)) {
-      final Link<String> link = transport.open(new InetSocketAddress(address, port), codec, null);
+    try (Transport transport = tpFactory.newInstance("localhost", 0, stage, stage, 1, 10000)) {
+      final Link<String> link = transport.open(new InetSocketAddress("localhost", Parameters.PORT_NUMBER), codec, null);
       final String message = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
       link.write(message);
     }

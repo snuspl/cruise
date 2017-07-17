@@ -72,7 +72,6 @@ public final class JobLauncher {
       final Configuration serverParamConf = configurations.get(1);
       final Configuration workerParamConf = configurations.get(2);
       final Configuration userParamConf = configurations.get(3);
-      final Configuration networkConf = configurations.get(4);
 
       // server conf. servers will be spawned with this configuration
       final Configuration serverConf = Configurations.merge(
@@ -98,8 +97,7 @@ public final class JobLauncher {
 
       // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
-
-      final Injector senderInjector = Tang.Factory.getTang().newInjector(networkConf);
+      final Injector senderInjector = Tang.Factory.getTang().newInjector();
       final JobCommandSender jobCommandSender = senderInjector.getInstance(JobCommandSender.class);
       jobCommandSender.sendJobCommand(Configurations.toString(jobConf));
 
@@ -142,17 +140,11 @@ public final class JobLauncher {
         NumTotalMiniBatches.class, TestDataPath.class, InputDir.class
     );
 
-    // parameters for network
-    final List<Class<? extends Name<?>>> networkParamList = Arrays.asList(
-        Address.class, Port.class
-    );
-
     final CommandLine cl = new CommandLine();
     commonAppParamList.forEach(cl::registerShortNameOfClass);
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     customAppParamList.forEach(cl::registerShortNameOfClass);
-    networkParamList.forEach(cl::registerShortNameOfClass);
 
     // user param list is composed by common app parameters and custom app parameters
     final List<Class<? extends Name<?>>> userParamList = new ArrayList<>(commonAppParamList);
@@ -165,9 +157,8 @@ public final class JobLauncher {
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
-    final Configuration networkConf = extractParameterConf(networkParamList, commandLineConf);
 
-    return Arrays.asList(masterConf, serverConf, workerConf, userConf, networkConf);
+    return Arrays.asList(masterConf, serverConf, workerConf, userConf);
   }
 
   /**

@@ -32,15 +32,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Improved version of {@link DriverLauncher}.
+ * Improved version of {@link org.apache.reef.client.DriverLauncher}.
  * It sends job command messages which are sent from other sources to {@link JobServerDriver}
  * using {@link JobCommandListener}.
  */
 @ClientSide
 @Unit
-public final class JobServerLauncher implements AutoCloseable {
+public final class DriverLauncher implements AutoCloseable {
 
-  private static final Logger LOG = Logger.getLogger(JobServerLauncher.class.getName());
+  private static final Logger LOG = Logger.getLogger(DriverLauncher.class.getName());
 
   private static final Configuration CLIENT_CONFIG = ClientConfiguration.CONF
       .set(ClientConfiguration.ON_JOB_SUBMITTED, SubmittedJobHandler.class)
@@ -60,8 +60,8 @@ public final class JobServerLauncher implements AutoCloseable {
   private JobCommandListener jobCommandListener;
 
   @Inject
-  private JobServerLauncher(final REEF reef,
-                            final JobCommandListener jobCommandListener) {
+  private DriverLauncher(final REEF reef,
+                         final JobCommandListener jobCommandListener) {
     this.reef = reef;
     this.jobCommandListener = jobCommandListener;
   }
@@ -73,17 +73,17 @@ public final class JobServerLauncher implements AutoCloseable {
    * @return a DriverLauncher based on the given resourcemanager configuration
    * @throws InjectionException on configuration errors
    */
-  public static JobServerLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
+  public static DriverLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
     return Tang.Factory.getTang()
         .newInjector(runtimeConfiguration, CLIENT_CONFIG)
-        .getInstance(JobServerLauncher.class);
+        .getInstance(DriverLauncher.class);
   }
 
   /**
    * Kills the running job.
    */
   @Override
-  public void close() throws Exception {
+  public void close() {
     synchronized (this) {
       LOG.log(Level.FINER, "Close launcher: job {0} with status {1}", new Object[] {theJob, status});
       if (this.status.isRunning()) {
@@ -95,7 +95,6 @@ public final class JobServerLauncher implements AutoCloseable {
       notify();
     }
     LOG.log(Level.FINEST, "Close launcher: shutdown REEF");
-    jobCommandListener.close();
     reef.close();
     LOG.log(Level.FINEST, "Close launcher: done");
   }
@@ -158,7 +157,7 @@ public final class JobServerLauncher implements AutoCloseable {
    * @param timeOut timeout on the job.
    * @return the state of the job after execution.
    */
-  public LauncherStatus run(final Configuration driverConfig, final long timeOut) throws Exception {
+  public LauncherStatus run(final Configuration driverConfig, final long timeOut) {
 
     final long startTime = System.currentTimeMillis();
 
@@ -172,7 +171,6 @@ public final class JobServerLauncher implements AutoCloseable {
       }
     }
 
-    jobCommandListener.close();
     reef.close();
     return this.getStatus();
   }
@@ -211,7 +209,7 @@ public final class JobServerLauncher implements AutoCloseable {
   }
 
   /**
-   * Job driver notifies us that the job is running.
+   * Job driver notifies us that the job is running. {@link JobCommandListener} registers running job.
    */
   public final class RunningJobHandler implements EventHandler<RunningJob> {
     @Override
@@ -233,6 +231,11 @@ public final class JobServerLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received an error for job " + job.getId(), ex);
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(ex));
+      try {
+        jobCommandListener.close();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -245,6 +248,11 @@ public final class JobServerLauncher implements AutoCloseable {
       LOG.log(Level.INFO, "The Job {0} is done.", job.getId());
       theJob = null;
       setStatusAndNotify(LauncherStatus.COMPLETED);
+      try {
+        jobCommandListener.close();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

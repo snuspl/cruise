@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.jobserver;
 
 import org.apache.reef.client.RunningJob;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.ThreadPoolStage;
@@ -38,14 +37,12 @@ public final class JobCommandListener implements EventHandler<TransportEvent>, A
   private transient RunningJob reefJob;
 
   @Inject
-  private JobCommandListener(final TransportFactory tpFactory,
-                             @Parameter(Parameters.Address.class) final String address,
-                             @Parameter(Parameters.Port.class) final int port) {
+  private JobCommandListener(final TransportFactory tpFactory) {
     final EStage<TransportEvent> stage = new ThreadPoolStage<>(
         "JobServer", this, 1, throwable -> {
       throw new RuntimeException(throwable);
     });
-    transport = tpFactory.newInstance(address, port, stage, stage, 1, 10000);
+    transport = tpFactory.newInstance("localhost", Parameters.PORT_NUMBER, stage, stage, 1, 10000);
   }
 
   @Override

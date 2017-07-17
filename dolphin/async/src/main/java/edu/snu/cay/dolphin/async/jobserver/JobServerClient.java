@@ -86,7 +86,7 @@ public final class JobServerClient {
       final Configuration driverConf = getDriverConfiguration(driverParamConf, onLocal);
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
-      status = JobServerLauncher.getLauncher(runTimeConf)
+      status = DriverLauncher.getLauncher(runTimeConf)
           .run(Configurations.merge(driverConf, customDriverConf,
               driverParamConf), timeout);
 

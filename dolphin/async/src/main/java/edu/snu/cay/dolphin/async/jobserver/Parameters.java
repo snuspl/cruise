@@ -24,6 +24,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 final class Parameters {
   static final String SUBMIT_COMMAND = "SUBMIT";
   static final String SHUTDOWN_COMMAND = "SHUTDOWN";
+  static final int PORT_NUMBER = 7008;
 
   private Parameters() {
 
@@ -31,24 +32,6 @@ final class Parameters {
 
   @NamedParameter(doc = "An identifier of App.")
   final class AppIdentifier implements Name<String> {
-
-  }
-
-  /**
-   * Adress for job server commands.
-   */
-  @NamedParameter(doc = "Address for job server commands",
-      short_name = "address", default_value = "localhost")
-  final class Address implements Name<String> {
-
-  }
-
-  /**
-   * Port for job server commands.
-   */
-  @NamedParameter(doc = "Port for job server commands",
-      short_name = "port", default_value = "7008")
-  final class Port implements Name<Integer> {
 
   }
 }

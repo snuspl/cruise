@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./submit_mlr.sh -num_workers 4 -number_servers 2 -input sample_mlr -test_data_path file://$(PWD)/sample_mlr_test -max_num_epochs 20 -mini_batch_size 54 -num_worker_blocks 10 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -server_metric_flush_period_ms 1000
+# ./submit_mlr.sh -num_workers 4 -number_servers 2 -input file:///$(PWD)/sample_mlr -test_data_path file://$(PWD)/sample_mlr_test -max_num_epochs 20 -mini_batch_size 54 -num_worker_blocks 10 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
