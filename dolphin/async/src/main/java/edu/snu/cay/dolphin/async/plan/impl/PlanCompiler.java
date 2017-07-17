@@ -238,31 +238,28 @@ public final class PlanCompiler {
       // server -> worker
       if (srcNamespace.equals(NAMESPACE_SERVER)) {
         for (final String executor : executors) {
+          final StopOp serverStopOp = new StopOp(executor);
+          stopOps.put(executor, serverStopOp);
+          dag.addVertex(serverStopOp);
+
           final UnassociateOp unassociateOp = new UnassociateOp(executor, modelTableId);
           unassociateOps.put(executor, unassociateOp);
+          dag.addVertex(unassociateOp);
+          dag.addEdge(serverStopOp, unassociateOp);
 
           final SubscribeOp subscribeOp = new SubscribeOp(executor, modelTableId);
           subscribeOps.put(executor, subscribeOp);
-
-          dag.addVertex(unassociateOp);
           dag.addVertex(subscribeOp);
           dag.addEdge(unassociateOp, subscribeOp);
 
           final AssociateOp associateOp = new AssociateOp(executor, inputTableId);
           associateOps.put(executor, associateOp);
-
           dag.addVertex(associateOp);
 
-          final StopOp serverStopOp = new StopOp(executor);
-          stopOps.put(executor, serverStopOp);
           final StartOp workerStartOp = new StartOp(executor, dolphinMasterFuture.get().getWorkerTaskConf(),
               dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(executor, workerStartOp);
-
-          dag.addVertex(serverStopOp);
           dag.addVertex(workerStartOp);
-          dag.addEdge(serverStopOp, workerStartOp);
-
           dag.addEdge(associateOp, workerStartOp);
           dag.addEdge(subscribeOp, workerStartOp);
         }
@@ -270,32 +267,29 @@ public final class PlanCompiler {
         // worker -> server
       } else {
         for (final String executor : executors) {
+          final StopOp workerStopOp = new StopOp(executor);
+          stopOps.put(executor, workerStopOp);
+          dag.addVertex(workerStopOp);
+
           final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(executor, modelTableId);
           unsubscribeOps.put(executor, unsubscribeOp);
-
-          final AssociateOp associateOp = new AssociateOp(executor, modelTableId);
-          associateOps.put(executor, associateOp);
-
           dag.addVertex(unsubscribeOp);
-          dag.addVertex(associateOp);
-          dag.addEdge(unsubscribeOp, associateOp);
+          dag.addEdge(workerStopOp, unsubscribeOp);
 
           final UnassociateOp unassociateOp = new UnassociateOp(executor, inputTableId);
           unassociateOps.put(executor, unassociateOp);
-
           dag.addVertex(unassociateOp);
+          dag.addEdge(workerStopOp, unassociateOp);
 
-          final StopOp workerStopOp = new StopOp(executor);
-          stopOps.put(executor, workerStopOp);
+          final AssociateOp associateOp = new AssociateOp(executor, modelTableId);
+          associateOps.put(executor, associateOp);
+          dag.addVertex(associateOp);
+          dag.addEdge(unsubscribeOp, associateOp);
+
           final StartOp serverStartOp = new StartOp(executor, dolphinMasterFuture.get().getServerTaskConf(),
               dolphinMasterFuture.get().getServerMetricConf());
           startOps.put(executor, serverStartOp);
-
-          dag.addVertex(workerStopOp);
           dag.addVertex(serverStartOp);
-          dag.addEdge(workerStopOp, serverStartOp);
-
-          dag.addEdge(workerStopOp, unsubscribeOp);
           dag.addEdge(associateOp, serverStartOp);
         }
       }
