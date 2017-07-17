@@ -52,7 +52,7 @@ public final class ExceptionREEFTask implements Task {
     });
 
     // exception from background-thread should be caught even without calling future.get()
-    Thread.sleep(1000);
+    Thread.sleep(5000);
     return null;
   }
 }

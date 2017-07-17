@@ -52,6 +52,7 @@ public final class ExceptionREEF {
           .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ExceptionREEFDriver.class))
           .set(DriverConfiguration.ON_DRIVER_STARTED, ExceptionREEFDriver.StartHandler.class)
           .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, ExceptionREEFDriver.EvaluatorAllocatedHandler.class)
+          .set(DriverConfiguration.ON_EVALUATOR_FAILED, ExceptionREEFDriver.EvaluatorFailedHandler.class)
           .build();
 
   public static void main(final String[] args) throws InjectionException {

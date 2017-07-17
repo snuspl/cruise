@@ -17,6 +17,7 @@ package edu.snu.cay.common.example;
 
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Unit;
@@ -64,6 +65,14 @@ public final class ExceptionREEFDriver {
           .set(TaskConfiguration.TASK, ExceptionREEFTask.class)
           .build();
       allocatedEvaluator.submitTask(taskConfiguration);
+    }
+  }
+
+  public final class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
+
+    @Override
+    public void onNext(final FailedEvaluator failedEvaluator) {
+      throw new RuntimeException("Task fail", failedEvaluator.getFailedTask().get().getReason().get());
     }
   }
 }
