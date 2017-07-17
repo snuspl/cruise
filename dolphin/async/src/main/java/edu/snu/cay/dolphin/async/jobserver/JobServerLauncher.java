@@ -32,7 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Improved version of {@link edu.snu.cay.common.client.DriverLauncher}.
+ * Improved version of {@link DriverLauncher}.
  * It sends job command messages which are sent from other sources to {@link JobServerDriver}
  * using {@link JobCommandListener}.
  */
