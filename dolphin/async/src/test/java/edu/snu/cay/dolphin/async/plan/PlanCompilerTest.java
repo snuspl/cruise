@@ -321,7 +321,7 @@ public class PlanCompilerTest {
     assertTrue(initialOp1.getOpType().equals(Op.OpType.STOP) || initialOp1.getOpType().equals(Op.OpType.ASSOCIATE));
     assertNotEquals(initialOp0.getOpType(), initialOp1.getOpType());
 
-    final Op stopOp = initialOp0.getOpType().equals(Op.OpType.SUBSCRIBE) ? initialOp0 : initialOp1;
+    final Op stopOp = initialOp0.getOpType().equals(Op.OpType.STOP) ? initialOp0 : initialOp1;
     final Op associateOp = initialOp0.getOpType().equals(Op.OpType.ASSOCIATE) ? initialOp0 : initialOp1;
 
     // 1. start with stopOp and its following ops that are for removing server from this executor
