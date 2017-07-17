@@ -248,7 +248,7 @@ public final class DolphinDriver {
             LOG.log(Level.SEVERE, "Exception while running a job", e);
             throw new RuntimeException(e);
           }
-        });
+        }).start();
 
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);

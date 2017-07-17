@@ -103,7 +103,7 @@ public final class PregelDriver {
         throw new RuntimeException(e);
       }
 
-      CatchableExecutors.newSingleThreadExecutor().submit(() -> {
+      new Thread(() -> {
         try {
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
@@ -123,7 +123,7 @@ public final class PregelDriver {
         } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e);
         }
-      });
+      }).start();
     }
   }
 
