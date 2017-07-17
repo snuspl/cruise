@@ -40,6 +40,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  */
 final class MLRTrainer implements Trainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
+  private static final float ZERO_THRESHOLD = 1e-7f;
 
   private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
 
@@ -390,7 +391,9 @@ final class MLRTrainer implements Trainer<MLRData> {
     // https://lingpipe-blog.com/2009/06/25/log-sum-of-exponentials/
     final double logSumExp = logSumExp(vector);
     for (int index = 0; index < vector.length(); ++index) {
-      vector.set(index, (float) Math.max(Math.min(1 - 1e-12, Math.exp(vector.get(index) - logSumExp)), 1e-12));
+      vector.set(index, Math.max(
+          Math.min(1 - ZERO_THRESHOLD, (float) Math.exp(vector.get(index) - logSumExp)),
+          ZERO_THRESHOLD));
     }
     return vector;
   }
