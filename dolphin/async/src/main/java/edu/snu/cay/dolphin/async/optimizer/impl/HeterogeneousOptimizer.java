@@ -242,7 +242,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
     final double currMeasuredCost = currMeasuredCompCost + currMeasuredCommCost;
 
-    final double currEstimatedCost = numWorkersCostMap.get(currentNumWorkers);
+    final double currEstimatedCost = numWorkersCostMap.getOrDefault(currentNumWorkers, -1D);
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
