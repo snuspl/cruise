@@ -101,7 +101,7 @@ public final class JobLauncher {
 
       final Injector senderInjector = Tang.Factory.getTang().newInjector(networkConf);
       final JobCommandSender jobCommandSender = senderInjector.getInstance(JobCommandSender.class);
-      jobCommandSender.sendJobCommand(Parameters.SUBMIT_COMMAND, Configurations.toString(jobConf));
+      jobCommandSender.sendJobCommand(Configurations.toString(jobConf));
 
       LOG.log(Level.INFO, "Job Command : {0} [{1}]", new Object[]{Parameters.SUBMIT_COMMAND, appId});
 

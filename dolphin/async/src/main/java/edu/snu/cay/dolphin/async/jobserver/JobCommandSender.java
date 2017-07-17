@@ -52,7 +52,12 @@ final class JobCommandSender {
     this.codec = new ObjectSerializableCodec<>();
   }
 
-  void sendJobCommand(final String command, final String serializedConf) throws Exception {
+  /**
+   * Sends job submit command to {@link JobServerClient}. Client will pass command message to {@link JobServerDriver}
+   * to call a method {@code JobServerDrier.executeJob(String)}.
+   * @param serializedConf a serialized job configuration.
+   */
+  void sendJobCommand(final String serializedConf) throws Exception {
 
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
         new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
@@ -61,11 +66,15 @@ final class JobCommandSender {
 
     try (Transport transport = tpFactory.newInstance(address, 0, stage, stage, 1, 10000)) {
       final Link<String> link = transport.open(new InetSocketAddress(address, port), codec, null);
-      final String message = command + " " + serializedConf;
+      final String message = Parameters.SUBMIT_COMMAND + " " + serializedConf;
       link.write(message);
     }
   }
 
+  /**
+   * Sends shut down command to {@link JobServerClient}. Client will pass command message to {@link JobServerDriver}
+   * to call a method {@code JobServerDriver.shutdown()}.
+   */
   void shutdown() throws Exception {
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
         new LoggingEventHandler<TransportEvent>(), 1, throwable -> {

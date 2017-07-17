@@ -48,7 +48,7 @@ final class Parameters {
    */
   @NamedParameter(doc = "Port for job server commands",
       short_name = "port", default_value = "7008")
-  class Port implements Name<Integer> {
+  final class Port implements Name<Integer> {
 
   }
 }
