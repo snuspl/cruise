@@ -28,8 +28,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -64,11 +62,10 @@ final class PregelMaster {
   }
 
   private void initControlThread() {
-    LOG.log(Level.INFO, "Start a thread that controls workers...");
-    final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    LOG.log(Level.INFO, "Start a thread that controls workers...");
     // submit a runnable that controls workers' supersteps.
-    executor.submit((Runnable) () -> {
+    new Thread(() -> {
       while (true) {
         try {
           msgCountDownLatch.await();
@@ -98,7 +95,7 @@ final class PregelMaster {
         isAllVerticesHalt = false;
         msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
-    });
+    }).start();
   }
 
   /**
