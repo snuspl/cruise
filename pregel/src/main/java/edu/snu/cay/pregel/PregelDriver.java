@@ -42,7 +42,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -103,7 +102,7 @@ public final class PregelDriver {
         throw new RuntimeException(e);
       }
 
-      Executors.newSingleThreadExecutor().submit(() -> {
+      new Thread(() -> {
         try {
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
           etMaster.createTable(buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
@@ -123,7 +122,7 @@ public final class PregelDriver {
         } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e);
         }
-      });
+      }).start();
     }
   }
 

@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.MemoryUtils;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -144,7 +145,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
 
     this.numTrainerThreads = numTrainerThreads;
-    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
+    this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
