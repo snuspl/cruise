@@ -60,6 +60,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private final ETTaskRunner taskRunner;
 
+  private final ProgressTracker progressTracker;
+
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
@@ -90,6 +92,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      final PlanCompiler planCompiler,
                                      final ETTaskRunner taskRunner,
                                      final WorkerStateManager workerStateManager,
+                                     final ProgressTracker progressTracker,
                                      @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                                      @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
@@ -107,6 +110,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.etMaster = etMaster;
     this.taskRunner = taskRunner;
     this.workerStateManager = workerStateManager;
+    this.progressTracker = progressTracker;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
@@ -170,6 +174,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
           taskRunner.updateExecutorEntry(changesInWorkers.getLeft(), changesInWorkers.getRight(),
               changesInServers.getLeft(), changesInServers.getRight());
           workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
+          changesInWorkers.getRight().forEach(progressTracker::onWorkerDelete);
 
           try {
             LOG.log(Level.INFO, "Sleep {0} ms for next optimization", optimizationIntervalMs);

@@ -148,4 +148,24 @@ public final class ProgressTracker implements ProgressProvider {
       updateGlobalMinEpochIdx(newMinEpochIdx);
     }
   }
+
+  /**
+   * Handles an event of worker delete.
+   * @param workerId an worker id
+   */
+  public synchronized void onWorkerDelete(final String workerId) {
+    final Integer epochProgress = workerIdToEpochIdx.remove(workerId);
+
+    if (epochProgress != null) {
+      epochProgressToWorkerIds.compute(epochProgress, (k, v) -> {
+        v.remove(workerId);
+        return v.isEmpty() ? null : v;
+      });
+
+      final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
+      if (newMinEpochIdx > globalMinEpochIdx) {
+        updateGlobalMinEpochIdx(newMinEpochIdx);
+      }
+    }
+  }
 }
