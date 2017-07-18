@@ -32,7 +32,6 @@ import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
-import org.apache.reef.wake.remote.transport.*;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -102,7 +101,7 @@ public final class JobLauncher {
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
       final Injector senderInjector = Tang.Factory.getTang().newInjector();
       final JobCommandSender jobCommandSender = senderInjector.getInstance(JobCommandSender.class);
-      jobCommandSender.sendJobCommand(Configurations.toString(jobConf));
+      jobCommandSender.sendJobSubmitCommand(Configurations.toString(jobConf));
 
       LOG.log(Level.INFO, "Job Command : {0} [{1}]", new Object[]{Parameters.SUBMIT_COMMAND, appId});
 
