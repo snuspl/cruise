@@ -35,8 +35,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,11 +48,6 @@ public final class DashboardConnector {
    * Size of the queue for saving unsent metrics to the Dashboard server.
    */
   private static final int METRIC_QUEUE_SIZE = 1024;
-
-  /**
-   * Thread for sending metrics to dashboard server.
-   */
-  private final ExecutorService metricsSenderExecutor = Executors.newSingleThreadScheduledExecutor();
 
   /**
    * Metrics queue which saves unsent requests.
@@ -171,7 +164,7 @@ public final class DashboardConnector {
    * Runs a thread watching the metrics queue to send the metrics from the metricQueue via http request.
    */
   private void runMetricsSenderThread() {
-    metricsSenderExecutor.execute(new Runnable() {
+    new Thread(new Runnable() {
       @Override
       public void run() {
         while (true) {
@@ -221,6 +214,6 @@ public final class DashboardConnector {
           LOG.log(Level.WARNING, "Dashboard: post request failed.", e);
         }
       }
-    });
+    }).start();
   }
 }

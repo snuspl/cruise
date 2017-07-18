@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.MemoryUtils;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -39,6 +40,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  */
 final class MLRTrainer implements Trainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
+  private static final float ZERO_THRESHOLD = 1e-7f;
 
   private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
 
@@ -142,7 +144,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
 
     this.numTrainerThreads = numTrainerThreads;
-    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
+    this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -389,7 +391,9 @@ final class MLRTrainer implements Trainer<MLRData> {
     // https://lingpipe-blog.com/2009/06/25/log-sum-of-exponentials/
     final double logSumExp = logSumExp(vector);
     for (int index = 0; index < vector.length(); ++index) {
-      vector.set(index, (float) Math.max(Math.min(1 - 1e-12, Math.exp(vector.get(index) - logSumExp)), 1e-12));
+      vector.set(index, Math.max(
+          Math.min(1 - ZERO_THRESHOLD, (float) Math.exp(vector.get(index) - logSumExp)),
+          ZERO_THRESHOLD));
     }
     return vector;
   }

@@ -21,6 +21,7 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.*;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.task.Task;
 
@@ -76,7 +77,7 @@ public final class PregelWorkerTask implements Task {
     LOG.log(Level.INFO, "Pregel task starts.");
 
     final int numThreads = NUM_THREADS;
-    final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+    final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(numThreads);
 
     final AtomicInteger superStepCounter = new AtomicInteger(0);
     final Table<Long, Vertex<Double>, Double> vertexTable = tableAccessor.getTable(PregelDriver.VERTEX_TABLE_ID);

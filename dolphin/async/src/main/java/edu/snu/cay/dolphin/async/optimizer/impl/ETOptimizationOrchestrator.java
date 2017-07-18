@@ -24,9 +24,9 @@ import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.dolphin.async.plan.impl.PlanCompiler;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
-import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
@@ -61,8 +61,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final ETTaskRunner taskRunner;
 
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
-
-  private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
 
   private final String modelTableId;
   private final String inputTableId;
@@ -140,7 +138,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
    */
   @Override
   public void start() {
-    Executors.newSingleThreadExecutor().submit(() -> {
+    new Thread(() -> {
       try {
         workerStateManager.waitWorkersToFinishInitStage();
 
@@ -184,7 +182,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       } catch (Exception e) {
         LOG.log(Level.INFO, "Exception in optimization thread", e);
       }
-    });
+    }).start();
   }
 
   /**
@@ -276,76 +274,69 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
     evaluatorParameters.put(Constants.NAMESPACE_WORKER, processedWorkerMetrics);
 
-    final Future<Map<String, Pair<Set<String>, Set<String>>>> future = optimizationThreadPool.submit(() -> {
-      final int optimizationCount = optimizationCounter.getAndIncrement();
-      LOG.log(Level.INFO, "Start {0}-th optimization", optimizationCount);
-      LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
-          new Object[]{optimizationCount, evaluatorParameters});
+    final int optimizationCount = optimizationCounter.getAndIncrement();
+    LOG.log(Level.INFO, "Start {0}-th optimization", optimizationCount);
+    LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
+        new Object[]{optimizationCount, evaluatorParameters});
 
-      // 5) Calculate the optimal plan with the metrics
-      final Plan plan;
-      try {
-        plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
-      } catch (final RuntimeException e) {
-        LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
-        return emptyResult;
-      }
-
-      // 6) Pause metric collection.
-      metricManager.stopMetricCollection();
-
-      final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
-
-      final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
-      final Set<String> serversBeforeOpt = getRunningExecutors(modelTable);
-
-      // 7) Execute the obtained plan.
-      try {
-        LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
-
-        final ListenableFuture<?> planExecutionResultFuture = planExecutor.execute(etPlan);
-        try {
-          planExecutionResultFuture.get();
-          LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
-
-          final Set<String> workersAfterOpt = getRunningExecutors(inputTable);
-          final Set<String> serversAfterOpt = getRunningExecutors(modelTable);
-
-          final Set<String> addedWorkers = new HashSet<>(workersAfterOpt);
-          addedWorkers.removeAll(workersBeforeOpt);
-          final Set<String> addedServers = new HashSet<>(serversAfterOpt);
-          addedServers.removeAll(serversBeforeOpt);
-          final Set<String> deletedWorkers = new HashSet<>(workersBeforeOpt);
-          deletedWorkers.removeAll(workersAfterOpt);
-          final Set<String> deletedServers = new HashSet<>(serversBeforeOpt);
-          deletedServers.removeAll(serversAfterOpt);
-
-          // sleep for the system to be stable after executing a plan
-          Thread.sleep(delayAfterOptimizationMs);
-
-
-          final Map<String, Pair<Set<String>, Set<String>>> namespaceToExecutorChanges = new HashMap<>();
-          namespaceToExecutorChanges.put(Constants.NAMESPACE_WORKER, Pair.of(addedWorkers, deletedWorkers));
-          namespaceToExecutorChanges.put(Constants.NAMESPACE_SERVER, Pair.of(addedServers, deletedServers));
-
-          return namespaceToExecutorChanges;
-
-        } catch (final InterruptedException | ExecutionException e) {
-          throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
-        }
-
-      } finally {
-        // 8) Once the execution is complete, restart metric collection.
-        metricManager.loadMetricValidationInfo(
-            getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
-        metricManager.startMetricCollection();
-      }
-    });
-
+    // 5) Calculate the optimal plan with the metrics
+    final Plan plan;
     try {
-      return future.get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new RuntimeException("Exception while executing optimization", e);
+      plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
+    } catch (final RuntimeException e) {
+      LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
+      return emptyResult;
+    }
+
+    // 6) Pause metric collection.
+    metricManager.stopMetricCollection();
+
+    final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
+
+    final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
+    final Set<String> serversBeforeOpt = getRunningExecutors(modelTable);
+
+    // 7) Execute the obtained plan.
+    try {
+      LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
+
+      try {
+        planExecutor.execute(etPlan).get();
+        LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
+
+        final Set<String> workersAfterOpt = getRunningExecutors(inputTable);
+        final Set<String> serversAfterOpt = getRunningExecutors(modelTable);
+
+        final Set<String> addedWorkers = new HashSet<>(workersAfterOpt);
+        addedWorkers.removeAll(workersBeforeOpt);
+        final Set<String> addedServers = new HashSet<>(serversAfterOpt);
+        addedServers.removeAll(serversBeforeOpt);
+        final Set<String> deletedWorkers = new HashSet<>(workersBeforeOpt);
+        deletedWorkers.removeAll(workersAfterOpt);
+        final Set<String> deletedServers = new HashSet<>(serversBeforeOpt);
+        deletedServers.removeAll(serversAfterOpt);
+
+        // sleep for the system to be stable after executing a plan
+        Thread.sleep(delayAfterOptimizationMs);
+
+        final Map<String, Pair<Set<String>, Set<String>>> namespaceToExecutorChanges = new HashMap<>();
+        namespaceToExecutorChanges.put(Constants.NAMESPACE_WORKER, Pair.of(addedWorkers, deletedWorkers));
+        namespaceToExecutorChanges.put(Constants.NAMESPACE_SERVER, Pair.of(addedServers, deletedServers));
+
+        return namespaceToExecutorChanges;
+
+      } catch (final InterruptedException | ExecutionException e) {
+        throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
+      }
+
+    } catch (PlanAlreadyExecutingException e) {
+      throw new RuntimeException(e);
+
+    } finally {
+      // 8) Once the execution is complete, restart metric collection.
+      metricManager.loadMetricValidationInfo(
+          getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
+      metricManager.startMetricCollection();
     }
   }
 
