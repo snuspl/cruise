@@ -27,8 +27,8 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * It receives job command from {@link JobCommandSender}, converts it to client message
- * for sending to the {@link JobServerDriver}.
+ * It receives job command from {@link JobCommandSender} and directly sends it to {@link JobServerDriver}
+ * via client message channel.
  */
 public final class JobCommandListener implements EventHandler<TransportEvent>, AutoCloseable {
 

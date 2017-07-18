@@ -44,9 +44,12 @@ import java.util.logging.Logger;
 import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 
 /**
- * JobLauncher, which submits specific ML job dynamically to running job server via {@link Transport}.
- * All parameters related to job are determined by command line.
- * Note that it supports NMF, MLR and LDA job in this stage.
+ * A class that submits a specific ML job dynamically to job server via {@link JobServerClient}.
+ * It communicates with {@link JobServerClient}
+ * through the connection between {@link JobCommandSender} and {@link JobCommandListener}.
+ *
+ * Users can run different apps with different parameters by changing
+ * args and dolphin configuration for {@link #submitJob(String, String[], ETDolphinConfiguration)}.
  */
 @ClientSide
 public final class JobLauncher {

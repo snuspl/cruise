@@ -203,5 +203,4 @@ public final class DolphinParameters {
                   default_value = "0")
   public static final class NumFeaturesPerPartition implements Name<Integer> {
   }
-
 }
