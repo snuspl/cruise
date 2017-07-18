@@ -192,6 +192,8 @@ public final class JobServerClient {
 
   public static void main(final String[] args) {
     JobServerClient.run(args);
+
+    // TODO #1210: fix process hang problem
     System.exit(0);
   }
 }
