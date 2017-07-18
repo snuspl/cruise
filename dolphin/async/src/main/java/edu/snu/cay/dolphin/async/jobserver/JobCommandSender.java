@@ -15,17 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import org.apache.reef.wake.EStage;
-import org.apache.reef.wake.impl.LoggingEventHandler;
-import org.apache.reef.wake.impl.ThreadPoolStage;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.wake.remote.impl.TransportEvent;
-import org.apache.reef.wake.remote.transport.Link;
-import org.apache.reef.wake.remote.transport.Transport;
 import org.apache.reef.wake.remote.transport.TransportFactory;
 
 import javax.inject.Inject;
-import java.net.InetSocketAddress;
+import java.io.*;
+import java.net.Socket;
 import java.util.logging.Logger;
 
 /**
@@ -52,7 +47,7 @@ final class JobCommandSender {
    * @param serializedConf a serialized job configuration.
    */
   void sendJobCommand(final String serializedConf) throws Exception {
-
+    /*
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
         new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
       throw new RuntimeException(throwable);
@@ -63,6 +58,28 @@ final class JobCommandSender {
       final String message = Parameters.SUBMIT_COMMAND + " " + serializedConf;
       link.write(message);
     }
+    */
+
+    final Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
+    final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    final PrintWriter pw = new PrintWriter(socket.getOutputStream());
+
+    try {
+      pw.println(Parameters.SUBMIT_COMMAND + " " + serializedConf);
+      pw.flush();
+      System.out.println(br.readLine());
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        socket.close();
+        br.close();
+        pw.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   /**
@@ -70,6 +87,7 @@ final class JobCommandSender {
    * Client will pass command message to {@link JobServerDriver} to call a method {@code JobServerDriver.shutdown()}.
    */
   void shutdown() throws Exception {
+    /*
     final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
         new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
       throw new RuntimeException(throwable);
@@ -79,6 +97,28 @@ final class JobCommandSender {
       final Link<String> link = transport.open(new InetSocketAddress("localhost", Parameters.PORT_NUMBER), codec, null);
       final String message = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
       link.write(message);
+    }
+    */
+
+    final Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
+    final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    final PrintWriter pw = new PrintWriter(socket.getOutputStream());
+
+    try {
+      pw.println(Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF);
+      pw.flush();
+      System.out.println(br.readLine());
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        socket.close();
+        br.close();
+        pw.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

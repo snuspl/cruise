@@ -55,6 +55,7 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -180,7 +181,7 @@ public final class ETDolphinLauncher {
 
   @SuppressWarnings("unchecked")
   private static List<Configuration> parseCommandLine(
-      final String[] args, final List<Class<? extends Name<?>>> userParamList)
+      final String[] args, final List<Class<? extends Name<?>>> customAppParamList)
       throws ParseException, InjectionException, IOException, ClassNotFoundException {
 
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
@@ -217,6 +218,13 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
         NumTrainerThreads.class, MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class);
 
+    // parameters for ML apps
+    // ignore any parameters that are not used by the job it is currently submitting
+    final List<Class<? extends Name<?>>> commonAppParamList = Arrays.asList(
+        NumFeatures.class, Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class,
+        ModelGaussian.class, NumFeaturesPerPartition.class
+    );
+
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
@@ -225,7 +233,12 @@ public final class ETDolphinLauncher {
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
-    userParamList.forEach(cl::registerShortNameOfClass);
+    commonAppParamList.forEach(cl::registerShortNameOfClass);
+    customAppParamList.forEach(cl::registerShortNameOfClass);
+
+    // user param list is composed by common app parameters and custom app parameters
+    final List<Class<? extends Name<?>>> userParamList = new ArrayList<>(commonAppParamList);
+    userParamList.addAll(customAppParamList);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);

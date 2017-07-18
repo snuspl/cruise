@@ -118,6 +118,7 @@ public final class JobLauncher {
     );
 
     // parameters for ML apps
+    // ignore any parameters that are not used by the job it is currently submitting
     final List<Class<? extends Name<?>>> commonAppParamList = Arrays.asList(
         NumFeatures.class, Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class,
         ModelGaussian.class, NumFeaturesPerPartition.class
