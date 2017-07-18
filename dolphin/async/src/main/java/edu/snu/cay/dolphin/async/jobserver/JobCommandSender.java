@@ -22,8 +22,9 @@ import java.net.Socket;
 import java.util.logging.Logger;
 
 /**
- * Sender class of {@link JobLauncher}.
- * It sends job command and serialized job configuration to {@link JobServerClient}.
+ * A class for sending a job command message from {@link JobLauncher} to {@link JobServerClient}.
+ * {@link JobCommandListener} at {@link JobServerClient} will receive the message.
+ * For job submission command, a message contains a serialized job configuration.
  */
 final class JobCommandSender {
 

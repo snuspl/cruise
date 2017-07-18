@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
+import edu.snu.cay.dolphin.async.JobMessageLogger;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.*;
 import org.apache.reef.tang.Configuration;
@@ -25,15 +26,14 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Improved version of {@link org.apache.reef.client.DriverLauncher}.
- * It sends job command messages which are sent from other sources to {@link JobServerDriver}
+ * Extended version of {@link org.apache.reef.client.DriverLauncher} for job server.
+ * It sends job command messages to {@link JobServerDriver} which are sent from other sources to {@link JobServerDriver}
  * using {@link JobCommandListener}.
  */
 @ClientSide
@@ -48,7 +48,7 @@ public final class DriverLauncher implements AutoCloseable {
       .set(ClientConfiguration.ON_JOB_COMPLETED, CompletedJobHandler.class)
       .set(ClientConfiguration.ON_JOB_FAILED, FailedJobHandler.class)
       .set(ClientConfiguration.ON_RUNTIME_ERROR, RuntimeErrorHandler.class)
-      .set(ClientConfiguration.ON_JOB_MESSAGE, StringJobMessageHandler.class)
+      .set(ClientConfiguration.ON_JOB_MESSAGE, JobMessageLogger.class)
       .build();
 
   private final REEF reef;
@@ -265,19 +265,6 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(error.getReason()));
-    }
-  }
-
-  /**
-   * Handler of {@link JobMessage} from driver.
-   * It logs job message to console.
-   */
-  public final class StringJobMessageHandler implements EventHandler<JobMessage> {
-
-    @Override
-    public void onNext(final JobMessage message) {
-      final String decodedMessage = new String(message.get(), StandardCharsets.UTF_8);
-      LOG.log(Level.INFO, "Job message: {0}", decodedMessage);
     }
   }
 }

@@ -166,6 +166,7 @@ public final class DolphinParameters {
     }
   }
 
+  // below parameters are used by only a subset of applications
   @NamedParameter(doc = "input dimension", short_name = "features", default_value = "0")
   public static final class NumFeatures implements Name<Integer> {
   }
@@ -203,5 +204,4 @@ public final class DolphinParameters {
                   default_value = "0")
   public static final class NumFeaturesPerPartition implements Name<Integer> {
   }
-
 }
