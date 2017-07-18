@@ -16,10 +16,11 @@
 package edu.snu.cay.services.et.examples.tableaccess;
 
 import edu.snu.cay.common.centcomm.CentCommConf;
-import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -93,7 +94,11 @@ public final class TableAccessET {
         .build()
         .getDriverConfiguration();
 
-    return DriverLauncher.getLauncher(runtimeConfiguration)
+    final Configuration customClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(JobMessageHandler.class, JobMessageLogger.class)
+          .build();
+
+    return DriverLauncher.getLauncher(Configurations.merge(runtimeConfiguration, customClientConf))
         .run(Configurations.merge(driverConfiguration,
         etMasterConfiguration, nameServerConfiguration, nameClientConfiguration,
         implConfiguration, centCommConfiguration), JOB_TIMEOUT);

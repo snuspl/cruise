@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.et.examples.plan;
 
-import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
