@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ public final class ThreadUtils {
 
     final List<Future> futures = new ArrayList<>(threads.length);
 
-    final ExecutorService pool = Executors.newFixedThreadPool(threads.length);
+    final ExecutorService pool = CatchableExecutors.newFixedThreadPool(threads.length);
     for (final Runnable thread : threads) {
       final Future future = pool.submit(thread);
       futures.add(future);
@@ -56,7 +56,7 @@ public final class ThreadUtils {
 
     final List<Future<T>> futures = new ArrayList<>(threads.size());
 
-    final ExecutorService pool = Executors.newFixedThreadPool(threads.size());
+    final ExecutorService pool = CatchableExecutors.newFixedThreadPool(threads.size());
     for (final Callable<T> thread : threads) {
       final Future<T> future = pool.submit(thread);
       futures.add(future);
