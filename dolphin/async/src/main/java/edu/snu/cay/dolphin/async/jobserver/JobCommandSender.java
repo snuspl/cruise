@@ -19,6 +19,7 @@ package edu.snu.cay.dolphin.async.jobserver;
 import javax.inject.Inject;
 import java.io.*;
 import java.net.Socket;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -29,7 +30,6 @@ import java.util.logging.Logger;
 final class JobCommandSender {
 
   private static final Logger LOG = Logger.getLogger(JobCommandSender.class.getName());
-  private static final String EMPTY_JOB_CONF = "empty";
 
   @Inject
   private JobCommandSender() {
@@ -42,7 +42,9 @@ final class JobCommandSender {
    * @param serializedConf a serialized job configuration.
    */
   void sendJobSubmitCommand(final String serializedConf) throws IOException {
-    final String commandMsg = Parameters.SUBMIT_COMMAND + " " + serializedConf;
+    final String commandMsg = Parameters.SUBMIT_COMMAND + Parameters.COMMAND_DELIMITER + serializedConf;
+
+    LOG.log(Level.INFO, "Job command : {0}", new Object[]{Parameters.SUBMIT_COMMAND});
     sendCommand(commandMsg);
   }
 
@@ -51,7 +53,9 @@ final class JobCommandSender {
    * Client will pass command message to {@link JobServerDriver} to call a method {@code JobServerDriver.shutdown()}.
    */
   void sendShutdownCommand() throws IOException {
-    final String commandMsg = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
+    final String commandMsg = Parameters.SHUTDOWN_COMMAND + Parameters.COMMAND_DELIMITER;
+
+    LOG.log(Level.INFO, "Job command : {0}", new Object[]{Parameters.SHUTDOWN_COMMAND});
     sendCommand(commandMsg);
   }
 
@@ -65,8 +69,11 @@ final class JobCommandSender {
       pw.println(command);
       pw.flush();
 
-      final String response = br.readLine();
-      System.out.println(response);
+      final boolean response = Boolean.parseBoolean(br.readLine());
+
+      if (!response) {
+        throw new IOException("Fail to send command");
+      }
     }
   }
 }

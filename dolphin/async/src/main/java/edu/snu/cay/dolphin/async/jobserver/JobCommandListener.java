@@ -24,16 +24,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.logging.Logger;
 
 /**
  * It receives job command from {@link JobCommandSender} and directly sends it to {@link JobServerDriver}
  * via client message channel.
  */
 public final class JobCommandListener implements AutoCloseable {
-
-  private static final Logger LOG = Logger.getLogger(JobCommandListener.class.getName());
-
   private volatile RunningJob reefJob;
   private volatile boolean isClosed = false;
 
@@ -47,16 +43,15 @@ public final class JobCommandListener implements AutoCloseable {
                BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                PrintWriter pw = new PrintWriter(socket.getOutputStream())) {
             final String input = br.readLine();
-            final String command = input.split(" ")[0];
+
+            boolean result = false;
             if (reefJob != null) {
               reefJob.send(input.getBytes());
-
-              pw.println("Job command received in JobCommandListener : " + command);
-              pw.flush();
-            } else {
-              pw.println("JobServer is not ready yet");
-              pw.flush();
+              result = true;
             }
+
+            pw.println(result);
+            pw.flush();
           }
         }
       } catch (IOException e) {

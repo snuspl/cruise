@@ -80,7 +80,6 @@ public final class JobServerDriver {
   private final JobServerStatusManager jobServerStatusManager;
 
   private final String reefJobId;
-  private final boolean onLocal;
 
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
@@ -100,15 +99,13 @@ public final class JobServerDriver {
                           final JobServerStatusManager jobServerStatusManager,
                           final Injector jobBaseInjector,
                           @Parameter(DriverIdentifier.class) final String driverId,
-                          @Parameter(JobIdentifier.class) final String reefJobId,
-                          @Parameter(Parameters.OnLocal.class) final boolean onLocal)
+                          @Parameter(JobIdentifier.class) final String reefJobId)
       throws IOException, InjectionException {
 
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.jobServerStatusManager = jobServerStatusManager;
     this.reefJobId = reefJobId;
-    this.onLocal = onLocal;
 
     networkConnection.setup(driverId);
 
@@ -343,12 +340,12 @@ public final class JobServerDriver {
     @Override
     public void onNext(final byte[] bytes) {
       final String input = new String(bytes);
-      final String[] result = input.split("\\s+", 2);
+      final String[] result = input.split(edu.snu.cay.dolphin.async.jobserver.Parameters.COMMAND_DELIMITER, 2);
       final String command = result[0];
-      final String serializedConf = result[1];
       switch (command) {
       case SUBMIT_COMMAND:
         try {
+          final String serializedConf = result[1];
           if (!executeJob(ConfigurationUtils.fromString(serializedConf))) {
             sendMessageToClient("Job Server has already been shut down and will not accept any jobs.");
           }

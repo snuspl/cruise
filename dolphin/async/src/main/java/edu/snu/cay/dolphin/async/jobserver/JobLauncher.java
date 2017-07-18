@@ -99,11 +99,12 @@ public final class JobLauncher {
 
       // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
-      final Injector senderInjector = Tang.Factory.getTang().newInjector();
-      final JobCommandSender jobCommandSender = senderInjector.getInstance(JobCommandSender.class);
-      jobCommandSender.sendJobSubmitCommand(Configurations.toString(jobConf));
 
-      LOG.log(Level.INFO, "Job Command : {0} [{1}]", new Object[]{Parameters.SUBMIT_COMMAND, appId});
+      final JobCommandSender jobCommandSender =
+          Tang.Factory.getTang().newInjector().getInstance(JobCommandSender.class);
+
+      LOG.log(Level.INFO, "Submit {0}", appId);
+      jobCommandSender.sendJobSubmitCommand(Configurations.toString(jobConf));
 
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -150,11 +151,9 @@ public final class JobLauncher {
     userParamList.forEach(cl::registerShortNameOfClass);
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
-
+    // master-side params are already included in server/worker params
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
-    // master side parameters are already registered. So it can be extracted
-    // from commandLineConf unless it wasn't registered.
     final Configuration masterConf = extractParameterConf(masterParamList, commandLineConf);
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);

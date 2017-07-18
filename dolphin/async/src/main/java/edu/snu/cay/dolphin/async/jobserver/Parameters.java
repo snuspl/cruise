@@ -24,6 +24,8 @@ import org.apache.reef.tang.annotations.NamedParameter;
 final class Parameters {
   static final String SUBMIT_COMMAND = "SUBMIT";
   static final String SHUTDOWN_COMMAND = "SHUTDOWN";
+  static final String COMMAND_DELIMITER = " ";
+
   static final int PORT_NUMBER = 7008;
 
   private Parameters() {
