@@ -26,15 +26,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * It receives job command from {@link JobCommandSender} and directly sends it to {@link JobServerDriver}
+ * It receives job command from {@link CommandSender} and directly sends it to {@link JobServerDriver}
  * via client message channel.
  */
-public final class JobCommandListener implements AutoCloseable {
+public final class CommandListener implements AutoCloseable {
   private volatile RunningJob reefJob;
   private volatile boolean isClosed = false;
 
   @Inject
-  private JobCommandListener() throws IOException {
+  private CommandListener() throws IOException {
     // single thread is enough
     new Thread(() -> {
       try (ServerSocket serverSocket = new ServerSocket(Parameters.PORT_NUMBER)) {

@@ -45,7 +45,7 @@ import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 /**
  * A class that submits a specific ML job dynamically to job server via {@link JobServerClient}.
  * It communicates with {@link JobServerClient}
- * through the connection between {@link JobCommandSender} and {@link JobCommandListener}.
+ * through the connection between {@link CommandSender} and {@link CommandListener}.
  *
  * Users can run different apps with different parameters by changing
  * args and dolphin configuration for {@link #submitJob(String, String[], ETDolphinConfiguration)}.
@@ -100,11 +100,11 @@ public final class JobLauncher {
       // job configuration. driver will use this configuration to spawn a job
       final Configuration jobConf = getJobConfiguration(appId, masterParamConf, serverConf, workerConf, userParamConf);
 
-      final JobCommandSender jobCommandSender =
-          Tang.Factory.getTang().newInjector().getInstance(JobCommandSender.class);
+      final CommandSender commandSender =
+          Tang.Factory.getTang().newInjector().getInstance(CommandSender.class);
 
       LOG.log(Level.INFO, "Submit {0}", appId);
-      jobCommandSender.sendJobSubmitCommand(Configurations.toString(jobConf));
+      commandSender.sendJobSubmitCommand(Configurations.toString(jobConf));
 
     } catch (Exception e) {
       throw new RuntimeException(e);

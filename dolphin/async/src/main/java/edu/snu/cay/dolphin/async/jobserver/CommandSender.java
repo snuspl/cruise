@@ -24,15 +24,15 @@ import java.util.logging.Logger;
 
 /**
  * A class for sending a job command message from {@link JobLauncher} to {@link JobServerClient}.
- * {@link JobCommandListener} at {@link JobServerClient} will receive the message.
+ * {@link CommandListener} at {@link JobServerClient} will receive the message.
  * For job submission command, a message contains a serialized job configuration.
  */
-final class JobCommandSender {
+final class CommandSender {
 
-  private static final Logger LOG = Logger.getLogger(JobCommandSender.class.getName());
+  private static final Logger LOG = Logger.getLogger(CommandSender.class.getName());
 
   @Inject
-  private JobCommandSender() {
+  private CommandSender() {
   }
 
   /**

@@ -33,7 +33,7 @@ import java.util.logging.Logger;
 
 /**
  * Extended version of {@link org.apache.reef.client.DriverLauncher} for job server.
- * It has a {@link JobCommandListener} that receives job command messages from {@link JobCommandSender}
+ * It has a {@link CommandListener} that receives job command messages from {@link CommandSender}
  * and redirects the messages to {@link JobServerDriver} using {@link RunningJob#send(byte[])}.
  */
 @ClientSide
@@ -57,13 +57,13 @@ public final class DriverLauncher implements AutoCloseable {
 
   private volatile String jobId;
   private volatile RunningJob theJob;
-  private final JobCommandListener jobCommandListener;
+  private final CommandListener commandListener;
 
   @Inject
   private DriverLauncher(final REEF reef,
-                         final JobCommandListener jobCommandListener) {
+                         final CommandListener commandListener) {
     this.reef = reef;
-    this.jobCommandListener = jobCommandListener;
+    this.commandListener = commandListener;
   }
 
   /**
@@ -95,7 +95,7 @@ public final class DriverLauncher implements AutoCloseable {
       notify();
     }
     LOG.log(Level.FINEST, "Close launcher: shutdown REEF");
-    jobCommandListener.close();
+    commandListener.close();
     reef.close();
     LOG.log(Level.FINEST, "Close launcher: done");
   }
@@ -173,7 +173,7 @@ public final class DriverLauncher implements AutoCloseable {
     }
 
     try {
-      jobCommandListener.close();
+      commandListener.close();
     } catch (Exception e) {
       // ignore
     }
@@ -215,7 +215,7 @@ public final class DriverLauncher implements AutoCloseable {
   }
 
   /**
-   * Job driver notifies us that the job is running. {@link JobCommandListener} registers running job.
+   * Job driver notifies us that the job is running. {@link CommandListener} registers running job.
    */
   public final class RunningJobHandler implements EventHandler<RunningJob> {
     @Override
@@ -223,7 +223,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.INFO, "The Job {0} is running.", job.getId());
       theJob = job;
       setStatusAndNotify(LauncherStatus.RUNNING);
-      jobCommandListener.setReefJob(theJob);
+      commandListener.setReefJob(theJob);
     }
   }
 
@@ -237,7 +237,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received an error for job " + job.getId(), ex);
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(ex));
-      jobCommandListener.setReefJob(null);
+      commandListener.setReefJob(null);
     }
   }
 
@@ -250,7 +250,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.INFO, "The Job {0} is done.", job.getId());
       theJob = null;
       setStatusAndNotify(LauncherStatus.COMPLETED);
-      jobCommandListener.setReefJob(null);
+      commandListener.setReefJob(null);
     }
   }
 
@@ -263,7 +263,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(error.getReason()));
-      jobCommandListener.setReefJob(null);
+      commandListener.setReefJob(null);
     }
   }
 }
