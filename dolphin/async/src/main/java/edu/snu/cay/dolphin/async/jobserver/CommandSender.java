@@ -23,7 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class for sending a job command message from {@link JobLauncher} to {@link JobServerClient}.
+ * A class for sending a command message from {@link JobLauncher} to {@link JobServerClient}.
  * {@link CommandListener} at {@link JobServerClient} will receive the message.
  * For job submission command, a message contains a serialized job configuration.
  */

@@ -83,7 +83,7 @@ public final class JobServerClient {
           getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // driver configuration
-      final Configuration driverConf = getDriverConfiguration(driverParamConf, onLocal);
+      final Configuration driverConf = getDriverConfiguration(driverParamConf);
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
       try (DriverLauncher driverLauncher = DriverLauncher.getLauncher(runTimeConf)) {
@@ -145,8 +145,7 @@ public final class JobServerClient {
   /**
    * @return a configuration for job server driver
    */
-  private static Configuration getDriverConfiguration(final Configuration driverParamConf,
-                                                      final boolean onLocal) throws InjectionException {
+  private static Configuration getDriverConfiguration(final Configuration driverParamConf) throws InjectionException {
 
     final Injector driverParamInjector = Tang.Factory.getTang().newInjector(driverParamConf);
 
@@ -161,12 +160,9 @@ public final class JobServerClient {
         .set(DriverConfiguration.ON_CLIENT_MESSAGE, JobServerDriver.ClientMessageHandler.class)
         .build();
 
-    final Configuration jobServerConf = Configurations.merge(
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
-            .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
-            .build()
-    );
+    final Configuration jobServerConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
+        .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 

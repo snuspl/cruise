@@ -33,7 +33,7 @@ import java.util.logging.Logger;
 
 /**
  * Extended version of {@link org.apache.reef.client.DriverLauncher} for job server.
- * It has a {@link CommandListener} that receives job command messages from {@link CommandSender}
+ * It has a {@link CommandListener} that receives command messages from {@link CommandSender}
  * and redirects the messages to {@link JobServerDriver} using {@link RunningJob#send(byte[])}.
  */
 @ClientSide

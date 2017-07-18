@@ -26,7 +26,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * It receives job command from {@link CommandSender} and directly sends it to {@link JobServerDriver}
+ * It receives a command from {@link CommandSender} and directly sends it to {@link JobServerDriver}
  * via client message channel.
  */
 public final class CommandListener implements AutoCloseable {
