@@ -33,8 +33,8 @@ import java.util.logging.Logger;
 
 /**
  * Extended version of {@link org.apache.reef.client.DriverLauncher} for job server.
- * It sends job command messages to {@link JobServerDriver} which are sent from other sources to {@link JobServerDriver}
- * using {@link JobCommandListener}.
+ * It has a {@link JobCommandListener} that receives job command messages from {@link JobCommandSender}
+ * and redirects the messages to {@link JobServerDriver} using {@link RunningJob#send(byte[])}.
  */
 @ClientSide
 @Unit
