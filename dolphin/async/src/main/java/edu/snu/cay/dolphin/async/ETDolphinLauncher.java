@@ -49,7 +49,6 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.tang.types.NamedParameterNode;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -61,6 +60,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 
 /**
  * Main entry point for launching a Dolphin on ET application.
@@ -275,26 +276,6 @@ public final class ETDolphinLauncher {
     return Arrays.asList(clientConf, Configurations.merge(driverConf, optimizationConf), serverConf,
         Configurations.merge(workerConf, inputPathConf), userConf);
   }
-
-  /**
-   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
-   */
-  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
-                                                    final Configuration totalConf) {
-    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
-    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
-      final NamedParameterNode parameterNode
-          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
-      final String parameterValue = totalConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in the total configuration, parameterValue will be null
-      if (parameterValue != null) {
-        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
-      }
-    }
-    return parameterConfBuilder.build();
-  }
-
 
   private static Configuration getYarnRuntimeConfiguration(final double heapSlack) {
     return YarnClientConfiguration.CONF

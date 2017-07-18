@@ -64,8 +64,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.jobserver.Parameters.SHUTDOWN_COMMAND;
-import static edu.snu.cay.dolphin.async.jobserver.Parameters.SUBMIT_COMMAND;
+import static edu.snu.cay.dolphin.async.jobserver.Parameters.*;
 
 /**
  * Driver code for Dolphin on ET.
@@ -101,7 +100,6 @@ public final class JobServerDriver {
                           @Parameter(DriverIdentifier.class) final String driverId,
                           @Parameter(JobIdentifier.class) final String reefJobId)
       throws IOException, InjectionException {
-
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.jobServerStatusManager = jobServerStatusManager;
@@ -199,7 +197,11 @@ public final class JobServerDriver {
    */
   private boolean executeJob(final Configuration jobConfToExecute) throws InjectionException, IOException {
     if (isClosed.get()) {
-      LOG.log(Level.INFO, "Job Server has been shut down and will not accept jobs.");
+      final String appId = Tang.Factory.getTang().newInjector(jobConfToExecute).getNamedInstance(AppIdentifier.class);
+
+      final String rejectMsg = "Job Server has been shut down and will not accept job: " + appId;
+      LOG.log(Level.INFO, rejectMsg);
+      sendMessageToClient(rejectMsg);
       return false;
     }
 
@@ -332,25 +334,24 @@ public final class JobServerDriver {
   /**
    * Handles command message from client.
    * There are following commands:
-   *    submit                    to submit a new job.
-   *    shutdown                  to shutdown the job server.
+   *    SUBMIT                    to submit a new job.
+   *    SHUTDOWN                  to shutdown the job server.
    */
   final class ClientMessageHandler implements EventHandler<byte[]> {
 
     @Override
     public void onNext(final byte[] bytes) {
       final String input = new String(bytes);
-      final String[] result = input.split(edu.snu.cay.dolphin.async.jobserver.Parameters.COMMAND_DELIMITER, 2);
+      final String[] result = input.split(COMMAND_DELIMITER, 2);
       final String command = result[0];
       switch (command) {
       case SUBMIT_COMMAND:
         try {
           final String serializedConf = result[1];
-          if (!executeJob(ConfigurationUtils.fromString(serializedConf))) {
-            sendMessageToClient("Job Server has already been shut down and will not accept any jobs.");
-          }
+          executeJob(ConfigurationUtils.fromString(serializedConf));
+
         } catch (InjectionException | IOException e) {
-          throw new RuntimeException(e);
+          throw new RuntimeException("The given job configuration is incomplete", e);
         }
         break;
       case SHUTDOWN_COMMAND:

@@ -22,7 +22,6 @@ import org.apache.reef.tang.InjectionFuture;
 import edu.snu.cay.dolphin.async.jobserver.JobServerDriver.ClientMessageHandler;
 
 import javax.inject.Inject;
-import java.util.logging.Logger;
 
 /**
  * It determines a termination of job server.
@@ -30,12 +29,10 @@ import java.util.logging.Logger;
  * The server calls {@link #finishJobServer()}.
  */
 public final class JobServerStatusManager implements DriverIdlenessSource {
-
-  private static final Logger LOG = Logger.getLogger(JobServerStatusManager.class.getName());
   private static final IdleMessage RUNNING_MSG =
-      new IdleMessage("JobServerStatusManager", "JobServer is still running", false);
+      new IdleMessage(JobServerStatusManager.class.getName(), "JobServer is still running", false);
   private static final IdleMessage FINISH_MSG =
-      new IdleMessage("JobServerStatusManager", "JobServer finished", true);
+      new IdleMessage(JobServerStatusManager.class.getName(), "JobServer finished", true);
 
   private final InjectionFuture<DriverIdleManager> driverIdleManagerFuture;
   private volatile boolean isJobServerRunning;

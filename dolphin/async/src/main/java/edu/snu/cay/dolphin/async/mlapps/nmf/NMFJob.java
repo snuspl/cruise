@@ -34,7 +34,7 @@ public final class NMFJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("MatrixFactorization", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("NMF", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

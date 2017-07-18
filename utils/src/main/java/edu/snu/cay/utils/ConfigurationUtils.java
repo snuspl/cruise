@@ -33,6 +33,9 @@ import java.util.List;
 public final class ConfigurationUtils {
 
   private static final ConfigurationSerializer SERIALIZER = new AvroConfigurationSerializer();
+  private static final Configuration EMPTY_CONF = Tang.Factory.getTang().newConfigurationBuilder().build();
+
+  // utility class should not be instantiated
   private ConfigurationUtils() {
 
   }
@@ -41,7 +44,7 @@ public final class ConfigurationUtils {
    * It returns configuration which doesn't bind any keys and values.
    */
   public static Configuration emptyConf() {
-    return Tang.Factory.getTang().newConfigurationBuilder().build();
+    return EMPTY_CONF;
   }
 
   /**

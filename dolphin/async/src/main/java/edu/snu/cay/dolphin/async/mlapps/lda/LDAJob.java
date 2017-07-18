@@ -36,7 +36,7 @@ public final class LDAJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("LDAET", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("LDA", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setInputParserClass(LDAETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

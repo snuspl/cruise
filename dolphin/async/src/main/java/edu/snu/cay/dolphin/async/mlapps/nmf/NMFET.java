@@ -34,7 +34,7 @@ public final class NMFET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("MatrixFactorizationET", args, ETDolphinConfiguration.newBuilder()
+    ETDolphinLauncher.launch("NMFET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

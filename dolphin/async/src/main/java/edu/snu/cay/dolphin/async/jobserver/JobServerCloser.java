@@ -30,8 +30,8 @@ public final class JobServerCloser {
 
     try {
       final Injector injector = Tang.Factory.getTang().newInjector();
-      final CommandSender sender = injector.getInstance(CommandSender.class);
-      sender.sendShutdownCommand();
+      final CommandSender commandSender = injector.getInstance(CommandSender.class);
+      commandSender.sendShutdownCommand();
 
     } catch (Exception e) {
       throw new RuntimeException(e);
