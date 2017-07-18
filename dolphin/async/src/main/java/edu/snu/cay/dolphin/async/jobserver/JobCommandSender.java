@@ -41,7 +41,7 @@ final class JobCommandSender {
    * a method {@code JobServerDrier.executeJob(String)}.
    * @param serializedConf a serialized job configuration.
    */
-  void sendJobCommand(final String serializedConf) throws IOException {
+  void sendJobSubmitCommand(final String serializedConf) throws IOException {
     final String commandMsg = Parameters.SUBMIT_COMMAND + " " + serializedConf;
     sendCommand(commandMsg);
   }
@@ -50,7 +50,7 @@ final class JobCommandSender {
    * Sends a shut down command message to {@link JobServerClient}.
    * Client will pass command message to {@link JobServerDriver} to call a method {@code JobServerDriver.shutdown()}.
    */
-  void shutdown() throws IOException {
+  void sendShutdownCommand() throws IOException {
     final String commandMsg = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
     sendCommand(commandMsg);
   }
