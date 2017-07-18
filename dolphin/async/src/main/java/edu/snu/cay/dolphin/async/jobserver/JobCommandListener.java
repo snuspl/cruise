@@ -15,46 +15,71 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.client.RunningJob;
-import org.apache.reef.wake.EStage;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.impl.ThreadPoolStage;
-import org.apache.reef.wake.remote.impl.TransportEvent;
-import org.apache.reef.wake.remote.transport.Transport;
-import org.apache.reef.wake.remote.transport.TransportFactory;
 
 import javax.inject.Inject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.logging.Logger;
 
 /**
  * It receives job command from {@link JobCommandSender}, converts it to client message
  * for sending to the {@link JobServerDriver}.
+ * It uses a standard socket network channel.
  */
-public final class JobCommandListener implements EventHandler<TransportEvent>, AutoCloseable {
+public final class JobCommandListener implements AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(JobCommandListener.class.getName());
-  private final transient Transport transport;
-  private transient RunningJob reefJob;
+  private RunningJob reefJob;
+  private ServerSocket serverSocket;
 
   @Inject
-  private JobCommandListener(final TransportFactory tpFactory) {
-    final EStage<TransportEvent> stage = new ThreadPoolStage<>(
-        "JobServer", this, 1, throwable -> {
-      throw new RuntimeException(throwable);
-    });
-    transport = tpFactory.newInstance("localhost", Parameters.PORT_NUMBER, stage, stage, 1, 10000);
-  }
+  private JobCommandListener() {
+    CatchableExecutors.newSingleThreadExecutor().submit(() -> {
 
-  @Override
-  public void onNext(final TransportEvent transportEvent) {
-    if (reefJob != null) {
-      reefJob.send(transportEvent.getData());
-    }
+      Socket socket = null;
+      try {
+        serverSocket = new ServerSocket(Parameters.PORT_NUMBER);
+        while (true) {
+          socket = serverSocket.accept();
+          final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+          final PrintWriter pw = new PrintWriter(socket.getOutputStream());
+
+          final String input = br.readLine();
+          final String command = input.split(" ")[0];
+          if (reefJob != null) {
+            reefJob.send(input.getBytes());
+          }
+
+          pw.println("Job command received in JobCommandListener : " + command);
+          pw.flush();
+
+          br.close();
+          pw.close();
+          socket.close();
+        }
+      } catch (IOException e) {
+
+        try {
+          if (socket != null) {
+            socket.close();
+          }
+        } catch (Exception ex) {
+          throw new RuntimeException(ex);
+        }
+
+      }
+    });
   }
 
   @Override
   public void close() throws Exception {
-    transport.close();
+    serverSocket.close();
   }
 
   /**
@@ -64,5 +89,4 @@ public final class JobCommandListener implements EventHandler<TransportEvent>, A
   void setReefJob(final RunningJob reefJob) {
     this.reefJob = reefJob;
   }
-
 }

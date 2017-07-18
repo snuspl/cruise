@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.wake.remote.transport.TransportFactory;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -31,13 +29,9 @@ final class JobCommandSender {
 
   private static final Logger LOG = Logger.getLogger(JobCommandSender.class.getName());
   private static final String EMPTY_JOB_CONF = "empty";
-  private final TransportFactory tpFactory;
-  private final ObjectSerializableCodec<String> codec;
 
   @Inject
-  private JobCommandSender(final TransportFactory tpFactory) {
-    this.tpFactory = tpFactory;
-    this.codec = new ObjectSerializableCodec<>();
+  private JobCommandSender() {
   }
 
   /**
@@ -46,66 +40,30 @@ final class JobCommandSender {
    * a method {@code JobServerDrier.executeJob(String)}.
    * @param serializedConf a serialized job configuration.
    */
-  void sendJobCommand(final String serializedConf) throws Exception {
-    /*
-    final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
-        new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
-      throw new RuntimeException(throwable);
-    });
-
-    try (Transport transport = tpFactory.newInstance("localhost", 0, stage, stage, 1, 10000)) {
-      final Link<String> link = transport.open(new InetSocketAddress("localhost", Parameters.PORT_NUMBER), codec, null);
-      final String message = Parameters.SUBMIT_COMMAND + " " + serializedConf;
-      link.write(message);
-    }
-    */
-
-    final Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
-    final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-    final PrintWriter pw = new PrintWriter(socket.getOutputStream());
-
-    try {
-      pw.println(Parameters.SUBMIT_COMMAND + " " + serializedConf);
-      pw.flush();
-      System.out.println(br.readLine());
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        socket.close();
-        br.close();
-        pw.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
+  void sendJobCommand(final String serializedConf) throws IOException {
+    final String commandMsg = Parameters.SUBMIT_COMMAND + " " + serializedConf;
+    sendCommand(commandMsg);
   }
 
   /**
    * Sends a shut down command message to {@link JobServerClient}.
    * Client will pass command message to {@link JobServerDriver} to call a method {@code JobServerDriver.shutdown()}.
    */
-  void shutdown() throws Exception {
-    /*
-    final EStage<TransportEvent> stage = new ThreadPoolStage<>("JobServer",
-        new LoggingEventHandler<TransportEvent>(), 1, throwable -> {
-      throw new RuntimeException(throwable);
-    });
+  void shutdown() throws IOException {
+    final String commandMsg = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
+    sendCommand(commandMsg);
+  }
 
-    try (Transport transport = tpFactory.newInstance("localhost", 0, stage, stage, 1, 10000)) {
-      final Link<String> link = transport.open(new InetSocketAddress("localhost", Parameters.PORT_NUMBER), codec, null);
-      final String message = Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF;
-      link.write(message);
-    }
-    */
-
+  /**
+   * Sends command message using standard java socket network channel.
+   */
+  private void sendCommand(final String command) throws IOException {
     final Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
     final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     final PrintWriter pw = new PrintWriter(socket.getOutputStream());
 
     try {
-      pw.println(Parameters.SHUTDOWN_COMMAND + " " + EMPTY_JOB_CONF);
+      pw.println(command);
       pw.flush();
       System.out.println(br.readLine());
 

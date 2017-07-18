@@ -50,7 +50,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -79,7 +78,6 @@ public final class JobServerDriver {
   private final ETMaster etMaster;
   private final JobMessageObserver jobMessageObserver;
   private final JobServerStatusManager jobServerStatusManager;
-  private final ObjectSerializableCodec<String> codec;
 
   private final String reefJobId;
   private final boolean onLocal;
@@ -115,7 +113,6 @@ public final class JobServerDriver {
     networkConnection.setup(driverId);
 
     this.jobBaseInjector = jobBaseInjector;
-    this.codec = new ObjectSerializableCodec<>();
   }
 
   /**
@@ -345,7 +342,7 @@ public final class JobServerDriver {
 
     @Override
     public void onNext(final byte[] bytes) {
-      final String input = codec.decode(bytes);
+      final String input = new String(bytes);
       final String[] result = input.split("\\s+", 2);
       final String command = result[0];
       final String serializedConf = result[1];
