@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -104,7 +105,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.trainingDataProvider = trainingDataProvider;
 
     this.numTrainerThreads = numTrainerThreads;
-    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
+    this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
