@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./submit_lasso.sh -max_num_epochs 300 -num_workers 4 -number_servers 1 -mini_batch_size 50 -num_worker_blocks 9 -features 10 -input file://$(PWD)/sample_lasso -test_data_path file://$(PWD)/sample_lasso_test -lambda 0.5 -step_size 0.1 -decay_rate 0.95 -decay_period 5 -features_per_partition 2 -server_metric_flush_period_ms 1000
+# ./submit_lasso.sh -max_num_epochs 300 -num_workers 4 -number_servers 1 -mini_batch_size 50 -num_worker_blocks 9 -features 10 -input file://$(pwd)/sample_lasso -test_data_path file://$(pwd)/sample_lasso_test -lambda 0.5 -step_size 0.1 -decay_rate 0.95 -decay_period 5 -features_per_partition 2 -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
