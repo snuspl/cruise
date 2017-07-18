@@ -16,17 +16,21 @@
 package edu.snu.cay.pregel.graph.impl;
 
 import edu.snu.cay.pregel.graph.api.Edge;
+import edu.snu.cay.pregel.graph.api.MutableEdge;
 
 /**
- * The implementation of non-value edge.
- * It only has target vertex id.
+ * A default implementation of {@link Edge}.
+ *
+ * @param <V> edge value
  */
-public class NoneValueEdge<V> implements Edge<V> {
+public class DefaultEdge<V> implements MutableEdge<V> {
 
   private final Long vertexId;
+  private V value;
 
-  public NoneValueEdge(final Long vertexId) {
+  public DefaultEdge(Long vertexId, V value) {
     this.vertexId = vertexId;
+    this.value = value;
   }
 
   @Override
@@ -36,6 +40,11 @@ public class NoneValueEdge<V> implements Edge<V> {
 
   @Override
   public V getValue() {
-    throw new UnsupportedOperationException();
+    return value;
+  }
+
+  @Override
+  public void setValue(V newValue) {
+    this.value = newValue;
   }
 }

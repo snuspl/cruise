@@ -13,29 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
-
-import edu.snu.cay.pregel.graph.api.Edge;
+package edu.snu.cay.pregel.graph.api;
 
 /**
- * The implementation of non-value edge.
- * It only has target vertex id.
+ * An edge whose value can be modified.
  */
-public class NoneValueEdge<V> implements Edge<V> {
+public interface MutableEdge<V> extends Edge<V> {
 
-  private final Long vertexId;
-
-  public NoneValueEdge(final Long vertexId) {
-    this.vertexId = vertexId;
-  }
-
-  @Override
-  public Long getTargetVertexId() {
-    return vertexId;
-  }
-
-  @Override
-  public V getValue() {
-    throw new UnsupportedOperationException();
-  }
+  /**
+   * Set the value for this edge.
+   *
+   * @param value new edge value
+   */
+  void setValue(V value);
 }

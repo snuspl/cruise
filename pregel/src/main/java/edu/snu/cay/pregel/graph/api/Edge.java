@@ -18,7 +18,7 @@ package edu.snu.cay.pregel.graph.api;
 /**
  * Interface for edge which has target vertex id.
  */
-public interface Edge {
+public interface Edge<V> {
 
   /**
    * Get the target vertex index of this edge.
@@ -26,4 +26,11 @@ public interface Edge {
    * @return target vertex index of this edge
    */
   Long getTargetVertexId();
+
+  /**
+   * Get the edge value of the edge
+   *
+   * @return edge value of the edge
+   */
+  V getValue();
 }
