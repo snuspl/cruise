@@ -102,11 +102,6 @@
       <artifactId>elastic-tables</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>
-    <dependency>
-      <groupId>com.gurobi</groupId>
-      <artifactId>gurobi-libraries</artifactId>
-      <version>7.0.2</version>
-    </dependency>
   </dependencies>
 
   <build>
@@ -168,6 +163,17 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <excludes>
+            <exclude>${project.basedir}/src/main/java/edu/snu/cay/dolphin/async/optimizer/impl/ilp/ILPSolver.java</exclude>
+            <exclude>${project.basedir}/src/main/java/edu/snu/cay/dolphin/async/optimizer/impl/ilp/ILPOptimizer.java</exclude>
+          </excludes>
+        </configuration>
       </plugin>
     </plugins>
   </build>

@@ -41,7 +41,6 @@ public final class ILPOptimizer implements Optimizer {
   private static final int NUM_EMPTY_BLOCK = 0;
   private final double defNetworkBandwidth;
   private final int defCoreNum;
-  private final double optBenefitThreshold;
   private final Map<String, Double> hostToBandwidth;
   private final Map<String, Integer> hostToCoreNum;
   private final ILPSolver ilpSolver;
@@ -49,13 +48,11 @@ public final class ILPOptimizer implements Optimizer {
   @Inject
   private ILPOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                        @Parameter(Parameters.DefaultCoreNum.class) final int defCoreNum,
-                       @Parameter(Parameters.OptimizationBenefitThreshold.class) final double optBenefitThreshold,
                        final ILPSolver ilpSolver,
                        final BandwidthInfoParser bandwitdthInfoParser,
                        final CoreInfoParser coreInfoParser) {
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.defCoreNum = defCoreNum;
-    this.optBenefitThreshold = optBenefitThreshold;
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
     this.hostToCoreNum = coreInfoParser.parseCoreInfo();
     this.ilpSolver = ilpSolver;

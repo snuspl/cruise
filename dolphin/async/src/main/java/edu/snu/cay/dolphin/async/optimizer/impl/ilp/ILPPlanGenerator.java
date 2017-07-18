@@ -30,7 +30,6 @@ public final class ILPPlanGenerator {
   private ILPPlanGenerator() {
   }
 
-
   /**
    * Generate {@link ILPPlanDescriptor} with solution solved by ILP solver.
    * 1. Check whether each evaluator's role is changed. Register the evaluator to the {@link ILPPlanDescriptor} if its
