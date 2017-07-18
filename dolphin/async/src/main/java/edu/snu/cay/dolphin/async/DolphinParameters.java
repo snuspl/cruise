@@ -166,7 +166,7 @@ public final class DolphinParameters {
     }
   }
 
-  // below parameters are used by only a subset of applications
+  // below is commonly used ML app parameters, not all apps use them
   @NamedParameter(doc = "input dimension", short_name = "features", default_value = "0")
   public static final class NumFeatures implements Name<Integer> {
   }
