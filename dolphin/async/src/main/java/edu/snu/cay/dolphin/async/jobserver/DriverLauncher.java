@@ -53,11 +53,11 @@ public final class DriverLauncher implements AutoCloseable {
 
   private final REEF reef;
 
-  private LauncherStatus status = LauncherStatus.INIT;
+  private volatile LauncherStatus status = LauncherStatus.INIT;
 
-  private String jobId;
-  private RunningJob theJob;
-  private JobCommandListener jobCommandListener;
+  private volatile String jobId;
+  private volatile RunningJob theJob;
+  private final JobCommandListener jobCommandListener;
 
   @Inject
   private DriverLauncher(final REEF reef,
@@ -83,7 +83,7 @@ public final class DriverLauncher implements AutoCloseable {
    * Kills the running job.
    */
   @Override
-  public void close() {
+  public void close() throws Exception {
     synchronized (this) {
       LOG.log(Level.FINER, "Close launcher: job {0} with status {1}", new Object[] {theJob, status});
       if (this.status.isRunning()) {
@@ -95,6 +95,7 @@ public final class DriverLauncher implements AutoCloseable {
       notify();
     }
     LOG.log(Level.FINEST, "Close launcher: shutdown REEF");
+    jobCommandListener.close();
     reef.close();
     LOG.log(Level.FINEST, "Close launcher: done");
   }
@@ -171,6 +172,11 @@ public final class DriverLauncher implements AutoCloseable {
       }
     }
 
+    try {
+      jobCommandListener.close();
+    } catch (Exception e) {
+      // ignore
+    }
     reef.close();
     return this.getStatus();
   }
@@ -231,11 +237,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received an error for job " + job.getId(), ex);
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(ex));
-      try {
-        jobCommandListener.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      jobCommandListener.setReefJob(null);
     }
   }
 
@@ -248,11 +250,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.INFO, "The Job {0} is done.", job.getId());
       theJob = null;
       setStatusAndNotify(LauncherStatus.COMPLETED);
-      try {
-        jobCommandListener.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      jobCommandListener.setReefJob(null);
     }
   }
 
@@ -265,6 +263,7 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(error.getReason()));
+      jobCommandListener.setReefJob(null);
     }
   }
 }

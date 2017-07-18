@@ -59,25 +59,14 @@ final class JobCommandSender {
    * Sends command message using standard java socket network channel.
    */
   private void sendCommand(final String command) throws IOException {
-    final Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
-    final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-    final PrintWriter pw = new PrintWriter(socket.getOutputStream());
-
-    try {
+    try (Socket socket = new Socket("localhost", Parameters.PORT_NUMBER);
+         BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+         PrintWriter pw = new PrintWriter(socket.getOutputStream())) {
       pw.println(command);
       pw.flush();
-      System.out.println(br.readLine());
 
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        socket.close();
-        br.close();
-        pw.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      final String response = br.readLine();
+      System.out.println(response);
     }
   }
 }

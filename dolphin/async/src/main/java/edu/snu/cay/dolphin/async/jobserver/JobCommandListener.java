@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.client.RunningJob;
 
 import javax.inject.Inject;
@@ -34,51 +33,41 @@ import java.util.logging.Logger;
 public final class JobCommandListener implements AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(JobCommandListener.class.getName());
-  private RunningJob reefJob;
-  private ServerSocket serverSocket;
+
+  private volatile RunningJob reefJob;
+  private volatile boolean isClosed = false;
 
   @Inject
-  private JobCommandListener() {
-    CatchableExecutors.newSingleThreadExecutor().submit(() -> {
+  private JobCommandListener() throws IOException {
+    // single thread is enough
+    new Thread(() -> {
+      try (ServerSocket serverSocket = new ServerSocket(Parameters.PORT_NUMBER)) {
+        while (!isClosed) {
+          try (Socket socket = serverSocket.accept();
+               BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+               PrintWriter pw = new PrintWriter(socket.getOutputStream())) {
+            final String input = br.readLine();
+            final String command = input.split(" ")[0];
+            if (reefJob != null) {
+              reefJob.send(input.getBytes());
 
-      Socket socket = null;
-      try {
-        serverSocket = new ServerSocket(Parameters.PORT_NUMBER);
-        while (true) {
-          socket = serverSocket.accept();
-          final BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-          final PrintWriter pw = new PrintWriter(socket.getOutputStream());
-
-          final String input = br.readLine();
-          final String command = input.split(" ")[0];
-          if (reefJob != null) {
-            reefJob.send(input.getBytes());
+              pw.println("Job command received in JobCommandListener : " + command);
+              pw.flush();
+            } else {
+              pw.println("JobServer is not ready yet");
+              pw.flush();
+            }
           }
-
-          pw.println("Job command received in JobCommandListener : " + command);
-          pw.flush();
-
-          br.close();
-          pw.close();
-          socket.close();
         }
       } catch (IOException e) {
-
-        try {
-          if (socket != null) {
-            socket.close();
-          }
-        } catch (Exception ex) {
-          throw new RuntimeException(ex);
-        }
-
+        throw new RuntimeException(e);
       }
-    });
+    }).start();
   }
 
   @Override
   public void close() throws Exception {
-    serverSocket.close();
+    isClosed = true;
   }
 
   /**
