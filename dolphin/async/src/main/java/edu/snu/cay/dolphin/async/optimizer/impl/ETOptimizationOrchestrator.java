@@ -209,7 +209,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     
-    if (optimizeCount >= 2) {
+    if (optimizeCount >= 2 && optimizer.getClass().getName().equals("ILPOptimizer")) {
+      LOG.log(Level.INFO, "ILPOptimizer: increase optimizeCount.");
       return emptyResult;
     }
     
@@ -295,15 +296,17 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
         new Object[]{optimizationCount, evaluatorParameters});
 
-      // 5) Calculate the optimal plan with the metrics
-      final Plan plan;
-      try {
+    // 5) Calculate the optimal plan with the metrics
+    final Plan plan;
+    try {
+      if (optimizer.getClass().getName().equals("ILPOptimizer")) {
         optimizeCount++;
-        plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
-      } catch (final RuntimeException e) {
-        LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
-        return emptyResult;
       }
+      plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
+    } catch (final RuntimeException e) {
+      LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
+      return emptyResult;
+    }
 
     // 6) Pause metric collection.
     metricManager.stopMetricCollection();

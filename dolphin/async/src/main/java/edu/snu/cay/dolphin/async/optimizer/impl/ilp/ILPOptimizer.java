@@ -35,7 +35,7 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Solves Integer Linear problem to find the optimal configuration.
+ * Solves Integer Linear Programming problem to find the optimal configuration.
  */
 public final class ILPOptimizer implements Optimizer {
   private static final int NUM_EMPTY_BLOCK = 0;

@@ -27,14 +27,11 @@ import javax.inject.Inject;
 public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
-  private final InjectionFuture<MiniBatchManager> miniBatchManagerFuture;
 
   @Inject
   private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
-                               final InjectionFuture<MiniBatchManager> miniBatchManagerFuture,
                                final InjectionFuture<ProgressTracker> progressTrackerFuture) {
     this.workerStateManagerFuture = workerStateManagerFuture;
-    this.miniBatchManagerFuture = miniBatchManagerFuture;
     this.progressTrackerFuture = progressTrackerFuture;
   }
 
@@ -48,9 +45,6 @@ public final class MasterSideMsgHandler {
       break;
     case SyncMsg:
       workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg());
-      break;
-    case BatchMsg:
-      miniBatchManagerFuture.get().onBatchReq(srcId, dolphinMsg.getBatchMsg().getReqMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());

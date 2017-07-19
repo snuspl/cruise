@@ -193,6 +193,10 @@
             <target>1.8</target>
             <showDeprecation>true</showDeprecation>
             <encoding>${project.build.sourceEncoding}</encoding>
+            <excludes>
+              <exclude>**/ILPPlanDescriptor.java</exclude>
+              <exclude>**/ilp/**</exclude>
+            </excludes>
           </configuration>
         </plugin>
         <plugin>
@@ -398,5 +402,4 @@
       </properties>
     </profile>
   </profiles>
-
 </project>
