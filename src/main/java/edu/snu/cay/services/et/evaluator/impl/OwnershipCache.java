@@ -190,14 +190,15 @@ public final class OwnershipCache {
    */
   public void update(final int blockId, final String oldOwnerId, final String newOwnerId) {
     ownershipLocks.get(blockId).writeLock().lock();
+    final String localOldOwnerId;
     try {
-      final String localOldOwnerId = blockOwnerArray.getAndSet(blockId, newOwnerId);
+      localOldOwnerId = blockOwnerArray.getAndSet(blockId, newOwnerId);
       if (!localOldOwnerId.equals(oldOwnerId)) {
         LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}, but it was actually in {2}",
-            new Object[]{blockId, oldOwnerId, newOwnerId});
+            new Object[]{blockId, localOldOwnerId, oldOwnerId});
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from {1} to {2}",
-          new Object[]{blockId, oldOwnerId, newOwnerId});
+          new Object[]{blockId, localOldOwnerId, newOwnerId});
 
       if (localExecutorId.equals(newOwnerId)) {
         // it should be done while holding a write-lock
@@ -210,10 +211,10 @@ public final class OwnershipCache {
     // decrement numBlocks in old owner
     final Long syncOpId;
     synchronized (executorIdToNumBlocks) {
-      final int remainingBlocks = executorIdToNumBlocks.get(oldOwnerId).decrementAndGet();
+      final int remainingBlocks = executorIdToNumBlocks.get(localOldOwnerId).decrementAndGet();
       if (remainingBlocks == 0) {
-        executorIdToNumBlocks.remove(oldOwnerId);
-        syncOpId = ongoingSyncs.remove(oldOwnerId);
+        executorIdToNumBlocks.remove(localOldOwnerId);
+        syncOpId = ongoingSyncs.remove(localOldOwnerId);
       } else {
         syncOpId = null;
       }
@@ -231,7 +232,7 @@ public final class OwnershipCache {
 
     // sync complete
     if (syncOpId != null) {
-      completeSync(syncOpId, oldOwnerId);
+      completeSync(syncOpId, localOldOwnerId);
     }
   }
 
