@@ -23,18 +23,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 final class GBTParameters {
 
-  @NamedParameter(doc = "input dimension", short_name = "features")
-  static final class NumFeatures implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
-  static final class StepSize implements Name<Float> {
-  }
-
-  @NamedParameter(doc = "regularization constant for leaf", short_name = "lambda")
-  static final class Lambda implements Name<Float> {
-  }
-
   @NamedParameter(doc = "regularization constant for tree", short_name = "gamma")
   static final class Gamma implements Name<Float> {
   }

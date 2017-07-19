@@ -23,7 +23,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD.
+ * Client for multinomial logistic regression via SGD.
  */
 public final class MLRET {
 
@@ -44,13 +44,7 @@ public final class MLRET {
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(NumClasses.class)
-        .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)
-        .addParameterClass(Lambda.class)
-        .addParameterClass(NumFeaturesPerPartition.class)
-        .addParameterClass(ModelGaussian.class)
-        .addParameterClass(DecayPeriod.class)
-        .addParameterClass(DecayRate.class)
         .build());
   }
 }

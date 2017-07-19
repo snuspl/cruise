@@ -13,21 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.lasso;
+package edu.snu.cay.dolphin.async.jobserver;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Parameters used for Lasso.
+ * Parameters used in JobServer.
  */
-final class LassoParameters {
+final class Parameters {
+  static final String SUBMIT_COMMAND = "SUBMIT";
+  static final String SHUTDOWN_COMMAND = "SHUTDOWN";
+  static final String COMMAND_DELIMITER = " ";
 
-  static final class MetricKeys {
+  static final int PORT_NUMBER = 7008;
 
-    // The key denoting the sum of loss computed from the training data instances.
-    static final String TRAINING_LOSS =
-        "LASSO_TRAINING_LOSS";
+  private Parameters() {
 
-    // The key denoting the sum of loss computed from the test data instances.
-    static final String TEST_LOSS =
-        "LASSO_TEST_LOSS";
+  }
+
+  @NamedParameter(doc = "An identifier of App.")
+  final class AppIdentifier implements Name<String> {
+
   }
 }

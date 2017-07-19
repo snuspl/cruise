@@ -13,21 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.lasso;
+package edu.snu.cay.dolphin.async.jobserver;
+
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 
 /**
- * Parameters used for Lasso.
+ * Client for shutting down running job server. This is called by {#stop_jobserver.sh}
  */
-final class LassoParameters {
+public final class JobServerCloser {
 
-  static final class MetricKeys {
+  private JobServerCloser() {
+  }
 
-    // The key denoting the sum of loss computed from the training data instances.
-    static final String TRAINING_LOSS =
-        "LASSO_TRAINING_LOSS";
+  public static void main(final String[] args) {
 
-    // The key denoting the sum of loss computed from the test data instances.
-    static final String TEST_LOSS =
-        "LASSO_TEST_LOSS";
+    try {
+      final Injector injector = Tang.Factory.getTang().newInjector();
+      final CommandSender commandSender = injector.getInstance(CommandSender.class);
+      commandSender.sendShutdownCommand();
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }

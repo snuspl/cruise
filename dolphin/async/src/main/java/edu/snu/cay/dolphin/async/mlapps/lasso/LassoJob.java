@@ -13,38 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+import javax.inject.Inject;
+
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD.
+ * Application launching code for Lasso with JobServer.
  */
-public final class NMFET {
+public final class LassoJob {
 
-  /**
-   * Should not be instantiated.
-   */
-  private NMFET() {
+  @Inject
+  private LassoJob() {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("NMFET", args, ETDolphinConfiguration.newBuilder()
-        .setTrainerClass(NMFTrainer.class)
-        .setInputParserClass(NMFETDataParser.class)
+    JobLauncher.submitJob("Lasso", args, ETDolphinConfiguration.newBuilder()
+        .setTrainerClass(LassoTrainer.class)
+        .setInputParserClass(LassoETParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
-        .setInputValueCodecClass(NMFDataCodec.class)
-        .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
+        .setInputValueCodecClass(LassoDataCodec.class)
+        .setModelUpdateFunctionClass(LassoETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(Rank.class)
-        .addParameterClass(PrintMatrices.class)
         .build());
   }
 }
