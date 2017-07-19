@@ -202,9 +202,21 @@ public final class MessageHandlerImpl implements MessageHandler {
     // remove a table after flushing out all operations for the table in sender and handler
     tableDropExecutor.submit(() -> {
       final String tableId = msg.getTableId();
-      remoteAccessSenderFuture.get().waitOpsTobeFlushed(tableId);
-      remoteAccessHandlerFuture.get().waitOpsTobeFlushed(tableId);
-      tablesFuture.get().remove(tableId);
+
+      try {
+        final TableComponents tableComponents = tablesFuture.get().getTableComponents(tableId);
+
+        // op processing is impossible without table metadata and ownership cache
+        remoteAccessSenderFuture.get().waitOpsTobeFlushed(tableId);
+        remoteAccessHandlerFuture.get().waitOpsTobeFlushed(tableId);
+
+        tableComponents.getOwnershipCache().completeAllOngoingSync();
+        tablesFuture.get().remove(tableId);
+
+      } catch (TableNotExistException e) {
+        LOG.log(Level.WARNING, String.format("Table %s does not exist", tableId), e);
+        // send a response message despite there's no table to drop
+      }
 
       try {
         msgSenderFuture.get().sendTableDropAckMsg(opId, tableId);
@@ -231,7 +243,13 @@ public final class MessageHandlerImpl implements MessageHandler {
       final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId()).getOwnershipCache();
       ownershipCache.syncUnassociation(opId, msg.getDeletedExecutorId());
     } catch (final TableNotExistException e) {
-      throw new RuntimeException(e);
+      LOG.log(Level.WARNING, String.format("Table %s does not exist", msg.getTableId()), e);
+      // send a response message directly when there's no table to sync
+      try {
+        msgSenderFuture.get().sendOwnershipSyncAckMsg(opId, msg.getTableId(), msg.getDeletedExecutorId());
+      } catch (NetworkException e1) {
+        throw new RuntimeException(e1);
+      }
     }
   }
 

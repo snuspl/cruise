@@ -249,6 +249,15 @@ public final class OwnershipCache {
   }
 
   /**
+   * Completes all ongoing syncs before removing this table.
+   * Otherwise master cannot proceed the reconfiguration.
+   */
+  public void completeAllOngoingSync() {
+    LOG.log(Level.INFO, "Complete all ongoing syncs for {0}", ongoingSyncs.values());
+    ongoingSyncs.forEach((executorId, opId) -> completeSync(opId, executorId));
+  }
+
+  /**
    * Syncs ownership cache by waiting for the unassociation of {@code executorId}.
    * @param opId an operation id
    * @param executorId an executor id

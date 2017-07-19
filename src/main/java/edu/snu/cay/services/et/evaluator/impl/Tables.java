@@ -118,9 +118,9 @@ public final class Tables implements TableAccessor {
    * Remove a table from this executor and a local tablet.
    * @param tableId the identifier of the the table
    */
-  public synchronized void remove(final String tableId) {
+  public synchronized void remove(final String tableId) throws TableNotExistException {
     if (!tables.containsKey(tableId)) {
-      throw new RuntimeException(tableId + " does not exist");
+      throw new TableNotExistException(tableId + " does not exist");
     }
 
     // remove table and clear contents in local tablet

@@ -118,9 +118,7 @@ public final class AllocatedTable {
 
     stateMachine.checkState(State.INITIALIZED);
     final Set<String> executorIdSet = new HashSet<>(executors.size());
-    executors.forEach(executor -> {
-      executorIdSet.add(executor.getId());
-    });
+    executors.forEach(executor -> executorIdSet.add(executor.getId()));
 
     return tableControlAgent.load(tableConf.getId(), executorIdSet, inputPath);
   }
@@ -134,12 +132,9 @@ public final class AllocatedTable {
 
     final Set<String> executorIdSet = executors.stream().map(AllocatedExecutor::getId).collect(Collectors.toSet());
 
-    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
-        blockManager.getOwnershipStatus());
-    future.addListener(o -> executorIdSet.forEach(executorId ->
-        migrationManager.registerSubscription(tableConf.getId(), executorId)));
+    executorIdSet.forEach(executorId -> migrationManager.registerSubscription(tableConf.getId(), executorId));
 
-    return future;
+    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus());
   }
 
   /**
@@ -149,9 +144,11 @@ public final class AllocatedTable {
   public synchronized ListenableFuture<?> unsubscribe(final String executorId) {
     stateMachine.checkState(State.INITIALIZED);
 
-    migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+    final ListenableFuture<?> future = tableControlAgent.dropTable(
+        tableConf.getId(), Collections.singleton(executorId));
+    future.addListener(o -> migrationManager.unregisterSubscription(tableConf.getId(), executorId));
 
-    return tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId));
+    return future;
   }
 
   /**
@@ -168,15 +165,13 @@ public final class AllocatedTable {
   private synchronized ListenableFuture<?> associate(final Set<String> executorIdSet) {
     stateMachine.checkState(State.INITIALIZED);
 
-    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
-        blockManager.getOwnershipStatus());
-    future.addListener(o ->
-        executorIdSet.forEach(executorId -> {
-          blockManager.registerExecutor(executorId);
-          migrationManager.registerSubscription(tableConf.getId(), executorId);
-        }));
+    executorIdSet.forEach(executorId -> {
+      blockManager.registerExecutor(executorId);
+      migrationManager.registerSubscription(tableConf.getId(), executorId);
+    });
 
-    return future;
+    return tableControlAgent.initTable(tableConf, executorIdSet,
+        blockManager.getOwnershipStatus());
   }
 
   private synchronized ListenableFuture<?> associate(final String executorId) {
@@ -208,13 +203,12 @@ public final class AllocatedTable {
 
     // do actual unassociation after sync
     tableControlAgent.syncOwnership(tableConf.getId(), executorId, executorsToSync)
-        .addListener(o -> {
-          blockManager.deregisterExecutor(executorId);
-          migrationManager.unregisterSubscription(tableConf.getId(), executorId);
-
-          tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId))
-              .addListener(o1 -> resultFuture.onCompleted(null));
-        });
+        .addListener(o -> tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId))
+            .addListener(o1 -> {
+              blockManager.deregisterExecutor(executorId);
+              migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+              resultFuture.onCompleted(null);
+            }));
 
     return resultFuture;
   }
