@@ -165,4 +165,43 @@ public final class DolphinParameters {
     private TestDataPath() {
     }
   }
+
+  // below is commonly used ML app parameters, not all apps use them
+  @NamedParameter(doc = "input dimension", short_name = "features", default_value = "0")
+  public static final class NumFeatures implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "step size for stochastic gradient descent", short_name = "step_size", default_value = "0.0")
+  public static final class StepSize implements Name<Float> {
+  }
+
+  @NamedParameter(doc = "regularization constant value", short_name = "lambda", default_value = "0.0")
+  public static final class Lambda implements Name<Float> {
+  }
+
+  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative). this value must be larger than 0 " +
+                 "and less than or equal to 1. if decay_rate=1.0, decaying process is turned off.",
+                 short_name = "decay_rate",
+                 default_value = "0.9")
+  public static final class DecayRate implements Name<Float> {
+  }
+
+  @NamedParameter(doc = "number of epochs to wait until learning rate decreases (periodic). this value must be " +
+                  "a positive value.",
+                  short_name = "decay_period",
+                  default_value = "5")
+  public static final class DecayPeriod implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
+                  short_name = "model_gaussian",
+                  default_value = "0.001")
+  public static final class ModelGaussian implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "number of features for each model partition",
+                  short_name = "features_per_partition",
+                  default_value = "0")
+  public static final class NumFeaturesPerPartition implements Name<Integer> {
+  }
 }

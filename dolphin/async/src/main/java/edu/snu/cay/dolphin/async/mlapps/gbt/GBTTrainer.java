@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.Tuple3;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.reef.tang.annotations.Parameter;
@@ -141,8 +142,8 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(Gamma.class) final float gamma,
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
-                     @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
+                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
                      @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
     this.modelAccessor = modelAccessor;

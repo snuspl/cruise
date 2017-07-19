@@ -21,6 +21,7 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
