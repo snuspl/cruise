@@ -41,7 +41,7 @@ import static edu.snu.cay.services.et.examples.userservice.ETCentCommExample.CEN
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
 @DriverSide
-public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
+final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 

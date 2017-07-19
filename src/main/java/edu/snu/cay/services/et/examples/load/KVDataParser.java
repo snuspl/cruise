@@ -30,7 +30,7 @@ import java.util.List;
  *
  * <p>Key(Long) Value(String)</p>
  */
-public final class KVDataParser implements DataParser<Pair<Long, String>> {
+final class KVDataParser implements DataParser<Pair<Long, String>> {
 
   @Inject
   private KVDataParser() {

@@ -34,7 +34,7 @@ import static edu.snu.cay.services.et.examples.userservice.ETCentCommExample.CEN
  * Sends a message to master(driver) and waits for a reply message.
  */
 @TaskSide
-public final class ETCentCommSlaveTask implements Task {
+final class ETCentCommSlaveTask implements Task {
   private static final Logger LOG = Logger.getLogger(ETCentCommSlaveTask.class.getName());
 
   private final SlaveSideCentCommMsgSender centCommMsgSender;

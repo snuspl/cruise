@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 /**
  * Client code for Load ET example.
  */

@@ -51,7 +51,7 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-public final class ETCentCommExampleDriver {
+final class ETCentCommExampleDriver {
   private static final Logger LOG = Logger.getLogger(ETCentCommExampleDriver.class.getName());
 
   private static final String TASK_PREFIX = "Worker-Task-";

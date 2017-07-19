@@ -45,7 +45,7 @@ import static edu.snu.cay.services.et.examples.tableaccess.PrefixUpdateFunction.
  * Task code runs a test with PUT, GET, UPDATE, DELETE operations,
  * and checks that all operations are executed correctly.
  */
-public final class TableAccessSingleThreadTask implements Task {
+final class TableAccessSingleThreadTask implements Task {
   private static final Logger LOG = Logger.getLogger(TableAccessSingleThreadTask.class.getName());
 
   // Tests with all block access pattern will access each block exactly once

@@ -30,7 +30,7 @@ import java.util.logging.Logger;
  * A task waits response from the driver through this class.
  */
 @EvaluatorSide
-public final class EvalSideMsgHandler implements EventHandler<CentCommMsg> {
+final class EvalSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(EvalSideMsgHandler.class.getName());
 

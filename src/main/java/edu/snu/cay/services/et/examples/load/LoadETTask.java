@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 /**
  * Load task which checks which data is stored in which table.
  */
-public final class LoadETTask implements Task {
+final class LoadETTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(LoadETTask.class.getName());
   private String taskId;
