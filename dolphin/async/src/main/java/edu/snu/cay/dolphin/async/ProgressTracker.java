@@ -51,7 +51,7 @@ public final class ProgressTracker implements ProgressProvider {
 
   private final Map<String, Integer> workerIdToEpochIdx = new ConcurrentHashMap<>();
 
-  private final NavigableMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
+  private final SortedMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
 
   @Inject
   private ProgressTracker(final JobMessageObserver jobMessageObserver,
