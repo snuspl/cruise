@@ -71,7 +71,7 @@ final class MigrationManager {
    * @param tableId a table id
    * @param executorId a executor id
    */
-  void registerSubscription(final String tableId, final String executorId) {
+  synchronized void registerSubscription(final String tableId, final String executorId) {
     subscribersPerTable.compute(tableId, (tId, executorIdSet) -> {
       final Set<String> value = executorIdSet == null ? Collections.synchronizedSet(new HashSet<>()) : executorIdSet;
       if (!value.add(executorId)) {
@@ -87,7 +87,7 @@ final class MigrationManager {
    * @param tableId a table id
    * @param executorId a executor id
    */
-  void unregisterSubscription(final String tableId, final String executorId) {
+  synchronized void unregisterSubscription(final String tableId, final String executorId) {
     subscribersPerTable.compute(tableId, (tId, executorIdSet) -> {
       if (executorIdSet == null) {
         throw new RuntimeException(String.format("Table %s does not exist", tId));
@@ -105,7 +105,7 @@ final class MigrationManager {
    * @param tableId a table id
    * @return a set of unregistered executor ids
    */
-  Set<String> unregisterSubscribers(final String tableId) {
+  synchronized Set<String> unregisterSubscribers(final String tableId) {
     return subscribersPerTable.remove(tableId);
   }
 
@@ -114,7 +114,8 @@ final class MigrationManager {
    * @return a set of executor ids that subscribe the table
    */
   Set<String> getSubscribers(final String tableId) {
-    return new HashSet<>(subscribersPerTable.get(tableId));
+    final Set<String> subscribers = subscribersPerTable.get(tableId);
+    return subscribers == null ? Collections.emptySet() : new HashSet<>(subscribers);
   }
 
   /**
