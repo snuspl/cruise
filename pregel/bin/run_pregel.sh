@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_pregel.sh -input_path inputs/adj_list
+# ./run_pregel.sh -input_path file://$(pwd)/inputs/adj_list
 
 SELF_JAR=`echo ../target/pregel-*-shaded.jar`
 

@@ -76,12 +76,6 @@ public final class PregelLauncher {
     return cb.build();
   }
 
-
-  private static String processInputDir(final String inputDir) throws InjectionException {
-    final File inputFile = new File(inputDir);
-    return "file:///" + inputFile.getAbsolutePath();
-  }
-
   public static LauncherStatus launch(final String inputPath) throws InjectionException {
 
     final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
@@ -102,7 +96,7 @@ public final class PregelLauncher {
         .build();
 
     final Configuration inputPathConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(InputPath.class, processInputDir(inputPath))
+        .bindNamedParameter(InputPath.class, inputPath)
         .build();
 
     final Configuration centCommConfiguration = CentCommConf.newBuilder()
