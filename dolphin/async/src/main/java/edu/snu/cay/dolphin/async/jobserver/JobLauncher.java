@@ -54,6 +54,8 @@ import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 public final class JobLauncher {
 
   private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
+
+  // utility class should not be instantiated
   private JobLauncher() {
 
   }
