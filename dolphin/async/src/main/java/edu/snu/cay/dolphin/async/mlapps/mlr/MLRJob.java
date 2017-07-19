@@ -13,38 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD.
+ * Client for multinomial logistic regression via SGD with JobServer.
  */
-public final class NMFET {
+public final class MLRJob {
 
   /**
    * Should not be instantiated.
    */
-  private NMFET() {
+  private MLRJob() {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("NMFET", args, ETDolphinConfiguration.newBuilder()
-        .setTrainerClass(NMFTrainer.class)
-        .setInputParserClass(NMFETDataParser.class)
+    JobLauncher.submitJob("MLR", args, ETDolphinConfiguration.newBuilder()
+        .setTrainerClass(MLRTrainer.class)
+        .setInputParserClass(MLRETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
-        .setInputValueCodecClass(NMFDataCodec.class)
-        .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
+        .setInputValueCodecClass(MLRDataCodec.class)
+        .setModelUpdateFunctionClass(MLRETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(Rank.class)
-        .addParameterClass(PrintMatrices.class)
+        .addParameterClass(NumClasses.class)
+        .addParameterClass(InitialStepSize.class)
         .build());
   }
 }

@@ -49,17 +49,19 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.tang.types.NamedParameterNode;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.utils.ConfigurationUtils.extractParameterConf;
 
 /**
  * Main entry point for launching a Dolphin on ET application.
@@ -180,7 +182,7 @@ public final class ETDolphinLauncher {
 
   @SuppressWarnings("unchecked")
   private static List<Configuration> parseCommandLine(
-      final String[] args, final List<Class<? extends Name<?>>> userParamList)
+      final String[] args, final List<Class<? extends Name<?>>> customAppParamList)
       throws ParseException, InjectionException, IOException, ClassNotFoundException {
 
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
@@ -216,6 +218,16 @@ public final class ETDolphinLauncher {
 
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
         NumTrainerThreads.class, MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class);
+
+    // commonly used parameters for ML apps
+    final List<Class<? extends Name<?>>> commonAppParamList = Arrays.asList(
+        NumFeatures.class, Lambda.class, DecayRate.class, DecayPeriod.class, StepSize.class,
+        ModelGaussian.class, NumFeaturesPerPartition.class
+    );
+
+    // user param list is composed by common app parameters and custom app parameters
+    final List<Class<? extends Name<?>>> userParamList = new ArrayList<>(commonAppParamList);
+    userParamList.addAll(customAppParamList);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
@@ -264,26 +276,6 @@ public final class ETDolphinLauncher {
     return Arrays.asList(clientConf, Configurations.merge(driverConf, optimizationConf), serverConf,
         Configurations.merge(workerConf, inputPathConf), userConf);
   }
-
-  /**
-   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
-   */
-  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
-                                                    final Configuration totalConf) {
-    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
-    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
-      final NamedParameterNode parameterNode
-          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
-      final String parameterValue = totalConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in the total configuration, parameterValue will be null
-      if (parameterValue != null) {
-        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
-      }
-    }
-    return parameterConfBuilder.build();
-  }
-
 
   private static Configuration getYarnRuntimeConfiguration(final double heapSlack) {
     return YarnClientConfiguration.CONF

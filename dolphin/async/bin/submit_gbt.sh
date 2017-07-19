@@ -14,7 +14,8 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_lasso.sh -max_num_epochs 300 -num_workers 4 -number_servers 1 -mini_batch_size 50 -num_worker_blocks 9 -features 10 -max_num_eval_local 5 -input sample_lasso -test_data_path file://$(pwd)/sample_lasso_test -local true -lambda 0.5 -timeout 200000 -step_size 0.1 -decay_rate 0.95 -decay_period 5 -features_per_partition 2 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3
+# Classification
+# ./submit_gbt.sh -num_workers 2 -number_servers 1 -input file://$(pwd)/sample_gbt -test_data_path file://$(pwd)/sample_gbt_test -max_num_epochs 50 -mini_batch_size 54 -num_worker_blocks 10 -init_step_size 0.1 -features 784  -lambda 0 -gamma 0 -max_depth_of_tree 5 -leaf_min_size 3 -num_keys 5 -num_trainer_threads 2 -metadata_path file://$(pwd)/sample_gbt.meta -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoET
+ALG=edu.snu.cay.dolphin.async.mlapps.gbt.GBTJob
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

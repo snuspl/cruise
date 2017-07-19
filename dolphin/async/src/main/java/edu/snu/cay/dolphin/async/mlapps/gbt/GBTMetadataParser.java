@@ -19,6 +19,7 @@ import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
 import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.GBTTrainer.FeatureType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.io.LongWritable;
@@ -47,7 +48,7 @@ final class GBTMetadataParser {
   private final String metadataPath;
 
   @Inject
-  private GBTMetadataParser(@Parameter(GBTParameters.NumFeatures.class) final int numFeatures,
+  private GBTMetadataParser(@Parameter(NumFeatures.class) final int numFeatures,
                             @Parameter(GBTParameters.MetadataPath.class) final String metadataPath) {
     this.numFeatures = numFeatures;
     this.metadataPath = metadataPath;

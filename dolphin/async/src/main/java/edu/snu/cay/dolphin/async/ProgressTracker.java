@@ -51,7 +51,7 @@ public final class ProgressTracker implements ProgressProvider {
 
   private final Map<String, Integer> workerIdToEpochIdx = new ConcurrentHashMap<>();
 
-  private final NavigableMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
+  private final SortedMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
 
   @Inject
   private ProgressTracker(final JobMessageObserver jobMessageObserver,
@@ -146,6 +146,26 @@ public final class ProgressTracker implements ProgressProvider {
     final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
     if (newMinEpochIdx > globalMinEpochIdx) {
       updateGlobalMinEpochIdx(newMinEpochIdx);
+    }
+  }
+
+  /**
+   * Handles an event of worker delete.
+   * @param workerId an worker id
+   */
+  public synchronized void onWorkerDelete(final String workerId) {
+    final Integer epochProgress = workerIdToEpochIdx.remove(workerId);
+
+    if (epochProgress != null) {
+      epochProgressToWorkerIds.compute(epochProgress, (k, v) -> {
+        v.remove(workerId);
+        return v.isEmpty() ? null : v;
+      });
+
+      final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
+      if (newMinEpochIdx > globalMinEpochIdx) {
+        updateGlobalMinEpochIdx(newMinEpochIdx);
+      }
     }
   }
 }

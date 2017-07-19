@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_lasso.sh -max_num_epochs 300 -num_workers 4 -number_servers 1 -mini_batch_size 50 -num_worker_blocks 9 -features 10 -max_num_eval_local 5 -input sample_lasso -test_data_path file://$(pwd)/sample_lasso_test -local true -lambda 0.5 -timeout 200000 -step_size 0.1 -decay_rate 0.95 -decay_period 5 -features_per_partition 2 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3
+# ./submit_lda.sh -input file://$(pwd)/sample_lda -num_workers 4 -number_servers 2 -num_topics 10 -num_vocabs 17935 -max_num_epochs 3 -mini_batch_size 25 -num_worker_blocks 20 -server_metric_flush_period_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoET
+ALG=edu.snu.cay.dolphin.async.mlapps.lda.LDAJob
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

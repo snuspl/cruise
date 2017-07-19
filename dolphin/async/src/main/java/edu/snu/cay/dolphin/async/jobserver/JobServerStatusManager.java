@@ -19,43 +19,40 @@ import org.apache.reef.runtime.common.driver.idle.DriverIdleManager;
 import org.apache.reef.runtime.common.driver.idle.DriverIdlenessSource;
 import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.tang.InjectionFuture;
+import edu.snu.cay.dolphin.async.jobserver.JobServerDriver.ClientMessageHandler;
 
 import javax.inject.Inject;
-import java.util.logging.Logger;
 
 /**
  * It determines a termination of job server.
- * If {@link JobServerHttpHandler} receives HTTP request to shut down the job server.
+ * If {@link ClientMessageHandler} receives command to shut down the job server.
  * The server calls {@link #finishJobServer()}.
  */
-public final class JobServerTerminator implements DriverIdlenessSource {
-
-  private static final Logger LOG = Logger.getLogger(JobServerTerminator.class.getName());
-  private static final IdleMessage JOB_RUNNING_MSG =
-      new IdleMessage("JobServerTerminator", "JobServer is still running", false);
-  private static final IdleMessage JOB_FINISH_MSG =
-      new IdleMessage("JobServerTerminator", "JobServer finished", true);
+public final class JobServerStatusManager implements DriverIdlenessSource {
+  private static final IdleMessage RUNNING_MSG =
+      new IdleMessage(JobServerStatusManager.class.getName(), "JobServer is still running", false);
+  private static final IdleMessage FINISH_MSG =
+      new IdleMessage(JobServerStatusManager.class.getName(), "JobServer finished", true);
 
   private final InjectionFuture<DriverIdleManager> driverIdleManagerFuture;
   private volatile boolean isJobServerRunning;
 
   @Inject
-  private JobServerTerminator(final InjectionFuture<DriverIdleManager> driverIdleManagerFuture) {
+  private JobServerStatusManager(final InjectionFuture<DriverIdleManager> driverIdleManagerFuture) {
     this.driverIdleManagerFuture = driverIdleManagerFuture;
     this.isJobServerRunning = true;
   }
 
   @Override
   public IdleMessage getIdleStatus() {
-    return isJobServerRunning ? JOB_RUNNING_MSG : JOB_FINISH_MSG;
+    return isJobServerRunning ? RUNNING_MSG : FINISH_MSG;
   }
 
   /**
    * Sends {@link IdleMessage} to {@link DriverIdleManager} to terminate a job.
    */
-  public void finishJobServer() {
+  void finishJobServer() {
     isJobServerRunning = false;
-    driverIdleManagerFuture.get().onPotentiallyIdle(JOB_FINISH_MSG);
+    driverIdleManagerFuture.get().onPotentiallyIdle(FINISH_MSG);
   }
-
 }

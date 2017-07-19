@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeListCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -25,15 +25,15 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
 
 /**
- * Application launching code for GBTREEF.
+ * Application launching code for GBT with JobServer.
  */
-public final class GBTET {
+public final class GBTJob {
 
-  private GBTET() {
+  private GBTJob() {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("GBTET", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("GBT", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(GBTTrainer.class)
         .setInputParserClass(GBTETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)

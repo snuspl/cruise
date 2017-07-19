@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -26,7 +27,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumClasses;
-import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
 
 /**
  * A data parser for sparse vector classification input.
