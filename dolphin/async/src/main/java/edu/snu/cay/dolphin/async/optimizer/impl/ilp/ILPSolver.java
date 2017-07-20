@@ -25,16 +25,17 @@ import java.util.logging.Logger;
 /**
  * Computes Dolphin's optimal cost and configuration (w.r.t. w, s, d, m).
  */
-public final class ILPSolver {
+final class ILPSolver {
   private static final Logger LOG = Logger.getLogger(ILPSolver.class.getName());
   
   @Inject
   private ILPSolver() {
   }
   
-  public ConfDescriptor optimize(final int n, final int dTotal, final int mTotal,
-                                        final int _p, final double[] cWProc, final double[] bandwidth) throws GRBException {
-    final int p = _p / mTotal;
+  ConfDescriptor optimize(final int n, final int dTotal, final int mTotal, final int totalModelBlockSize,
+                          final double[] cWProc, final double[] bandwidth) throws GRBException {
+    // Compute the size of one model block.
+    final int p = totalModelBlockSize / mTotal;
     final String filename = String.format("solver-n%d-d%d-m%d-%d.log", n, dTotal, mTotal, System.currentTimeMillis());
     LOG.log(Level.INFO, "p: {0}", p);
     LOG.log(Level.INFO, "cWProc: {0}", Arrays.toString(cWProc));
@@ -167,6 +168,9 @@ public final class ILPSolver {
     return new ConfDescriptor(dVal, mVal, wVal, cost);
   }
   
+  /**
+   * Compute w[i], d[i], m[i] values by using the result of ILPSolver's answer.
+   */
   private static void computeMDWvalues(final int[] mVal, final int[] dVal, final int[] wVal, final GRBVar[] m,
                                        final GRBVar[] s, final int n, final double[] bandwidth, final double[] cWProc,
                                        final int p, final int dTotal) throws GRBException {
@@ -175,7 +179,7 @@ public final class ILPSolver {
       wVal[i] = 1 - (int) Math.round(s[i].get(GRB.DoubleAttr.X));
     }
     
-    // when server is bottleneck
+    // when server is bottleneck for communication cost.
     double commCostServer = 0.0;
     for (int j = 0; j < n; j++) {
       if (mVal[j] == 0) {
@@ -197,6 +201,7 @@ public final class ILPSolver {
       if (mVal[i] != 0) {
         continue;
       }
+      // when worker is bottleneck for communication cost.
       double commCostWorker = 0.0;
       for (int j = 0; j < n; j++) {
         if (mVal[j] != 0) {
@@ -244,6 +249,12 @@ public final class ILPSolver {
     }
   }
   
+  /**
+   * The following constraints are defined in this function.
+   * 1. sum(m[i])=M
+   * 2. sum(s[i]*m[i])=M which indicates m[i]==0 iff s[i]==0
+   * 3. if s[i]==1, m[i]>=threshold (in this case, 5)
+   */
   private static void basicConstraints(final GRBModel model, final GRBVar[] m, final int mTotal, final int n,
                                        final GRBVar[][] sImJ, final GRBVar[] s) throws GRBException {
     // Sum(m[i])=M
@@ -263,6 +274,10 @@ public final class ILPSolver {
       sumSM.addTerm(1.0, sImJ[i][i]);
     }
     model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
+    
+    // Servers should have at least five model blocks. You can control this number if mTotal or total number of machines
+    // are changed.
+    // This constraint is applied because of gurobi issue. In some cases, gurobi's problem solving time is very long.
     for (int i = 0; i < n; i++) {
       final GRBLinExpr fiveS = new GRBLinExpr();
       fiveS.addTerm(5.0, s[i]);
@@ -270,7 +285,11 @@ public final class ILPSolver {
     }
   }
   
-  private static void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth, final int n) {
+  /**
+   * Compute sum_{i}(1.0 / Math.min(bandwidth[i], bandwidth[j])) for later usage.
+   */
+  private static void computeBandwidthHarmonicSum(final double[] bandwidthHarmonicSum, final double[] bandwidth,
+                                                  final int n) {
     for (int i = 0; i < n; i++) {
       bandwidthHarmonicSum[i] = 0;
       for (int j = 0; j < n; j++) {

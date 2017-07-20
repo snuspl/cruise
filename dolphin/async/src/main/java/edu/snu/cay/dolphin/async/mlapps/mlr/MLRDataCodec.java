@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.dolphin.async.mlapps.serialization.ByteArrayOutputStream;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.serialization.ByteArrayOutputStream;
 import edu.snu.cay.dolphin.async.mlapps.serialization.SparseVectorCodec;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;

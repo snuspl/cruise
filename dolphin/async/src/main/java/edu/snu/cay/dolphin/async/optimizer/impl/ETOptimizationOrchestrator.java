@@ -82,7 +82,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private final int minNumReqBatchMetrics;
   
-  int optimizeCount = 0;
+  private int optimizeCount = 0;
 
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
@@ -204,7 +204,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
    * 7) Once the execution is complete, restart metric collection.
    */
   private synchronized Map<String, Pair<Set<String>, Set<String>>> optimize() {
-    
     final Map<String, Pair<Set<String>, Set<String>>> emptyResult = new HashMap<>();
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
@@ -312,14 +311,12 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     metricManager.stopMetricCollection();
 
     final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
-
     final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
     final Set<String> serversBeforeOpt = getRunningExecutors(modelTable);
 
     // 7) Execute the obtained plan.
     try {
       LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
-
       try {
         planExecutor.execute(etPlan).get();
         LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
@@ -348,10 +345,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
       }
-
     } catch (PlanAlreadyExecutingException e) {
       throw new RuntimeException(e);
-
     } finally {
       // 8) Once the execution is complete, restart metric collection.
       metricManager.loadMetricValidationInfo(

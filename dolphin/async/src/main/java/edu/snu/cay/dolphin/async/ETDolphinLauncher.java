@@ -190,7 +190,8 @@ public final class ETDolphinLauncher {
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // generic params
-        NumServers.class, ServerMemSize.class, NumServerCores.class, HostToBandwidthFilePath.class, HostToCoreFilePath.class,
+        NumServers.class, ServerMemSize.class, NumServerCores.class,
+        HostToBandwidthFilePath.class, HostToCoreFilePath.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
 
         // ET-specific params

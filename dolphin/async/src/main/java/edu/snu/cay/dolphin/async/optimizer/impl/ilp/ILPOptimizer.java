@@ -235,7 +235,9 @@ public final class ILPOptimizer implements Optimizer {
       return numModelBlocks;
     }
     
-    String getHostName() {return hostname;}
+    String getHostName() {
+      return hostname;
+    }
   }
 }
 
