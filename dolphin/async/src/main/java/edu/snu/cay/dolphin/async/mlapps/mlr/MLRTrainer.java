@@ -142,10 +142,10 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    
+
     this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
-    
+
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
