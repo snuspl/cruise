@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
+package edu.snu.cay.pregel.graphapps.pagerank;
 
 import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
