@@ -23,7 +23,10 @@ import java.util.concurrent.Future;
 
 /**
  * Interface for an application for computation for a superstep.
- * @param <V> vertex value.
+ *
+ * @param <V> vertex value
+ * @param <LM> incoming messages list
+ * @param <M> message value
  */
 public interface Computation<V, LM extends List<M>, M> {
 

@@ -23,7 +23,11 @@ import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
 
 /**
- * Created by cmslab on 7/19/17.
+ * Job configuration of a Pregel on ET application.
+ *
+ * Call {@code newBuilder} and supply classes for {@link Computation}, {@link UpdateFunction},
+ * {@link DataParser} and codecs
+ * Use with {@link PregelLauncher#launch(String[], PregelConfiguration)} to launch application.
  */
 @ClientSide
 public final class PregelConfiguration {
