@@ -26,7 +26,7 @@ import org.apache.reef.io.serialization.Codec;
  * Job configuration of a Pregel on ET application.
  *
  * Call {@code newBuilder} and supply classes for {@link Computation}, {@link UpdateFunction},
- * {@link DataParser} and codecs
+ * {@link DataParser} and {@link Codec}s.
  * Use with {@link PregelLauncher#launch(String[], PregelConfiguration)} to launch application.
  */
 @ClientSide
@@ -40,12 +40,16 @@ public final class PregelConfiguration {
   private final Class<? extends Codec> messageCodecClass;
   private final Class<? extends UpdateFunction> messageUpdateFunctionClass;
 
-  private PregelConfiguration(final Builder builder) {
-    this.computationClass = builder.getComputationClass();
-    this.vertexCodecClass = builder.getVertexCodecClass();
-    this.dataParserClass = builder.getDataParserClass();
-    this.messageCodecClass = builder.getMessageCodecClass();
-    this.messageUpdateFunctionClass = builder.getMessageUpdateFunctionClass();
+  private PregelConfiguration(final Class<? extends Computation> computationClass,
+                              final Class<? extends Codec> vertexCodecClass,
+                              final Class<? extends DataParser> dataParserClass,
+                              final Class<? extends Codec> messageCodecClass,
+                              final Class<? extends UpdateFunction> messageUpdateFunctionClass) {
+    this.computationClass = computationClass;
+    this.vertexCodecClass = vertexCodecClass;
+    this.dataParserClass = dataParserClass;
+    this.messageCodecClass = messageCodecClass;
+    this.messageUpdateFunctionClass = messageUpdateFunctionClass;
   }
 
   public Class<? extends Computation> getComputationClass() {
@@ -81,7 +85,6 @@ public final class PregelConfiguration {
     private Class<? extends Codec> messageCodecClass;
     private Class<? extends UpdateFunction> messageUpdateFunctionClass;
 
-
     public Builder setComputationClass(final Class<? extends Computation> computationClass) {
       this.computationClass = computationClass;
       return this;
@@ -107,29 +110,10 @@ public final class PregelConfiguration {
       return this;
     }
 
-    private Class<? extends Computation> getComputationClass() {
-      return computationClass;
-    }
-
-    private Class<? extends Codec> getVertexCodecClass() {
-      return vertexCodecClass;
-    }
-
-    private Class<? extends DataParser> getDataParserClass() {
-      return dataParserClass;
-    }
-
-    private Class<? extends Codec> getMessageCodecClass() {
-      return messageCodecClass;
-    }
-
-    private Class<? extends UpdateFunction> getMessageUpdateFunctionClass() {
-      return messageUpdateFunctionClass;
-    }
-
     @Override
     public PregelConfiguration build() {
-      return new PregelConfiguration(this);
+      return new PregelConfiguration(computationClass, vertexCodecClass, dataParserClass,
+          messageCodecClass, messageUpdateFunctionClass);
     }
   }
 }
