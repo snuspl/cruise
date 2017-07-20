@@ -33,12 +33,12 @@ import java.util.logging.Logger;
  * Note that it assumes that vertex can be encoded
  * until the value of vertex is initialized.
  */
-public final class VertexCodec<V> implements Codec<Vertex<V>> {
+public final class DefaultVertexCodec<V> implements Codec<Vertex<V>> {
 
-  private static final Logger LOG = Logger.getLogger(VertexCodec.class.getName());
+  private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
 
   @Inject
-  private VertexCodec() {
+  private DefaultVertexCodec() {
   }
 
   @Override

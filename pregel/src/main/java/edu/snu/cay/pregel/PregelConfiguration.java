@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.pregel;
 
+import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.graph.api.Computation;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
 
@@ -23,16 +26,22 @@ import org.apache.reef.io.serialization.Codec;
  * Created by cmslab on 7/19/17.
  */
 @ClientSide
-public class PregelConfiguration {
+public final class PregelConfiguration {
 
   private final Class<? extends Computation> computationClass;
+
   private final Class<? extends Codec> vertexCodecClass;
+  private final Class<? extends DataParser> dataParserClass;
+
   private final Class<? extends Codec> messageCodecClass;
+  private final Class<? extends UpdateFunction> messageUpdateFunctionClass;
 
   private PregelConfiguration(final Builder builder) {
     this.computationClass = builder.getComputationClass();
     this.vertexCodecClass = builder.getVertexCodecClass();
+    this.dataParserClass = builder.getDataParserClass();
     this.messageCodecClass = builder.getMessageCodecClass();
+    this.messageUpdateFunctionClass = builder.getMessageUpdateFunctionClass();
   }
 
   public Class<? extends Computation> getComputationClass() {
@@ -43,19 +52,31 @@ public class PregelConfiguration {
     return vertexCodecClass;
   }
 
+  public Class<? extends DataParser> getDataParserClass() {
+    return dataParserClass;
+  }
+
   public Class<? extends Codec> getMessageCodecClass() {
     return messageCodecClass;
+  }
+
+  public Class<? extends UpdateFunction> getMessageUpdateFunctionClass() {
+    return messageUpdateFunctionClass;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
   }
 
   public static class Builder implements org.apache.reef.util.Builder<PregelConfiguration> {
 
     private Class<? extends Computation> computationClass;
-    private Class<? extends Codec> vertexCodecClass;
-    private Class<? extends Codec> messageCodecClass;
+    private Class<? extends Codec> vertexCodecClass = DefaultVertexCodec.class;
+    private Class<? extends DataParser> dataParserClass;
 
-    private static Builder newBuilder() {
-      return new Builder();
-    }
+    private Class<? extends Codec> messageCodecClass;
+    private Class<? extends UpdateFunction> messageUpdateFunctionClass;
+
 
     public Builder setComputationClass(final Class<? extends Computation> computationClass) {
       this.computationClass = computationClass;
@@ -67,8 +88,18 @@ public class PregelConfiguration {
       return this;
     }
 
+    public Builder setDataParserClass(final Class<? extends DataParser> dataParserClass) {
+      this.dataParserClass = dataParserClass;
+      return this;
+    }
+
     public Builder setMessageCodecClass(final Class<? extends Codec> messageCodecClass) {
       this.messageCodecClass = messageCodecClass;
+      return this;
+    }
+
+    public Builder setMessageUpdateFunctionClass(final Class<? extends UpdateFunction> updateFunctionClass) {
+      this.messageUpdateFunctionClass = updateFunctionClass;
       return this;
     }
 
@@ -76,12 +107,20 @@ public class PregelConfiguration {
       return computationClass;
     }
 
-    public Class<? extends Codec> getVertexCodecClass() {
+    private Class<? extends Codec> getVertexCodecClass() {
       return vertexCodecClass;
     }
 
-    public Class<? extends Codec> getMessageCodecClass() {
+    private Class<? extends DataParser> getDataParserClass() {
+      return dataParserClass;
+    }
+
+    private Class<? extends Codec> getMessageCodecClass() {
       return messageCodecClass;
+    }
+
+    private Class<? extends UpdateFunction> getMessageUpdateFunctionClass() {
+      return messageUpdateFunctionClass;
     }
 
     @Override
