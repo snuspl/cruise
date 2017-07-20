@@ -30,7 +30,7 @@ import java.util.concurrent.Future;
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public final class PagerankComputation implements Computation<Double, List<Double>, Double> {
+public final class PagerankComputation implements Computation<Double, Double> {
   /**
    * Damping factor of the pagerank algorithm.
    */

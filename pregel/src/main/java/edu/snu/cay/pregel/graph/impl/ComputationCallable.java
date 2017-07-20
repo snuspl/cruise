@@ -32,11 +32,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ComputationCallable<V, M> implements Callable<Integer> {
 
-  private final Computation<V, List<M>, M> computation;
+  private final Computation<V, M> computation;
   private final Iterable<Vertex<V>> verticesPartition;
   private final Table<Long, List<M>, M> currMessageTable;
 
-  public ComputationCallable(final Computation<V, List<M>, M> computation,
+  public ComputationCallable(final Computation<V, M> computation,
                              final Iterable<Vertex<V>> verticesPartition,
                              final Table<Long, List<M>, M> currMessageTable) {
 
