@@ -61,6 +61,53 @@ public final class PlanCompiler {
 
   /**
    * Translate given collections of add/del operations into transferstep list, by pairing each add and del operations.
+   * When paring, it finds add/del ops that have the same evaluator id.
+   * It generates a list of transferstep to apply change in this translation.
+   * @param evalsToDel a list of del
+   * @param evalsToAdd a list of add
+   * @param transferSteps a list of transferstep
+   * @return a pair of executor Ids to switch and transfersteps that match with switch
+   */
+  private Pair<List<String>, List<TransferStep>> translateToSwitch(final List<String> evalsToDel,
+                                                                   final List<String> evalsToAdd,
+                                                                   final List<TransferStep> transferSteps) {
+    final Map<String, String> addIdToDelId = new HashMap<>();
+    final List<String> delSublist = new LinkedList<>();
+    
+    // Find machines that will be switched.
+    for (final String evalId : evalsToDel) {
+      if (evalsToAdd.contains(evalId)) {
+        addIdToDelId.put(evalId, evalId);
+        evalsToAdd.remove(evalId);
+        delSublist.add(evalId);
+      }
+    }
+    evalsToDel.removeAll(delSublist);
+  
+    final List<String> executorIdsToSwitch = new ArrayList<>(delSublist);
+    delSublist.clear();
+    
+    final List<TransferStep> transferStepForSwitch = new ArrayList<>(transferSteps.size());
+    for (final TransferStep transferStep : transferSteps) {
+      // Change the destination of TransferSteps to the executors that will be switched,
+      // if the TransferSteps were planned to move data to the executors that will be added.
+      if (addIdToDelId.containsKey(transferStep.getDstId())) {
+        transferStepForSwitch.add(
+            new TransferStepImpl(transferStep.getSrcId(),
+                addIdToDelId.get(transferStep.getDstId()),
+                transferStep.getDataInfo()));
+      } else {
+        transferStepForSwitch.add(transferStep);
+      }
+    }
+
+    return Pair.of(executorIdsToSwitch, transferStepForSwitch);
+  }
+
+
+  /**
+   * Translate given collections of add/del operations into transferstep list, by pairing each add and del operations.
+   * When paring, it does not care the evaluator id of add/del ops, and only considers the {@code numEvalsToSwitch}.
    * It generates a list of transferstep to apply change in this translation.
    * @param evalsToDel a list of del
    * @param evalsToAdd a list of add
@@ -73,21 +120,16 @@ public final class PlanCompiler {
                                                                    final List<TransferStep> transferSteps,
                                                                    final int numEvalsToSwitch) {
     final Map<String, String> addIdToDelId = new HashMap<>(numEvalsToSwitch);
-    final List<String> delSublist = new LinkedList<>();
-    
-    // Find machines that will be switched.
-    for (String evalId : evalsToDel) {
-      if (evalsToAdd.contains(evalId)) {
-        addIdToDelId.put(evalId, evalId);
-        evalsToAdd.remove(evalId);
-        delSublist.add(evalId);
-      }
+    final List<String> delSublist = evalsToDel.subList(0, numEvalsToSwitch);
+    final List<String> addSubList = evalsToAdd.subList(0, numEvalsToSwitch);
+    for (int idx = 0; idx < numEvalsToSwitch; idx++) {
+      addIdToDelId.put(addSubList.get(idx), delSublist.get(idx));
     }
-    evalsToDel.removeAll(delSublist);
-  
+
     final List<String> executorIdsToSwitch = new ArrayList<>(delSublist);
     delSublist.clear();
-    
+    addSubList.clear();
+
     final List<TransferStep> transferStepForSwitch = new ArrayList<>(transferSteps.size());
     for (final TransferStep transferStep : transferSteps) {
       // Change the destination of TransferSteps to the executors that will be switched,
@@ -121,10 +163,35 @@ public final class PlanCompiler {
     List<TransferStep> serverTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
+    // We have two switch translations here. (Ordering is important!)
+    // The first is for a pair of add/del that each has the same target eval id.
+    // It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
+
+    // The second translation does not about the eval id of each add/del operation.
+    // It just picks add/del ops randomly to eliminate a pair of add/del in different namespace.
+    // It's for all other existing optimizers.
+    // Actually in this case, optimizers do not specify meaningful eval id for add op,
+    // because they think add op is for acquiring a 'new' resource and
+    // the newly allocated eval's id will be assigned by RM or REEF.
+
+    // First switch translation.
+    final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
+        translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
+
+    srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch0.getLeft());
+    workerTransferSteps = evalIdsToTransfersForSwitch0.getRight();
+
+    final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch1 =
+        translateToSwitch(workersToDel, serversToAdd, serverTransferSteps); // worker -> server
+
+    srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
+    serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
+
+
     final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
     final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
 
-    // translate add/del for different namespace into switch
+    // Second switch translation.
     if (numSwitchesFromServerToWorker > 0) { // server -> worker
       final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
           translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
