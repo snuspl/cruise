@@ -76,11 +76,11 @@ public final class PlanCompiler {
     final List<String> delSublist = new LinkedList<>();
     
     // Find machines that will be switched.
-    for (int idx = 0; idx < evalsToDel.size(); idx++) {
-      if (evalsToAdd.contains(evalsToDel.get(idx))) {
-        addIdToDelId.put(evalsToDel.get(idx), evalsToDel.get(idx));
-        evalsToAdd.remove(evalsToDel.get(idx));
-        delSublist.add(evalsToDel.get(idx));
+    for (String evalId : evalsToDel) {
+      if (evalsToAdd.contains(evalId)) {
+        addIdToDelId.put(evalId, evalId);
+        evalsToAdd.remove(evalId);
+        delSublist.add(evalId);
       }
     }
     evalsToDel.removeAll(delSublist);
@@ -121,7 +121,6 @@ public final class PlanCompiler {
     List<TransferStep> serverTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
-    // we assume that only one-side switch exists.
     final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
     final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
 
