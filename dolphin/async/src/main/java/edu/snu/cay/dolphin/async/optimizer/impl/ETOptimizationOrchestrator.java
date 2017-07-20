@@ -82,8 +82,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private final int minNumReqBatchMetrics;
   
-  private int optimizeCount = 0;
-
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -208,11 +206,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     
-    if (optimizeCount >= 2 && optimizer.getClass().getName().equals("ILPOptimizer")) {
-      LOG.log(Level.INFO, "ILPOptimizer: increase optimizeCount.");
-      return emptyResult;
-    }
-    
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
@@ -298,9 +291,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     // 5) Calculate the optimal plan with the metrics
     final Plan plan;
     try {
-      if (optimizer.getClass().getName().equals("ILPOptimizer")) {
-        optimizeCount++;
-      }
       plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
     } catch (final RuntimeException e) {
       LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
