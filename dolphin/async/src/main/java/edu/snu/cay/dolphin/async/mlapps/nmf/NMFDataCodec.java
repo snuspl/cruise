@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.serialization.ByteArrayOutputStream;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.network.util.Pair;
@@ -42,7 +41,7 @@ final class NMFDataCodec implements Codec<NMFData>, StreamingCodec<NMFData> {
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
          DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(nmfData, daos);
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }

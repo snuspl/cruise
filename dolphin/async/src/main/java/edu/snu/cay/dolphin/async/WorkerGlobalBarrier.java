@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
-  private StateMachine stateMachine;
+  private volatile StateMachine stateMachine;
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 

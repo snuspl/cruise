@@ -37,6 +37,9 @@ public final class ILPPlanDescriptor {
     this.allTransferSteps = allTransferSteps;
   }
   
+  /**
+   * Return evaluators that will be added as {@code namespace}.
+   */
   public List<String> getEvaluatorsToAdd(final String namespace) {
     if (!evaluatorsToAdd.containsKey(namespace)) {
       return Collections.emptyList();
@@ -44,6 +47,9 @@ public final class ILPPlanDescriptor {
     return evaluatorsToAdd.get(namespace);
   }
   
+  /**
+   * Return evaluators that will be deleted as {@code namespace}.
+   */
   public List<String> getEvaluatorsToDelete(final String namespace) {
     if (!evaluatorsToDelete.containsKey(namespace)) {
       return Collections.emptyList();
@@ -51,6 +57,9 @@ public final class ILPPlanDescriptor {
     return evaluatorsToDelete.get(namespace);
   }
   
+  /**
+   * Return transfer steps of {@code namespace}.
+   */
   public List<TransferStep> getTransferSteps(final String namespace) {
     if (!allTransferSteps.containsKey(namespace)) {
       return Collections.emptyList();

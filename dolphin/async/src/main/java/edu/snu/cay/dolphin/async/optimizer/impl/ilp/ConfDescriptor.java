@@ -17,6 +17,10 @@ package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
 /**
  * Define optimal configuration computed from optimizer solvers.
+ * 1. d : number of data blocks in workers.
+ * 2. m : number of model blocks in servers.
+ * 3. w : if the machine is worker, w = 1. If the machine is server, w = 0.
+ * 4. cost : computed cost with this configuration(given d, m, w).
  */
 final class ConfDescriptor {
   private final int[] d;
