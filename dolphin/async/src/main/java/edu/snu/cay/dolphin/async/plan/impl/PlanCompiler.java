@@ -164,10 +164,10 @@ public final class PlanCompiler {
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
     // We have two switch translations here. (Ordering is important!)
-    // The first is for a pair of add/del that each has the same target eval id.
+    // The first is for a pair of add/del that has the same target eval id.
     // It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
 
-    // The second translation does not about the eval id of each add/del operation.
+    // The second translation does not care about the eval id of each add/del operation.
     // It just picks add/del ops randomly to eliminate a pair of add/del in different namespace.
     // It's for all other existing optimizers.
     // Actually in this case, optimizers do not specify meaningful eval id for add op,
