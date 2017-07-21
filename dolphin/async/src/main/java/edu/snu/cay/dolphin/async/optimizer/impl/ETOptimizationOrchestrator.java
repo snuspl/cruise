@@ -61,7 +61,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final ETTaskRunner taskRunner;
 
   private final ProgressTracker progressTracker;
-  
+
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
   private final String modelTableId;
@@ -81,7 +81,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final int movingAverageWindowSize;
 
   private final int minNumReqBatchMetrics;
-  
+
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -107,8 +107,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.metricManager = metricManager;
     this.etMaster = etMaster;
     this.taskRunner = taskRunner;
-    this.progressTracker = progressTracker;
     this.workerStateManager = workerStateManager;
+    this.progressTracker = progressTracker;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
@@ -205,7 +205,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     final Map<String, Pair<Set<String>, Set<String>>> emptyResult = new HashMap<>();
     emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
     emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
-    
+
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
@@ -331,7 +331,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         namespaceToExecutorChanges.put(Constants.NAMESPACE_SERVER, Pair.of(addedServers, deletedServers));
 
         return namespaceToExecutorChanges;
-        
+
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
       }

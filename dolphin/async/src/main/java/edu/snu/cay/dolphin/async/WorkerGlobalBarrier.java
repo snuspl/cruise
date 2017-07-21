@@ -43,6 +43,7 @@ final class WorkerGlobalBarrier {
   @Inject
   private WorkerGlobalBarrier(final WorkerSideMsgSender workerSideMsgSender) {
     this.workerSideMsgSender = workerSideMsgSender;
+    init();
   }
 
   enum State {
@@ -50,7 +51,11 @@ final class WorkerGlobalBarrier {
     RUN,
     CLEANUP
   }
-  
+
+  /**
+   * Initialize its state machine.
+   * By calling this method in any state, you can reset the state of {@link WorkerGlobalBarrier} to initial state.
+   */
   public void init() {
     this.stateMachine = StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
