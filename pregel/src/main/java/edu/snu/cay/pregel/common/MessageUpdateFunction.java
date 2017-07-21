@@ -22,9 +22,11 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * A simple UpdateFunction that accumulates any message types.
+ * An UpdateFunction that accumulates messages. Any type of messages are allowed.
+ * @param <V> vertex type
+ * @param <M> message type
  */
-public final class MessageUpdateFunction<M> implements UpdateFunction<Object, List<M>, M> {
+public final class MessageUpdateFunction<V, M> implements UpdateFunction<V, List<M>, M> {
 
   @Inject
   private MessageUpdateFunction() {
@@ -32,12 +34,12 @@ public final class MessageUpdateFunction<M> implements UpdateFunction<Object, Li
   }
 
   @Override
-  public List<M> initValue(final Object key) {
+  public List<M> initValue(final V key) {
     return Lists.newArrayList();
   }
 
   @Override
-  public List<M> updateValue(final Object key, final List<M> list, final M msgValue) {
+  public List<M> updateValue(final V key, final List<M> list, final M msgValue) {
     list.add(msgValue);
     return list;
   }
