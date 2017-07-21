@@ -18,14 +18,17 @@ package edu.snu.cay.pregel;
 import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.annotations.Name;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Job configuration of a Pregel on ET application.
  *
- * Call {@code newBuilder} and supply classes for {@link Computation}, {@link UpdateFunction},
+ * Call {@code newBuilder} and supply classes for {@link Computation},
  * {@link DataParser} and {@link Codec}s.
  * Use with {@link PregelLauncher#launch(String[], PregelConfiguration)} to launch application.
  */
@@ -38,18 +41,18 @@ public final class PregelConfiguration {
   private final Class<? extends DataParser> dataParserClass;
 
   private final Class<? extends Codec> messageCodecClass;
-  private final Class<? extends UpdateFunction> messageUpdateFunctionClass;
+  private final List<Class<? extends Name<?>>> userParamList;
 
   private PregelConfiguration(final Class<? extends Computation> computationClass,
                               final Class<? extends Codec> vertexCodecClass,
                               final Class<? extends DataParser> dataParserClass,
                               final Class<? extends Codec> messageCodecClass,
-                              final Class<? extends UpdateFunction> messageUpdateFunctionClass) {
+                              final List<Class<? extends Name<?>>> userParamList) {
     this.computationClass = computationClass;
     this.vertexCodecClass = vertexCodecClass;
     this.dataParserClass = dataParserClass;
     this.messageCodecClass = messageCodecClass;
-    this.messageUpdateFunctionClass = messageUpdateFunctionClass;
+    this.userParamList = userParamList;
   }
 
   public Class<? extends Computation> getComputationClass() {
@@ -68,8 +71,8 @@ public final class PregelConfiguration {
     return messageCodecClass;
   }
 
-  public Class<? extends UpdateFunction> getMessageUpdateFunctionClass() {
-    return messageUpdateFunctionClass;
+  public List<Class<? extends Name<?>>> getUserParamList() {
+    return userParamList;
   }
 
   public static Builder newBuilder() {
@@ -83,7 +86,7 @@ public final class PregelConfiguration {
     private Class<? extends DataParser> dataParserClass;
 
     private Class<? extends Codec> messageCodecClass;
-    private Class<? extends UpdateFunction> messageUpdateFunctionClass;
+    private List<Class<? extends Name<?>>> userParamList = new ArrayList<>();
 
     public Builder setComputationClass(final Class<? extends Computation> computationClass) {
       this.computationClass = computationClass;
@@ -105,15 +108,15 @@ public final class PregelConfiguration {
       return this;
     }
 
-    public Builder setMessageUpdateFunctionClass(final Class<? extends UpdateFunction> updateFunctionClass) {
-      this.messageUpdateFunctionClass = updateFunctionClass;
+    public Builder addParameterClass(final Class<? extends Name<?>> parameterClass) {
+      userParamList.add(parameterClass);
       return this;
     }
 
     @Override
     public PregelConfiguration build() {
       return new PregelConfiguration(computationClass, vertexCodecClass, dataParserClass,
-          messageCodecClass, messageUpdateFunctionClass);
+          messageCodecClass, userParamList);
     }
   }
 }
