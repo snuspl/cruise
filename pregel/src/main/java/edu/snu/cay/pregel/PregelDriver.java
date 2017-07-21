@@ -19,6 +19,7 @@ import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
+import edu.snu.cay.pregel.common.MessageUpdateFunction;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -28,7 +29,6 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.ConfigurationUtils;
@@ -181,14 +181,13 @@ public final class PregelDriver {
   private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
 
     final Codec messageCodec = masterConfInjector.getNamedInstance(MessageCodec.class);
-    final UpdateFunction messageUpdateFunction = masterConfInjector.getInstance(UpdateFunction.class);
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(messageCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
-        .setUpdateFunctionClass(messageUpdateFunction.getClass())
+        .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .build();

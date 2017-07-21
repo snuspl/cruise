@@ -22,22 +22,22 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * A simple UpdateFunction that accumulates Doubles.
+ * A simple UpdateFunction that accumulates any message types.
  */
-public final class AddDoubleUpdateFunction implements UpdateFunction<Object, List<Double>, Double> {
+public final class MessageUpdateFunction<M> implements UpdateFunction<Object, List<M>, M> {
 
   @Inject
-  private AddDoubleUpdateFunction() {
+  private MessageUpdateFunction() {
 
   }
 
   @Override
-  public List<Double> initValue(final Object key) {
+  public List<M> initValue(final Object key) {
     return Lists.newArrayList();
   }
 
   @Override
-  public List<Double> updateValue(final Object key, final List<Double> list, final Double msgValue) {
+  public List<M> updateValue(final Object key, final List<M> list, final M msgValue) {
     list.add(msgValue);
     return list;
   }
