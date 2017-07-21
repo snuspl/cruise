@@ -17,7 +17,6 @@ package edu.snu.cay.pregel.graphapps.shortestpath;
 
 import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
-import edu.snu.cay.pregel.common.AddDoubleUpdateFunction;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -41,7 +40,7 @@ public final class ShortestPathET {
         .setComputationClass(ShortestPathComputation.class)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
         .setMessageCodecClass(DoubleMsgCodec.class)
-        .setMessageUpdateFunctionClass(AddDoubleUpdateFunction.class)
+        .addParameterClass(SourceId.class)
         .build());
   }
 }

@@ -49,7 +49,7 @@ public abstract class AbstractComputation<V, M> implements Computation<V, M> {
   }
 
   @Override
-  public void initialize(Integer currentStep, Table<Long, List<M>, M> nextTable) {
+  public void initialize(final Integer currentStep, final Table<Long, List<M>, M> nextTable) {
     this.superstep = currentStep;
     this.nextMessageTable = nextTable;
   }
@@ -63,12 +63,12 @@ public abstract class AbstractComputation<V, M> implements Computation<V, M> {
   }
 
   @Override
-  public Future<?> sendMessage(Long id, M message) {
+  public Future<?> sendMessage(final Long id, final M message) {
     return nextMessageTable.update(id, message);
   }
 
   @Override
-  public List<Future<?>> sendMessagesToAdjacents(Vertex<V> vertex, M message) {
+  public List<Future<?>> sendMessagesToAdjacents(final Vertex<V> vertex, final M message) {
     final List<Future<?>> futureList = new ArrayList<>();
     vertex.getEdges().forEach(edge -> futureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
     return futureList;

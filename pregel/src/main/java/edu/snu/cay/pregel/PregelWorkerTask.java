@@ -119,7 +119,10 @@ public final class PregelWorkerTask implements Task {
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
 
       // master will decide whether to continue or not
-      final boolean continueSuperstep = workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices.get());
+      final int incomingMsgSize = messageManager.getNextMessageTable().getLocalTablet().getDataMap().size();
+      final boolean continueSuperstep =
+          workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices.get(), incomingMsgSize);
+
       if (!continueSuperstep) {
         break;
       }

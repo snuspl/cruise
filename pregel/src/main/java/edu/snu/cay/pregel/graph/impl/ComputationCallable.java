@@ -58,7 +58,14 @@ public class ComputationCallable<V, M> implements Callable<Integer> {
     verticesPartition.forEach(vertex -> {
       try {
         final List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
-        computation.compute(vertex, msgsForVertex);
+
+        if (vertex.isHalted() && !msgsForVertex.isEmpty()) {
+          vertex.wakeUp();
+        }
+
+        if (!vertex.isHalted()) {
+          computation.compute(vertex, msgsForVertex);
+        }
 
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);

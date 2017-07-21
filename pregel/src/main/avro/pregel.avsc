@@ -37,7 +37,8 @@
   "name": "SuperstepResultMsg",
   "fields":
   [
-    {"name": "isAllVerticesHalt", "type": "boolean"}
+    {"name": "isAllVerticesHalt", "type": "boolean"},
+    {"name": "isIncomingMsgNone", "type": "boolean"}
   ]
 }
 ]

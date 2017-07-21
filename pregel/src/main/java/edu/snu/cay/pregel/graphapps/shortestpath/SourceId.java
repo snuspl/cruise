@@ -21,6 +21,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 /**
  * A source vertex if of shortest path app.
  */
-@NamedParameter(doc = "a source vertex id of shortest path app")
+@NamedParameter(doc = "a source vertex id of shortest path app", short_name = "source")
 public final class SourceId implements Name<Long> {
 }

@@ -58,9 +58,9 @@ public final class PagerankComputation extends AbstractComputation<Double, Doubl
       vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
 
-    getMsgFutureList().addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
-
-    if (getSuperstep() == NUM_TOTAL_SUPERSTEP) {
+    if (getSuperstep() < NUM_TOTAL_SUPERSTEP) {
+      getMsgFutureList().addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
+    } else {
       vertex.voteToHalt();
     }
   }

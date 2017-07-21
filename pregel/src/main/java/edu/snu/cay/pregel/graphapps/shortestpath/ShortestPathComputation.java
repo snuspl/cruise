@@ -15,23 +15,45 @@
  */
 package edu.snu.cay.pregel.graphapps.shortestpath;
 
+import edu.snu.cay.pregel.graph.api.Edge;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.AbstractComputation;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
 /**
- * Created by cmslab on 7/20/17.
+ * Implementation of {@link edu.snu.cay.pregel.graph.api.Computation} to execute a pagerank algorithm.
  */
 public final class ShortestPathComputation extends AbstractComputation<Long, Long> {
 
-  @Inject
-  private ShortestPathComputation() {
+  private final Long sourceId;
 
+  @Inject
+  private ShortestPathComputation(@Parameter(SourceId.class) final Long sourceId) {
+    this.sourceId = sourceId;
   }
 
   @Override
   public void compute(final Vertex<Long> vertex, final Iterable<Long> messages) {
+    if (getSuperstep() == 0) {
+      vertex.setValue(Long.MAX_VALUE);
+    }
 
+    Long minDist = sourceId.equals(vertex.getId()) ? 0L : Long.MAX_VALUE;
+    for (final Long message : messages) {
+      if (message < minDist) {
+        minDist = message;
+      }
+    }
+
+    if (minDist < vertex.getValue()) {
+      for (final Edge edge : vertex.getEdges()) {
+        final Long distance = minDist + (Long) edge.getValue();
+        getMsgFutureList().add(sendMessage(edge.getTargetVertexId(), distance));
+      }
+    }
+
+    vertex.voteToHalt();
   }
 }

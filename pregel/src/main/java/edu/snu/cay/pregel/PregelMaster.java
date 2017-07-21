@@ -46,9 +46,17 @@ final class PregelMaster {
 
   /**
    * This value is updated by the results of every worker at the end of a single superstep.
+   * It checks all vertices in workers are halt or not.
    * And it determines whether {@link PregelMaster} starts next superstep or not.
    */
   private volatile boolean isAllVerticesHalt;
+
+  /**
+   * This value is updated by the results of every worker at the end of a single superstep.
+   * It checks whether any incoming messages are exist or not.
+   * And it determines whether {@link PregelMaster} starts next superstep or not.
+   */
+  private volatile boolean isIncomingMsgNone;
 
   private volatile CountDownLatch msgCountDownLatch;
 
@@ -73,7 +81,8 @@ final class PregelMaster {
           throw new RuntimeException("Unexpected exception", e);
         }
 
-        final ControlMsgType controlMsgType = isAllVerticesHalt ? ControlMsgType.Stop : ControlMsgType.Start;
+        final ControlMsgType controlMsgType = isAllVerticesHalt && isIncomingMsgNone
+            ? ControlMsgType.Stop : ControlMsgType.Start;
         final SuperstepControlMsg controlMsg = SuperstepControlMsg.newBuilder()
             .setType(controlMsgType)
             .build();
@@ -118,6 +127,7 @@ final class PregelMaster {
       final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
       isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
+      isIncomingMsgNone = isIncomingMsgNone || resultMsg.getIsIncomingMsgNone();
 
       msgCountDownLatch.countDown();
     }
