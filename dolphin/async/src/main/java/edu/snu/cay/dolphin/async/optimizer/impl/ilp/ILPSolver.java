@@ -15,6 +15,7 @@
 */
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
+import edu.snu.cay.utils.Tuple3;
 import gurobi.*;
 
 import javax.inject.Inject;
@@ -146,14 +147,16 @@ final class ILPSolver {
       return null;
     }
     
-    final double cost = model.get(GRB.DoubleAttr.ObjVal);
     final int[] mVal = new int[n];
     final int[] dVal = new int[n];
     final int[] wVal = new int[n];
     
     computeMDWvalues(mVal, dVal, wVal, m, s, n, bandwidth, cWProc, p, dTotal);
     
-    printResult(startTimeMs, cost, mVal);
+    // costSet is a Tuple3 of totalCost, compCost, commCost.
+    final Tuple3<Double, Double, Double> costSet = computeCost(mVal, dVal, wVal, bandwidth, cWProc, p, n);
+    
+    printResult(startTimeMs, mVal);
     
     model.update();
     model.write("dolphin-cost-opt.lp");
@@ -164,8 +167,10 @@ final class ILPSolver {
     
     LOG.log(Level.INFO, "dVal : " + encodeArray(dVal));
     LOG.log(Level.INFO, "wVal : " + encodeArray(wVal));
+    LOG.log(Level.INFO, "totalCost : {0}, compCost : {1}, commCost : {2}",
+        new Object[]{costSet.getFirst(), costSet.getSecond(), costSet.getThird()});
     
-    return new ConfDescriptor(dVal, mVal, wVal, cost);
+    return new ConfDescriptor(dVal, mVal, wVal, costSet);
   }
   
   /**
@@ -247,6 +252,62 @@ final class ILPSolver {
         }
       }
     }
+  }
+  
+  /**
+   * @return three cost values : maxTotalCost, maxCompCost, maxCommCost.
+   */
+  private static Tuple3<Double, Double, Double> computeCost(final int[] mVal, final int[] dVal, final int[] wVal,
+                                                            final double[] bandwidth, final double[] cWProc,
+                                                            final int p, final int n) {
+    double maxTotalCost = 0.0;
+    double maxCompCost = 0.0;
+    double maxCommCost = 0.0;
+    
+    // First, compute communication cost when server is bottleneck. This cost is common to all the workers.
+    double maxCommCostServer = 0.0;
+    for (int serverIdx = 0; serverIdx < n; serverIdx++) {
+      // If evaluator is worker, do not compute cost.
+      if (wVal[serverIdx] == 1) {
+        continue;
+      }
+      double commCostServer = 0.0;
+      for (int workerIdx = 0; workerIdx < n; workerIdx++) {
+        if (wVal[workerIdx] == 0) {
+          continue;
+        }
+        commCostServer += (double) p * mVal[serverIdx] / Math.min(bandwidth[serverIdx], bandwidth[workerIdx]);
+      }
+      maxCommCostServer = Math.max(maxCommCostServer, commCostServer);
+    }
+    
+    // Scan all the workers and find the maximum cost.
+    for (int workerIdx = 0; workerIdx < n; workerIdx++) {
+      // If evaluator is server, do not compute cost.
+      if (wVal[workerIdx] == 0) {
+        continue;
+      }
+      // Computation cost = (number of data blocks) * (cost per each blocks)
+      final double compCost = cWProc[workerIdx] * dVal[workerIdx];
+      
+      double maxCommCostWorker = 0.0;
+      for (int serverIdx = 0; serverIdx < n; serverIdx++) {
+        if (wVal[serverIdx] == 1) {
+          continue;
+        }
+        maxCommCostWorker += (double) p * mVal[serverIdx] / Math.min(bandwidth[serverIdx], bandwidth[workerIdx]);
+      }
+      // Communication cost = max( maxCommCostWorker, maxCommCostServer )
+      final double commCost = Math.max(maxCommCostWorker, maxCommCostServer);
+      final double totalCost = compCost + commCost;
+      if (totalCost > maxTotalCost) {
+        maxTotalCost = totalCost;
+        maxCompCost = compCost;
+        maxCommCost = commCost;
+      }
+    }
+    
+    return new Tuple3<>(maxTotalCost, maxCompCost, maxCommCost);
   }
   
   /**
@@ -371,10 +432,9 @@ final class ILPSolver {
   }
   
   private static void printResult(final long startTimeMs,
-                                  final double cost,
                                   final int[] mVal) throws GRBException {
     final double elapsedTime = (System.currentTimeMillis() - startTimeMs) / 1000.0D;
-    LOG.log(Level.INFO, "Cost: time: {0}, cost: {1}", new Object[]{elapsedTime, cost});
+    LOG.log(Level.INFO, "time: {0}", new Object[]{elapsedTime});
     LOG.log(Level.INFO, "mVal : {0}", encodeArray(mVal));
   }
   
@@ -406,14 +466,13 @@ final class ILPSolver {
       try {
         if (where == GRB.CB_MIPSOL) {
           final long elapsedTimeMs = System.currentTimeMillis() - startTimeMs;
-          final double cost = getDoubleInfo(GRB.CB_MIPSOL_OBJ);
           final int[] mVal = new int[n];
           
           for (int i = 0; i < n; i++) {
             mVal[i] = (int) Math.round(getSolution(m)[i]);
           }
           
-          printResult(elapsedTimeMs, cost, mVal);
+          printResult(elapsedTimeMs, mVal);
         }
       } catch (GRBException e) {
         throw new RuntimeException(e);

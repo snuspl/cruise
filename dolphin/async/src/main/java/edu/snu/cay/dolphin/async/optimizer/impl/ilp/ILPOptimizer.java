@@ -161,7 +161,7 @@ public final class ILPOptimizer implements Optimizer {
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       final double wProc = workerEvalParams.getMetrics().getTotalCompTime();
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.WORKER, numDataBlocks, wProc, NUM_EMPTY_BLOCK, hostname));
+          new MachineDescriptor(id, bandwidth, numDataBlocks, wProc, NUM_EMPTY_BLOCK, hostname));
     }
     return machineDescriptors;
   }
@@ -175,7 +175,7 @@ public final class ILPOptimizer implements Optimizer {
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, EvaluatorRole.SERVER, NUM_EMPTY_BLOCK, -1.0, numModelBlocks, hostname));
+          new MachineDescriptor(id, bandwidth, NUM_EMPTY_BLOCK, -1.0, numModelBlocks, hostname));
     }
     return machineDescriptors;
   }
@@ -184,20 +184,14 @@ public final class ILPOptimizer implements Optimizer {
     private String id;
     private double bandwidth;
     private double cWProc;
-    private EvaluatorRole role;
 
     private int numTrainingDataBlocks; // d
     private int numModelBlocks; // m
     
     private String hostname;
 
-    MachineDescriptor(final double bandwidth) {
-      this.bandwidth = bandwidth;
-    }
-
     MachineDescriptor(final String id,
                       final double bandwidth,
-                      final EvaluatorRole role,
                       final int numTrainingDataBlocks,
                       final double cWProc,
                       final int numModelDataBlocks,
@@ -205,7 +199,6 @@ public final class ILPOptimizer implements Optimizer {
       this.id = id;
       this.bandwidth = bandwidth;
       this.cWProc = cWProc;
-      this.role = role;
       this.numTrainingDataBlocks = numTrainingDataBlocks;
       this.numModelBlocks = numModelDataBlocks;
       this.hostname = hostname;
@@ -221,10 +214,6 @@ public final class ILPOptimizer implements Optimizer {
 
     double getcWProc() {
       return cWProc;
-    }
-
-    EvaluatorRole getEvaluatorRole() {
-      return role;
     }
 
     int getNumTrainingDataBlocks() {

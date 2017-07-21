@@ -15,24 +15,27 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
+import edu.snu.cay.utils.Tuple3;
+
 /**
  * Define optimal configuration computed from optimizer solvers.
  * 1. d : number of data blocks in workers.
  * 2. m : number of model blocks in servers.
  * 3. w : if the machine is worker, w = 1. If the machine is server, w = 0.
- * 4. cost : computed cost with this configuration(given d, m, w).
+ * 4. costSet : computed costSet with this configuration(given d, m, w). This Tuple3 value includes totalCost, compCost,
+ *              and commCost.
  */
 final class ConfDescriptor {
   private final int[] d;
   private final int[] m;
   private final int[] w;
-  private final double cost;
+  private final Tuple3<Double, Double, Double> costSet;
 
-  ConfDescriptor(final int[] d, final int[] m, final int[] w, final double cost) {
+  ConfDescriptor(final int[] d, final int[] m, final int[] w, final Tuple3<Double, Double, Double> costSet) {
     this.d = d;
     this.m = m;
     this.w = w;
-    this.cost = cost;
+    this.costSet = costSet;
   }
 
   int[] getD() {
@@ -47,7 +50,7 @@ final class ConfDescriptor {
     return w;
   }
 
-  double getCost() {
-    return cost;
+  Tuple3<Double, Double, Double> getCostSet() {
+    return costSet;
   }
 }

@@ -51,7 +51,7 @@ public final class ILPPlanGenerator {
                                                          final int[] newRole,
                                                          final int[] newDataBlockNum,
                                                          final int[] newModelBlockNum) {
-    final int numTotalEval = oldRole.length;
+    final int numTotalEval = evalIds.length;
     final ILPPlanDescriptor.Builder planBuilder = ILPPlanDescriptor.newBuilder();
     
     // check whether each evaluator's role is changed or not
@@ -72,9 +72,9 @@ public final class ILPPlanGenerator {
     }
     
     // generate transfer plans for worker
-    generateTransferPlans(Constants.NAMESPACE_WORKER, oldDataBlockNum, newDataBlockNum, planBuilder, evalIds);
+    generateTransferSteps(Constants.NAMESPACE_WORKER, oldDataBlockNum, newDataBlockNum, planBuilder, evalIds);
     // generate transfer plans for server
-    generateTransferPlans(Constants.NAMESPACE_SERVER, oldModelBlockNum, newModelBlockNum, planBuilder, evalIds);
+    generateTransferSteps(Constants.NAMESPACE_SERVER, oldModelBlockNum, newModelBlockNum, planBuilder, evalIds);
     
     return planBuilder.build();
   }
@@ -90,7 +90,7 @@ public final class ILPPlanGenerator {
    * @param oldBlockNum number of blocks in each evaluator before optimization is applied.
    * @param newBlockNum number of blocks in each evaluator after optimization is applied.
    */
-  private static void generateTransferPlans(final String namespace, final int[] oldBlockNum, final int[] newBlockNum,
+  private static void generateTransferSteps(final String namespace, final int[] oldBlockNum, final int[] newBlockNum,
                                             final ILPPlanDescriptor.Builder planBuilder, final String[] evalIds) {
     final int numTotalEval = oldBlockNum.length;
     final PriorityQueue<BlockDelta> senderPriorityQueue =
@@ -115,7 +115,7 @@ public final class ILPPlanGenerator {
       final int numToMove = Math.min(sender.getNumBlocksToMove(), receiver.getNumBlocksToMove());
       
       planBuilder.addTransferStep(namespace,
-          new TransferStepImpl(evalIds[sender.getEvalId()], evalIds[receiver.getEvalId()],
+          new TransferStepImpl(evalIds[sender.getEvalIdx()], evalIds[receiver.getEvalIdx()],
               new DataInfoImpl(numToMove)));
       
       if (numToSend == numToReceive) {

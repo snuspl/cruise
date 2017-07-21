@@ -89,8 +89,7 @@ public final class Parameters {
   public final class DefaultNetworkBandwidth implements Name<Double> {
   }
   
-  @NamedParameter(doc = "Number of cores in machines to be used if not specified. " +
-      "Its default value is 1.",
+  @NamedParameter(doc = "Number of cores in machines to be used if not specified. Its default value is 1.",
       short_name = "default_core_num",
       default_value = "1")
   public final class DefaultCoreNum implements Name<Integer> {

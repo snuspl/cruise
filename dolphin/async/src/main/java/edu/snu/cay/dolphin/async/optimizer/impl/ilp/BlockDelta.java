@@ -20,12 +20,17 @@ package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
  * to be moved.
  */
 final class BlockDelta {
+  /**
+   * Number of blocks that evaluator with {@code evalIdx} sends or receives.
+   * If the evaluator's role is a sender, this value is defined as a number of blocks to send. If the evaluator's role
+   * is a receiver, this value is defined as a number of blocks to receive. Thus, it is always positive.
+   */
   private int numBlocksToMove;
-  private final int evalId;
+  private final int evalIdx;
   
-  BlockDelta(final int numBlocksToMove, final int evalId) {
+  BlockDelta(final int numBlocksToMove, final int evalIdx) {
     this.numBlocksToMove = numBlocksToMove;
-    this.evalId = evalId;
+    this.evalIdx = evalIdx;
   }
   
   void setNumBlocksToMove(final int numBlocksToMove) {
@@ -36,7 +41,7 @@ final class BlockDelta {
     return numBlocksToMove;
   }
   
-  int getEvalId() {
-    return evalId;
+  int getEvalIdx() {
+    return evalIdx;
   }
 }

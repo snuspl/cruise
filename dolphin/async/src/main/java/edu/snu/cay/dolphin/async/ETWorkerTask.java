@@ -101,17 +101,8 @@ final class ETWorkerTask<V> implements Task {
 
       final Collection<V> epochData = new LinkedList<>();
 
-      final Runtime runtime = Runtime.getRuntime();
-      LOG.log(Level.INFO, "TotalMem: {0}, MaxMem: {1}, FreeMem: {2}",
-          new Object[]{runtime.totalMemory(), runtime.maxMemory(), runtime.freeMemory()});
-
       int miniBatchIdx = 0;
       while (true) {
-        if (abortFlag.get()) {
-          LOG.log(Level.INFO, "The task is getting closed.");
-          return null;
-        }
-
         final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
