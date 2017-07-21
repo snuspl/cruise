@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
 /**
- * There are two types of optimizer.
- * Heterogeneous optimizer and ILP optimizer.
+ * There are three types of optimizer.
+ * Empty optimizer(when optimizer is not triggered), Heterogeneous optimizer and ILP optimizer.
  */
 public enum OptimizerType {
   EMPTY, HETEROGENEOUS, ILP
