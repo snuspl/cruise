@@ -129,7 +129,8 @@ public final class ILPPlanGenerator {
       }
     }
 
-    // Total number of receiving blocks and sending blocks should be the same.
+    // Since total number of blocks in system should be constant, total number of receiving blocks and sending blocks
+    // should be the same.
     if (!senderPriorityQueue.isEmpty() || !receiverPriorityQueue.isEmpty()) {
       throw new RuntimeException("Sender queue or receiver queue is not matched");
     }
