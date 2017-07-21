@@ -16,21 +16,14 @@
 package edu.snu.cay.pregel.graph.api;
 
 /**
- * Interface for edge which has target vertex id.
+ * An edge whose value can be modified.
  */
-public interface Edge<V> {
+public interface MutableEdge<V> extends Edge<V> {
 
   /**
-   * Get the target vertex index of this edge.
+   * Set the value for this edge.
    *
-   * @return target vertex index of this edge
+   * @param value new edge value
    */
-  Long getTargetVertexId();
-
-  /**
-   * Get the edge value of the edge.
-   *
-   * @return edge value of the edge
-   */
-  V getValue();
+  void setValue(V value);
 }

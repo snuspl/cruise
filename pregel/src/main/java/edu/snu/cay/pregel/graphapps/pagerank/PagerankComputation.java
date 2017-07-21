@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
+package edu.snu.cay.pregel.graphapps.pagerank;
 
 import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
+import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,7 +30,7 @@ import java.util.concurrent.Future;
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public class PagerankComputation implements Computation<Double, Double> {
+public final class PagerankComputation implements Computation<Double, Double> {
   /**
    * Damping factor of the pagerank algorithm.
    */
@@ -40,12 +41,12 @@ public class PagerankComputation implements Computation<Double, Double> {
    */
   private static final int NUM_TOTAL_SUPERSTEP = 10;
 
-  private final Integer superstep;
+  private Integer superstep;
 
   /**
    * All messages are passed to this table during computation in a single superstep.
    */
-  private final Table<Long, List<Double>, Double> nextMessageTable;
+  private Table<Long, List<Double>, Double> nextMessageTable;
 
   /**
    * All table commands are added the list for sync the non-blocking methods.
@@ -54,11 +55,15 @@ public class PagerankComputation implements Computation<Double, Double> {
    */
   private final List<Future<?>> msgFutureList = Collections.synchronizedList(Lists.newArrayList());
 
-  public PagerankComputation(final Integer superstep,
-                             final Table<Long, List<Double>, Double> nextMessageTable) {
+  @Inject
+  private PagerankComputation() {
 
-    this.superstep = superstep;
-    this.nextMessageTable = nextMessageTable;
+  }
+
+  @Override
+  public void initialize(final Integer currentStep, final Table<Long, List<Double>, Double> nextTable) {
+    this.superstep = currentStep;
+    this.nextMessageTable = nextTable;
   }
 
   @Override

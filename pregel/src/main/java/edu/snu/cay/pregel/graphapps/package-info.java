@@ -13,24 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.api;
 
 /**
- * Interface for edge which has target vertex id.
+ * Classes for the Pregel apps.
  */
-public interface Edge<V> {
-
-  /**
-   * Get the target vertex index of this edge.
-   *
-   * @return target vertex index of this edge
-   */
-  Long getTargetVertexId();
-
-  /**
-   * Get the edge value of the edge.
-   *
-   * @return edge value of the edge
-   */
-  V getValue();
-}
+package edu.snu.cay.pregel.graphapps;

@@ -15,15 +15,27 @@
  */
 package edu.snu.cay.pregel.graph.api;
 
+import edu.snu.cay.services.et.evaluator.api.Table;
+
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
  * Interface for an application for computation for a superstep.
- * @param <V> vertex value.
+ *
+ * @param <V> vertex value
+ * @param <M> message value
  */
 public interface Computation<V, M> {
+
+  /**
+   * This class must be initialized before a single superstep starts.
+   *
+   * @param superstep current superstep
+   * @param nextMessageTable messages are sent to this and will be used in next superstep
+   */
+  void initialize(Integer superstep, Table<Long, List<M>, M> nextMessageTable);
 
   /**
    * Must be defined by user to do computation on a single vertex.

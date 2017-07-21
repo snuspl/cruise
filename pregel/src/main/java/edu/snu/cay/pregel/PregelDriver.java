@@ -16,10 +16,10 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.pregel.common.AddDoubleUpdateFunction;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
-import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
-import edu.snu.cay.pregel.common.VertexCodec;
+import edu.snu.cay.pregel.common.DefaultVertexCodec;
+import edu.snu.cay.pregel.PregelParameters.*;
+import edu.snu.cay.pregel.common.MessageUpdateFunction;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -28,17 +28,25 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.ConfigurationUtils;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -63,16 +71,17 @@ public final class PregelDriver {
 
   private final ETMaster etMaster;
   private final ExecutorConfiguration executorConf;
-  private final String tableInputPath;
   private final AtomicInteger workerCounter = new AtomicInteger(0);
+  private final Injector masterConfInjector;
+  private final Configuration taskConf;
 
   @Inject
   private PregelDriver(final ETMaster etMaster,
                        final CentCommConfProvider centCommConfProvider,
                        final PregelMaster pregelMaster,
-                       @Parameter(PregelLauncher.InputPath.class) final String tableInputPath) {
+                       @Parameter(SerializedTaskConf.class) final String serializedTaskConf,
+                       @Parameter(SerializedMasterConf.class) final String serializedMasterConf) throws IOException {
     this.etMaster = etMaster;
-    this.tableInputPath = tableInputPath;
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)
@@ -87,6 +96,9 @@ public final class PregelDriver {
         .setUserContextConf(centCommConfProvider.getContextConfiguration())
         .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
+
+    this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
+    this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -109,7 +121,7 @@ public final class PregelDriver {
           final AllocatedTable vertexTable = etMaster.createTable(
               buildVertexTableConf(VERTEX_TABLE_ID), executors).get();
 
-          vertexTable.load(executors, tableInputPath).get();
+          vertexTable.load(executors, masterConfInjector.getNamedInstance(InputPath.class)).get();
 
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>();
           executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
@@ -119,7 +131,7 @@ public final class PregelDriver {
           }
           executors.forEach(AllocatedExecutor::close);
 
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException | ExecutionException | InjectionException e) {
           throw new RuntimeException(e);
         }
       }).start();
@@ -127,29 +139,34 @@ public final class PregelDriver {
   }
 
   private Configuration buildTaskConf() {
-    return TaskConfiguration.CONF
+    return Configurations.merge(taskConf, TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, WORKER_PREFIX + workerCounter.getAndIncrement())
         .set(TaskConfiguration.TASK, PregelWorkerTask.class)
-        .build();
+        .build());
   }
 
   /**
    * Build a configuration of vertex table.
-   * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex} so set {@link VertexCodec} to value codec class.
+   * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
+   * so set {@link DefaultVertexCodec} to value codec class.
    * Note that this configuration is for Pagerank app.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
-  private TableConfiguration buildVertexTableConf(final String tableId) {
+  private TableConfiguration buildVertexTableConf(final String tableId) throws InjectionException {
+
+    final Codec vertexCodec = masterConfInjector.getNamedInstance(VertexCodec.class);
+    final DataParser dataParser = masterConfInjector.getInstance(DataParser.class);
+
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(VertexCodec.class)
+        .setValueCodecClass(vertexCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
-        .setDataParserClass(NoneEdgeValueGraphParser.class)
+        .setDataParserClass(dataParser.getClass())
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
         .build();
   }
@@ -161,13 +178,16 @@ public final class PregelDriver {
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
-  private TableConfiguration buildMsgTableConf(final String tableId) {
+  private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
+
+    final Codec messageCodec = masterConfInjector.getNamedInstance(MessageCodec.class);
+
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(DoubleMsgCodec.class)
+        .setValueCodecClass(messageCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
-        .setUpdateFunctionClass(AddDoubleUpdateFunction.class)
+        .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .build();
