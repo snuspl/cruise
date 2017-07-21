@@ -168,7 +168,7 @@ public final class PlanCompiler {
     // It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
 
     // The second translation does not care about the eval id of each add/del operation.
-    // It just picks add/del ops randomly to eliminate a pair of add/del in different namespace.
+    // It just picks add/del ops randomly to eliminate all pairs of add/del in different namespace.
     // It's for all other existing optimizers.
     // Actually in this case, optimizers do not specify meaningful eval id for add op,
     // because they think add op is for acquiring a 'new' resource and

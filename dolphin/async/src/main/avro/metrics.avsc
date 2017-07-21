@@ -138,7 +138,7 @@
     {"name": "totalTime", "type": ["null", "double"], "default": null},
 
     // total computation time for this epoch (seconds), only used for mini-batch metrics
-    // required for optimization costSet model
+    // required for optimization cost model
     {"name": "totalCompTime", "type": ["null", "double"], "default": null},
 
     // total push time for this epoch (seconds), only used for mini-batch metrics
@@ -211,7 +211,7 @@
     {"name": "epochTimeSec", "type": "double"},
 
     // total computation time for this epoch
-    // required for optimization costSet model
+    // required for optimization cost model
     {"name": "epochCompTimeSec", "type": "double"},
 
     // total push time for this epoch

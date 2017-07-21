@@ -71,16 +71,16 @@ public final class ILPPlanGenerator {
       }
     }
     
-    // generate transfer plans for worker
+    // generate transfer steps for worker
     generateTransferSteps(Constants.NAMESPACE_WORKER, oldDataBlockNum, newDataBlockNum, planBuilder, evalIds);
-    // generate transfer plans for server
+    // generate transfer steps for server
     generateTransferSteps(Constants.NAMESPACE_SERVER, oldModelBlockNum, newModelBlockNum, planBuilder, evalIds);
     
     return planBuilder.build();
   }
 
   /**
-   * Generate block transferring plan to apply optimization.
+   * Generate block transfer steps to apply optimization.
    * 1. Distinguish sender and receiver by comparing {@param oldBlockNum} and {@param newBlockNum}.
    * 2. Sort {@code senderPriorityQueue} and {@code receiverPriorityQueue} in descending order with the number of
    *    blocks to transfer.
