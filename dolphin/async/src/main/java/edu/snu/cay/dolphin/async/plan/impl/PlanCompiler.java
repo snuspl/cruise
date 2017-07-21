@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.plan.impl;
 
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -175,36 +176,38 @@ public final class PlanCompiler {
     // the newly allocated eval's id will be assigned by RM or REEF.
 
     // First switch translation.
-    final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
-        translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
-
-    srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch0.getLeft());
-    workerTransferSteps = evalIdsToTransfersForSwitch0.getRight();
-
-    final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch1 =
-        translateToSwitch(workersToDel, serversToAdd, serverTransferSteps); // worker -> server
-
-    srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
-    serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
-
-
-    final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
-    final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
-
-    // Second switch translation.
-    if (numSwitchesFromServerToWorker > 0) { // server -> worker
-      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
-          translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
-
-      srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch.getLeft());
-      workerTransferSteps = evalIdsToTransfersForSwitch.getRight();
-    }
-    if (numSwitchesFromWorkerToServer > 0) { // worker -> server
-      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
-          translateToSwitch(workersToDel, serversToAdd, serverTransferSteps, numSwitchesFromWorkerToServer);
-
-      srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch.getLeft());
-      serverTransferSteps = evalIdsToTransfersForSwitch.getRight();
+    if (dolphinPlan.getOptimizerType() == OptimizerType.ILP) {
+      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
+          translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
+  
+      srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch0.getLeft());
+      workerTransferSteps = evalIdsToTransfersForSwitch0.getRight();
+  
+      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch1 =
+          translateToSwitch(workersToDel, serversToAdd, serverTransferSteps); // worker -> server
+  
+      srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
+      serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
+    } else if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
+      final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
+      final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
+  
+      // Second switch translation.
+      if (numSwitchesFromServerToWorker > 0) { // server -> worker
+        final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
+            translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
+    
+        srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch.getLeft());
+        workerTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      } else { // worker -> server
+        final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
+            translateToSwitch(workersToDel, serversToAdd, serverTransferSteps, numSwitchesFromWorkerToServer);
+    
+        srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch.getLeft());
+        serverTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      }
+    } else if (dolphinPlan.getOptimizerType() != OptimizerType.EMPTY) {
+      throw new RuntimeException("Unknown optimizer type!");
     }
 
     final Map<String, Collection<String>> namespaceToEvalsToAdd = new HashMap<>();

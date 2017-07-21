@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.impl;
 
+import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
@@ -33,12 +34,14 @@ public final class PlanImpl implements Plan {
   private final Set<String> workersToStop;
   private final Set<String> serversToSync;
   private final Map<String, List<TransferStep>> allTransferSteps;
+  private final OptimizerType optimizerType;
 
   private final int numTotalOperations;
 
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
                    final Map<String, Set<String>> evaluatorsToDelete,
-                   final Map<String, List<TransferStep>> allTransferSteps) {
+                   final Map<String, List<TransferStep>> allTransferSteps,
+                   final OptimizerType optimizerType) {
     this.evaluatorsToAdd = evaluatorsToAdd;
     this.workersToStart = evaluatorsToAdd.containsKey(Constants.NAMESPACE_WORKER) ?
         evaluatorsToAdd.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
@@ -49,6 +52,8 @@ public final class PlanImpl implements Plan {
         evaluatorsToDelete.get(Constants.NAMESPACE_SERVER) : Collections.emptySet();
 
     this.allTransferSteps = allTransferSteps;
+    
+    this.optimizerType = optimizerType;
 
     // count the total number of operations
     int numTotalOps = 0;
@@ -89,6 +94,11 @@ public final class PlanImpl implements Plan {
     }
     return allTransferSteps.get(namespace);
   }
+  
+  @Override
+  public OptimizerType getOptimizerType() {
+    return optimizerType;
+  }
 
   @Override
   public String toString() {
@@ -100,6 +110,7 @@ public final class PlanImpl implements Plan {
         ", serversToSync=" + serversToSync +
         ", allTransferSteps=" + allTransferSteps +
         ", numTotalOperations=" + numTotalOperations +
+        ", optimizerType=" + optimizerType +
         '}';
   }
 
@@ -123,6 +134,7 @@ public final class PlanImpl implements Plan {
     private final Map<String, Set<String>> evaluatorsToAdd = new HashMap<>();
     private final Map<String, Set<String>> evaluatorsToDelete = new HashMap<>();
     private final Map<String, List<TransferStep>> allTransferSteps = new HashMap<>();
+    private OptimizerType optimizerType = OptimizerType.HETEROGENEOUS;
 
     // Optional.empty means that there's no resource limit
     private Optional<Integer> numAvailableExtraEvaluators = Optional.empty();
@@ -138,6 +150,11 @@ public final class PlanImpl implements Plan {
      */
     public Builder setNumAvailableExtraEvaluators(final int numAvailableExtraEvaluators) {
       this.numAvailableExtraEvaluators = Optional.of(numAvailableExtraEvaluators);
+      return this;
+    }
+    
+    public Builder setOptimizerType(final OptimizerType optimizerType) {
+      this.optimizerType = optimizerType;
       return this;
     }
 
@@ -232,7 +249,7 @@ public final class PlanImpl implements Plan {
         }
       }
 
-      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
+      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, optimizerType);
     }
   }
 }

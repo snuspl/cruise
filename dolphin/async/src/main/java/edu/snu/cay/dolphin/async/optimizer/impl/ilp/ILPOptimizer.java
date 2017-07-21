@@ -18,10 +18,7 @@ package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
-import edu.snu.cay.dolphin.async.optimizer.impl.BandwidthInfoParser;
-import edu.snu.cay.dolphin.async.optimizer.impl.CoreInfoParser;
-import edu.snu.cay.dolphin.async.optimizer.impl.ServerEvaluatorParameters;
-import edu.snu.cay.dolphin.async.optimizer.impl.WorkerEvaluatorParameters;
+import edu.snu.cay.dolphin.async.optimizer.impl.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
@@ -125,6 +122,8 @@ public final class ILPOptimizer implements Optimizer {
       }
 
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
+      
+      planBuilder.setOptimizerType(OptimizerType.ILP);
 
       // roleOpt[], dOpt[], mOpt[]
       final ILPPlanDescriptor planDescriptor = ILPPlanGenerator.generatePlanDescriptor(evalIds, roleOld, dOld, mOld,

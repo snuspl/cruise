@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.plan.impl;
 
+import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 
@@ -50,5 +51,10 @@ public final class EmptyPlan implements Plan {
   @Override
   public String toString() {
     return "EmptyPlan";
+  }
+  
+  @Override
+  public OptimizerType getOptimizerType() {
+    return OptimizerType.EMPTY;
   }
 }
