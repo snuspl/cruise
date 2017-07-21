@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graphapp;
+package edu.snu.cay.pregel.graphapps.pagerank;
 
 import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
 import edu.snu.cay.pregel.common.AddDoubleUpdateFunction;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
-import edu.snu.cay.pregel.graph.impl.PagerankComputation;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;

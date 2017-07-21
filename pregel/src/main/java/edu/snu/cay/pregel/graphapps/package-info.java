@@ -15,6 +15,6 @@
  */
 
 /**
- * Classes for the Pregel app.
+ * Classes for the Pregel apps.
  */
-package edu.snu.cay.pregel.graphapp;
+package edu.snu.cay.pregel.graphapps;

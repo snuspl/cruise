@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
+package edu.snu.cay.pregel.graphapps.pagerank;
 
 import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
+import edu.snu.cay.pregel.graph.impl.AbstractComputation;
 
 import javax.inject.Inject;
-import java.util.List;
 
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public final class PagerankComputation extends AbstractComputation<Double, List<Double>, Double> {
+public final class PagerankComputation extends AbstractComputation<Double, Double> {
   /**
    * Damping factor of the pagerank algorithm.
    */

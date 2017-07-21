@@ -193,5 +193,4 @@ public final class PregelDriver {
         .setIsOrderedTable(false)
         .build();
   }
-
 }

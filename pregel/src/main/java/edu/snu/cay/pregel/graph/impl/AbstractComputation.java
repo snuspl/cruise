@@ -29,13 +29,13 @@ import java.util.concurrent.Future;
 /**
  * Created by cmslab on 7/20/17.
  */
-public abstract class AbstractComputation<V, LM extends List<M>, M> implements Computation<V, LM, M> {
+public abstract class AbstractComputation<V, M> implements Computation<V, M> {
 
   private Integer superstep;
   /**
    * All messages are passed to this table during computation in a single superstep.
    */
-  private Table<Long, LM, M> nextMessageTable;
+  private Table<Long, List<M>, M> nextMessageTable;
 
   /**
    * All table commands are added the list for sync the non-blocking methods.
@@ -49,7 +49,7 @@ public abstract class AbstractComputation<V, LM extends List<M>, M> implements C
   }
 
   @Override
-  public void initialize(Integer currentStep, Table<Long, LM, M> nextTable) {
+  public void initialize(Integer currentStep, Table<Long, List<M>, M> nextTable) {
     this.superstep = currentStep;
     this.nextMessageTable = nextTable;
   }

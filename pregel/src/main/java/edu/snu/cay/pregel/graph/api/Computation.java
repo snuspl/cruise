@@ -25,10 +25,9 @@ import java.util.concurrent.Future;
  * Interface for an application for computation for a superstep.
  *
  * @param <V> vertex value
- * @param <LM> incoming messages list
  * @param <M> message value
  */
-public interface Computation<V, LM extends List<M>, M> {
+public interface Computation<V, M> {
 
   /**
    * This class must be initialized before a single superstep starts.
@@ -36,7 +35,7 @@ public interface Computation<V, LM extends List<M>, M> {
    * @param superstep current superstep
    * @param nextMessageTable messages are sent to this and will be used in next superstep
    */
-  void initialize(Integer superstep, Table<Long, LM, M> nextMessageTable);
+  void initialize(Integer superstep, Table<Long, List<M>, M> nextMessageTable);
 
   /**
    * Must be defined by user to do computation on a single vertex.
