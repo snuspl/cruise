@@ -164,7 +164,7 @@ public final class PlanCompiler {
     List<TransferStep> serverTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
-    // We have two switch translations here. (Ordering is important!)
+    // We have two switch translations here.
     // The first is for a pair of add/del that has the same target eval id.
     // It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
 
@@ -188,11 +188,12 @@ public final class PlanCompiler {
   
       srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
       serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
+
+      // Second switch translation.
     } else if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
       final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
       final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
-  
-      // Second switch translation.
+
       if (numSwitchesFromServerToWorker > 0) { // server -> worker
         final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
             translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
