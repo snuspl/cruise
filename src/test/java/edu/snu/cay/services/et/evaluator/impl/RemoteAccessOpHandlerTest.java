@@ -39,7 +39,6 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
@@ -72,7 +71,7 @@ public final class RemoteAccessOpHandlerTest {
   private MessageSender mockMsgSender;
 
   @Before
-  public void setup() throws InjectionException, IOException, TableNotExistException {
+  public void setup() throws InjectionException {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
         .build();

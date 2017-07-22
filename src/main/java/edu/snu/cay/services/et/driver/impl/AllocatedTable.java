@@ -268,7 +268,7 @@ public final class AllocatedTable {
   public synchronized ListenableFuture<?> drop() {
     stateMachine.checkState(State.INITIALIZED);
 
-    final Set<String> associators = blockManager.getPartitionInfo().keySet();
+    final Set<String> associators = blockManager.getAssociatorIds();
     final Set<String> subscribers = migrationManager.unregisterSubscribers(tableConf.getId());
 
     final Set<String> executorsToDeleteTable = new HashSet<>(associators);

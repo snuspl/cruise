@@ -165,15 +165,12 @@ public final class Tables implements TableAccessor {
   public synchronized Map<String, Integer> getTableToNumBlocks() {
     final Map<String, Integer> tableIdToNumBlocks = new HashMap<>();
 
-    tables.keySet().forEach(tableId -> {
-          try {
-            final TableComponents components = getTableComponents(tableId);
-            tableIdToNumBlocks.put(tableId, components.getBlockStore().getNumBlocks());
-          } catch (TableNotExistException e) {
-            throw new RuntimeException(e);
-          }
-        }
-    );
+    tables.forEach((tableId, value) -> {
+      final TableComponents tableComponents = value.getRight();
+
+      tableIdToNumBlocks.put(tableId, tableComponents.getBlockStore().getNumBlocks());
+    });
+
     return tableIdToNumBlocks;
   }
 }
