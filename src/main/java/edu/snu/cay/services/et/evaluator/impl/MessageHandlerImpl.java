@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.metric.MetricCollector;
 import edu.snu.cay.services.et.metric.configuration.parameter.CustomMetricCodec;
 import edu.snu.cay.services.et.metric.configuration.parameter.MetricFlushPeriodMs;
 import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -41,7 +42,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,9 +55,10 @@ public final class MessageHandlerImpl implements MessageHandler {
   private static final int NUM_TABLE_DROP_THREADS = 4;
   private static final int NUM_TABLE_LOAD_THREADS = 2;
 
-  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
-  private final ExecutorService tableDropExecutor = Executors.newFixedThreadPool(NUM_TABLE_DROP_THREADS);
-  private final ExecutorService tableLoadExecutor = Executors.newFixedThreadPool(NUM_TABLE_LOAD_THREADS);
+  private final ExecutorService ownershipUpdateExecutor =
+      CatchableExecutors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
+  private final ExecutorService tableDropExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_DROP_THREADS);
+  private final ExecutorService tableLoadExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_LOAD_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
 

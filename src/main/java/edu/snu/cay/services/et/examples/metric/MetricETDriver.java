@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -38,7 +39,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -121,7 +121,7 @@ final class MetricETDriver {
         throw new RuntimeException(e);
       }
 
-      Executors.newSingleThreadExecutor().submit(() -> {
+      CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(associators.size());

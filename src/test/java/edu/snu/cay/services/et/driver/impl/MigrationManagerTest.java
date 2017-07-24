@@ -19,6 +19,7 @@ import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.services.et.avro.TableAccessReqMsg;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.MessageSender;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
@@ -36,7 +37,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -99,7 +99,7 @@ public final class MigrationManagerTest {
    */
   @Test
   public void testMigration() throws InterruptedException {
-    final ExecutorService executor = Executors.newFixedThreadPool(NUM_THREAD);
+    final ExecutorService executor = CatchableExecutors.newFixedThreadPool(NUM_THREAD);
 
     // movedLatch is countdown in FinishedCallback.onNext()
     final CountDownLatch movedLatch = new CountDownLatch(2 * NUM_REQUESTS_PER_EXECUTOR);
@@ -139,7 +139,7 @@ public final class MigrationManagerTest {
 
   @Test(timeout = 20000)
   public void testBroadcastUpdate() throws InterruptedException {
-    final ExecutorService executor = Executors.newFixedThreadPool(NUM_THREAD);
+    final ExecutorService executor = CatchableExecutors.newFixedThreadPool(NUM_THREAD);
     int numOtherExecutors = NUM_INIT_EXECUTORS - 2; // exclude sender and receiver.
 
     // 1. First moves

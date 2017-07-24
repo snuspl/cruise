@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.parameters.remoteaccess.SenderQueue
 import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -95,7 +96,7 @@ final class RemoteAccessOpSender {
   private List<SenderThread> initSenderThreads(final int numThreads, final int queueSize) {
     LOG.log(Level.INFO, "Initializing {0} Sender threads with queue size: {1}",
         new Object[]{numThreads, queueSize});
-    final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+    final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(numThreads);
     final List<SenderThread> threads = new ArrayList<>(numThreads);
     for (int i = 0; i < numThreads; i++) {
       final SenderThread senderThread = new SenderThread(queueSize);

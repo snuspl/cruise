@@ -30,6 +30,7 @@ import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 import edu.snu.cay.services.et.plan.impl.op.DeallocateOp;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -38,7 +39,6 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -111,7 +111,7 @@ final class PlanETDriver {
             etMaster.addExecutors(NUM_INITIAL_EXECUTORS, executorConf);
 
         final List<AllocatedExecutor> associators = associatorsFuture.get();
-        Executors.newSingleThreadExecutor().submit(() -> {
+        CatchableExecutors.newSingleThreadExecutor().submit(() -> {
           try {
             final AllocatedTable table = etMaster.createTable(buildTableConf(TABLE_ID), associators).get();
 

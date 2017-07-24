@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -34,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -55,10 +55,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
   private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 2;
 
   // Thread pools to handle the messages in separate threads to prevent NCS threads' overhead.
-  private final ExecutorService blockSenderExecutor = Executors.newFixedThreadPool(NUM_BLOCK_SENDER_THREADS);
-  private final ExecutorService dataMsgHandlerExecutor = Executors.newFixedThreadPool(NUM_DATA_MSG_HANDLER_THREADS);
+  private final ExecutorService blockSenderExecutor = CatchableExecutors.newFixedThreadPool(NUM_BLOCK_SENDER_THREADS);
+  private final ExecutorService dataMsgHandlerExecutor =
+      CatchableExecutors.newFixedThreadPool(NUM_DATA_MSG_HANDLER_THREADS);
   private final ExecutorService ownershipMsgHandlerExecutor =
-      Executors.newFixedThreadPool(NUM_OWNERSHIP_MSG_HANDLER_THREADS);
+      CatchableExecutors.newFixedThreadPool(NUM_OWNERSHIP_MSG_HANDLER_THREADS);
 
   private final MessageSender msgSender;
   private final InjectionFuture<Tables> tablesFuture;

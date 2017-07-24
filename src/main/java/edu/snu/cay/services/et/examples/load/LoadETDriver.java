@@ -29,6 +29,7 @@ import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.NoneKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -44,7 +45,6 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -153,7 +153,7 @@ final class LoadETDriver {
 
         final List<AllocatedExecutor> executors = executorsFuture.get();
         final List<Future<SubmittedTask>> taskFutureList = Lists.newArrayList();
-        Executors.newSingleThreadExecutor().submit(() -> {
+        CatchableExecutors.newSingleThreadExecutor().submit(() -> {
 
           try {
             final AllocatedTable keyValueTable = etMaster.createTable(

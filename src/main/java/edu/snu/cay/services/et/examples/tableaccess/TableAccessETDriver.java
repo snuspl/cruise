@@ -29,6 +29,7 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -43,7 +44,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
@@ -120,7 +120,7 @@ final class TableAccessETDriver {
         final List<AllocatedExecutor> associators = associatorsFuture.get();
         final List<AllocatedExecutor> subscribers = subscribersFuture.get();
 
-        Executors.newSingleThreadExecutor().submit(() -> {
+        CatchableExecutors.newSingleThreadExecutor().submit(() -> {
 
           // Single thread test.
           // 1. Run TableAccess ET tasks with random block access type.

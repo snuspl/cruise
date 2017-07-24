@@ -27,6 +27,7 @@ import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -38,7 +39,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -114,7 +114,7 @@ final class SimpleETDriver {
         throw new RuntimeException(e);
       }
 
-      Executors.newSingleThreadExecutor().submit(() -> {
+      CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
               SimpleET.TableInputPath.EMPTY, false), associators).get();

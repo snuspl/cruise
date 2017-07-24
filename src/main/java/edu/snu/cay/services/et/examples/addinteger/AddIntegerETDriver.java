@@ -26,6 +26,7 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -41,7 +42,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -152,7 +152,7 @@ public final class AddIntegerETDriver {
         throw new RuntimeException(e);
       }
 
-      Executors.newSingleThreadExecutor().submit(() -> {
+      CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
 
           final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();

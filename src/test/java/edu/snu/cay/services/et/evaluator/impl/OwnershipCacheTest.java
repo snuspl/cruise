@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.driver.impl.BlockManager;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -29,7 +30,6 @@ import org.junit.Test;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
@@ -238,7 +238,7 @@ public final class OwnershipCacheTest {
     }
 
     final CountDownLatch updateLatch = new CountDownLatch(numBlocksToMove);
-    final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(numBlocksToMove);
+    final ExecutorService ownershipUpdateExecutor = CatchableExecutors.newFixedThreadPool(numBlocksToMove);
     for (final int blockId : blocksToMove) {
       ownershipUpdateExecutor.submit(() -> {
         srcOwnershipCache.update(blockId, srcExecutorId, dstExecutorId);
@@ -286,7 +286,7 @@ public final class OwnershipCacheTest {
 
     // access to block1 will be blocked until allowAccessToBlock is called
     dstOwnershipCache.update(blockId1, srcExecutorId, dstExecutorId);
-    final ExecutorService blockResolvingExecutor = Executors.newFixedThreadPool(2);
+    final ExecutorService blockResolvingExecutor = CatchableExecutors.newFixedThreadPool(2);
 
     final CountDownLatch resolvedLatch1 = new CountDownLatch(1);
     blockResolvingExecutor.submit(() -> {

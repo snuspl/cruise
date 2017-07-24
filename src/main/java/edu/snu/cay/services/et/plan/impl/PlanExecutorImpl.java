@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -97,7 +98,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
     LOG.log(Level.INFO, "Start executing plan: {0}", plan);
 
     final ResultFuture<Void> resultFuture = new ResultFuture<>();
-    Executors.newSingleThreadExecutor().submit(() -> {
+    CatchableExecutors.newSingleThreadExecutor().submit(() -> {
       // a map for virtual ids of new executors within this plan
       final Map<String, String> virtualIdToActualId = new ConcurrentHashMap<>();
 

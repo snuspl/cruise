@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -91,7 +91,7 @@ final class ETCentCommExampleDriver {
       try {
         final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf).get();
 
-        Executors.newSingleThreadExecutor().submit(() -> {
+        CatchableExecutors.newSingleThreadExecutor().submit(() -> {
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executors.size());
