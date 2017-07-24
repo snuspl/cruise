@@ -21,14 +21,14 @@ import edu.snu.cay.pregel.graph.api.MutableEdge;
 /**
  * A default implementation of {@link Edge}.
  *
- * @param <V> edge value
+ * @param <E> edge value
  */
-public final class DefaultEdge<V> implements MutableEdge<V> {
+public final class DefaultEdge<E> implements MutableEdge<E> {
 
   private final Long vertexId;
-  private V value;
+  private E value;
 
-  public DefaultEdge(final Long vertexId, final V value) {
+  public DefaultEdge(final Long vertexId, final E value) {
     this.vertexId = vertexId;
     this.value = value;
   }
@@ -39,12 +39,12 @@ public final class DefaultEdge<V> implements MutableEdge<V> {
   }
 
   @Override
-  public V getValue() {
+  public E getValue() {
     return value;
   }
 
   @Override
-  public void setValue(final V newValue) {
+  public void setValue(final E newValue) {
     this.value = newValue;
   }
 }

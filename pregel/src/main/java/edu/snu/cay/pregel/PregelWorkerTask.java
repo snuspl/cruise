@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  * REEF Task class to run a Pregel app.
  */
 @EvaluatorSide
-public final class PregelWorkerTask implements Task {
+public final class PregelWorkerTask<V, E, M> implements Task {
   private static final Logger LOG = Logger.getLogger(PregelWorkerTask.class.getName());
 
   /**
@@ -55,7 +55,7 @@ public final class PregelWorkerTask implements Task {
 
   private final TableAccessor tableAccessor;
 
-  private final Computation computation;
+  private final Computation<V, E, M> computation;
 
   /**
    * The number of active vertices in local graph partitions.
@@ -84,7 +84,7 @@ public final class PregelWorkerTask implements Task {
     final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(numThreads);
 
     final AtomicInteger superStepCounter = new AtomicInteger(0);
-    final Table<Long, Vertex<Double>, Double> vertexTable = tableAccessor.getTable(PregelDriver.VERTEX_TABLE_ID);
+    final Table<Long, Vertex<V, E>, ?> vertexTable = tableAccessor.getTable(PregelDriver.VERTEX_TABLE_ID);
     numActiveVertices.set(vertexTable.getLocalTablet().getNumDataItems());
 
     // run supersteps until all vertices halt
@@ -94,16 +94,34 @@ public final class PregelWorkerTask implements Task {
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       // partition local graph-dataset as the number of threads
-      final Map<Long, Vertex<Double>> localVertexMap = vertexTable.getLocalTablet().getDataMap();
-      final List<Vertex<Double>> localVertexList = Lists.newArrayList(localVertexMap.values());
-      final List<List<Vertex<Double>>> vertexMapPartitions = Lists.partition(localVertexList,
-          localVertexMap.size() / numThreads); // assumes that the numVertices are greater than the numThreads
+      final Map<Long, Vertex<V, E>> vertexMap = vertexTable.getLocalTablet().getDataMap();
+      final List<Vertex<V, E>> vertexList = Lists.newArrayList(vertexMap.values());
+
+      // assumes that the numVertices are greater than the numThreads
+      final int numVertices = vertexList.size();
+      final int sizeByPartition = numVertices / numThreads;
+      final List<List<Vertex<V, E>>> vertexPartitions = new ArrayList<>(numThreads);
+
+      // create vertex partitions
+      int vertexIdx;
+      for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+        vertexPartitions.add(new ArrayList<>());
+        for (vertexIdx = threadIdx * sizeByPartition; vertexIdx < (threadIdx + 1) * sizeByPartition; vertexIdx++) {
+          vertexPartitions.get(threadIdx).add(vertexList.get(vertexIdx));
+        }
+        if (threadIdx == numThreads - 1) {
+          while (vertexIdx < numVertices) {
+            vertexPartitions.get(threadIdx).add(vertexList.get(vertexIdx));
+            vertexIdx++;
+          }
+        }
+      }
 
       // compute each partition with a thread pool
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-        final List<Vertex<Double>> partition = vertexMapPartitions.get(threadIdx);
+        final List<Vertex<V, E>> partition = vertexPartitions.get(threadIdx);
         final Callable<Integer> computationCallable =
-            new ComputationCallable<>(computation, partition, messageManager.getCurrentMessageTable());
+            new ComputationCallable<V, E, M>(computation, partition, messageManager.getCurrentMessageTable());
         futureList.add(executorService.submit(computationCallable));
       }
 
@@ -120,6 +138,9 @@ public final class PregelWorkerTask implements Task {
 
       // master will decide whether to continue or not
       final int incomingMsgSize = messageManager.getNextMessageTable().getLocalTablet().getDataMap().size();
+      messageManager.getNextMessageTable().getLocalTablet().getDataMap().forEach((key, value) -> {
+        LOG.log(Level.INFO, "Incoming message : {0}, {1}", new Object[]{key, value});
+      });
       final boolean continueSuperstep =
           workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices.get(), incomingMsgSize);
 

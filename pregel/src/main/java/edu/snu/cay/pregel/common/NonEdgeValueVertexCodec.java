@@ -17,13 +17,11 @@ package edu.snu.cay.pregel.common;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.graph.api.Edge;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.DefaultVertex;
-import org.apache.reef.io.network.impl.StreamingCodec;
+import edu.snu.cay.pregel.graph.impl.NoneValueEdge;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -35,38 +33,25 @@ import java.util.logging.Logger;
  * Note that it assumes that vertex can be encoded
  * until the value of vertex is initialized.
  */
-public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
+public final class NonEdgeValueVertexCodec<V> implements Codec<Vertex<V, Void>> {
 
-  private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
-  private final StreamingCodec<V> vertexValueCodec;
-  private final StreamingCodec<Edge<E>> edgeCodec;
+  private static final Logger LOG = Logger.getLogger(NonEdgeValueVertexCodec.class.getName());
 
   @Inject
-  private DefaultVertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
-                             @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
-    this.vertexValueCodec = vertexValueCodec;
-    this.edgeCodec = edgeCodec;
+  private NonEdgeValueVertexCodec() {
   }
 
   @Override
-  public byte[] encode(final Vertex<V, E> vertex) {
-    final Iterable<Edge<E>> edges = vertex.getEdges();
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  public byte[] encode(final Vertex<V, Void> vertex) {
+    final Iterable<Edge<Void>> edges = vertex.getEdges();
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(edges));
     final DataOutputStream daos = new DataOutputStream(baos);
     try {
       daos.writeLong(vertex.getId());
-      final V vertexValue = vertex.getValue();
-      if (vertexValue != null) {
-        daos.writeBoolean(true);
-        daos.write(vertexValueCodec.encode(vertex.getValue()));
-      } else {
-        daos.writeBoolean(false);
-      }
       daos.writeInt(Iterables.size(edges));
-      for (final Edge<E> edge : edges) {
-        daos.write(edgeCodec.encode(edge));
+      for (final Edge edge : edges) {
+        daos.writeLong(edge.getTargetVertexId());
       }
-
     } catch (IOException e) {
       throw new RuntimeException("Could not serialize vertex");
     }
@@ -75,28 +60,27 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
   }
 
   @Override
-  public Vertex<V, E> decode(final byte[] bytes) {
+  public Vertex<V, Void> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     final DataInputStream dais = new DataInputStream(bais);
-    final Vertex<V, E> decodedVertex = new DefaultVertex<>();
+    final Vertex<V, Void> decodedVertex = new DefaultVertex<>();
 
     try {
       final Long vertexId = dais.readLong();
-      final boolean isExistValue = dais.readBoolean();
-      V vertexValue = null;
-      if (isExistValue) {
-        vertexValue = vertexValueCodec.decodeFromStream(dais);
-      }
-      final List<Edge<E>> edges = Lists.newArrayList();
+      final List<Edge<Void>> edges = Lists.newArrayList();
       final int edgesSize = dais.readInt();
       for (int index = 0; index < edgesSize; index++) {
-        edges.add(edgeCodec.decodeFromStream(dais));
+        edges.add(new NoneValueEdge(dais.readLong()));
       }
-
-      decodedVertex.initialize(vertexId, vertexValue, edges);
+      decodedVertex.initialize(vertexId, edges);
     } catch (IOException e) {
       throw new RuntimeException("Could not deserialize vertex");
     }
     return decodedVertex;
+  }
+
+  private int getNumBytes(final Iterable<Edge<Void>> edges) {
+    final int size = Iterables.size(edges);
+    return Long.BYTES + Integer.BYTES + Long.BYTES * size;
   }
 }

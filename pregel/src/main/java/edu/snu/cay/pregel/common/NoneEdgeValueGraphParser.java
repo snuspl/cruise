@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * Data parser class for vertex id, adjacent vertex ids set.
  * Note that it doesn't have the value of edges.
  */
-public final class NoneEdgeValueGraphParser implements DataParser<Pair<Long, Vertex<Double>>> {
+public final class NoneEdgeValueGraphParser implements DataParser<Pair<Long, Vertex<Double, Void>>> {
 
   @Inject
   private NoneEdgeValueGraphParser() {
@@ -41,9 +41,9 @@ public final class NoneEdgeValueGraphParser implements DataParser<Pair<Long, Ver
   }
 
   @Override
-  public List<Pair<Long, Vertex<Double>>> parse(final Collection<String> collection) {
+  public List<Pair<Long, Vertex<Double, Void>>> parse(final Collection<String> collection) {
 
-    final List<Pair<Long, Vertex<Double>>> parsedList = new ArrayList<>();
+    final List<Pair<Long, Vertex<Double, Void>>> parsedList = new ArrayList<>();
 
     for (final String line : collection) {
 
@@ -53,9 +53,9 @@ public final class NoneEdgeValueGraphParser implements DataParser<Pair<Long, Ver
 
       final List<String> lineDatas = Lists.newArrayList(line.split(" "));
       final Long vertexId = Long.parseLong(lineDatas.get(0));
-      final List<Edge> adjacentIds = lineDatas.subList(1, lineDatas.size()).stream().
+      final List<Edge<Void>> adjacentIds = lineDatas.subList(1, lineDatas.size()).stream().
           map(id -> new NoneValueEdge(Long.parseLong(id))).collect(Collectors.toList());
-      final Vertex<Double> vertex = new DefaultVertex<>();
+      final Vertex<Double, Void> vertex = new DefaultVertex<>();
       vertex.initialize(vertexId, adjacentIds);
       parsedList.add(Pair.of(vertexId, vertex));
     }

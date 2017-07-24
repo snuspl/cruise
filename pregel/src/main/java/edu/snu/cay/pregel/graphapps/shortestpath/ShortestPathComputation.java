@@ -21,12 +21,15 @@ import edu.snu.cay.pregel.graph.impl.AbstractComputation;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implementation of {@link edu.snu.cay.pregel.graph.api.Computation} to execute a pagerank algorithm.
  */
-public final class ShortestPathComputation extends AbstractComputation<Long, Long> {
+public final class ShortestPathComputation extends AbstractComputation<Long, Long, Long> {
 
+  private static final Logger LOG = Logger.getLogger(ShortestPathComputation.class.getName());
   private final Long sourceId;
 
   @Inject
@@ -35,7 +38,8 @@ public final class ShortestPathComputation extends AbstractComputation<Long, Lon
   }
 
   @Override
-  public void compute(final Vertex<Long> vertex, final Iterable<Long> messages) {
+  public void compute(final Vertex<Long, Long> vertex, final Iterable<Long> messages) {
+
     if (getSuperstep() == 0) {
       vertex.setValue(Long.MAX_VALUE);
     }
@@ -48,12 +52,14 @@ public final class ShortestPathComputation extends AbstractComputation<Long, Lon
     }
 
     if (minDist < vertex.getValue()) {
+      vertex.setValue(minDist);
       for (final Edge edge : vertex.getEdges()) {
         final Long distance = minDist + (Long) edge.getValue();
+        LOG.log(Level.INFO, "vertex id : {0}, minDist : {1}, targetVertexId : {2}",
+            new Object[]{vertex.getId(), minDist, edge.getTargetVertexId()});
         getMsgFutureList().add(sendMessage(edge.getTargetVertexId(), distance));
       }
     }
-
     vertex.voteToHalt();
   }
 }

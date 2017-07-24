@@ -19,6 +19,8 @@ import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
+import edu.snu.cay.pregel.common.NoneValueEdgeCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
@@ -40,6 +42,8 @@ public final class PagerankET {
         .setComputationClass(PagerankComputation.class)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
         .setMessageCodecClass(DoubleMsgCodec.class)
+        .setVertexValueCodecClass(StreamingSerializableCodec.class)
+        .setEdgeCodecClass(NoneValueEdgeCodec.class)
         .build());
   }
 }

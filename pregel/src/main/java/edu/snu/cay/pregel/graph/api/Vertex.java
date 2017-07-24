@@ -24,7 +24,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * @param <V> Vertex data
  */
 @DefaultImplementation(DefaultVertex.class)
-public interface Vertex<V> {
+public interface Vertex<V, E> {
 
   /**
    * Initialize id and value. Vertex outgoing edges will be empty.
@@ -43,7 +43,7 @@ public interface Vertex<V> {
    * @param id vertex id
    * @param edges outgoing edges
    */
-  void initialize(Long id, Iterable<Edge> edges);
+  void initialize(Long id, Iterable<Edge<E>> edges);
 
   /**
    * Initialize id, value and outgoing edges.
@@ -53,7 +53,7 @@ public interface Vertex<V> {
    * @param value vertex value
    * @param edges outgoing edges
    */
-  void initialize(Long id, V value, Iterable<Edge> edges);
+  void initialize(Long id, V value, Iterable<Edge<E>> edges);
 
   /**
    * Get the vertex id.
@@ -95,7 +95,7 @@ public interface Vertex<V> {
    *
    * @return the outgoing edges
    */
-  Iterable<Edge> getEdges();
+  Iterable<Edge<E>> getEdges();
 
   /**
    * Re-active vertex if halted.

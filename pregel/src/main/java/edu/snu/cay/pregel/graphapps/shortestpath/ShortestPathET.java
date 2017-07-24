@@ -17,8 +17,10 @@ package edu.snu.cay.pregel.graphapps.shortestpath;
 
 import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
-import edu.snu.cay.pregel.common.DoubleMsgCodec;
-import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
+import edu.snu.cay.pregel.common.DefaultEdgeCodec;
+import edu.snu.cay.pregel.common.DefaultGraphParser;
+import edu.snu.cay.pregel.common.LongMsgCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
@@ -38,8 +40,10 @@ public final class ShortestPathET {
   public static void main(final String[] args) throws IOException, InjectionException {
     PregelLauncher.launch(args, PregelConfiguration.newBuilder()
         .setComputationClass(ShortestPathComputation.class)
-        .setDataParserClass(NoneEdgeValueGraphParser.class)
-        .setMessageCodecClass(DoubleMsgCodec.class)
+        .setDataParserClass(DefaultGraphParser.class)
+        .setMessageCodecClass(LongMsgCodec.class)
+        .setVertexValueCodecClass(StreamingSerializableCodec.class)
+        .setEdgeCodecClass(DefaultEdgeCodec.class)
         .addParameterClass(SourceId.class)
         .build());
   }

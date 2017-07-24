@@ -24,15 +24,16 @@ import java.util.List;
 /**
  * Default implementation of {@link Vertex}.
  *
- * @param <V> vertex id
+ * @param <V> vertex value
+ * @param <E> edge value
  */
-public class DefaultVertex<V> implements Vertex<V> {
+public class DefaultVertex<V, E> implements Vertex<V, E> {
 
   private Long id;
 
   private V value;
 
-  private List<Edge> edges;
+  private List<Edge<E>> edges;
 
   private boolean isHalt;
 
@@ -45,7 +46,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public void initialize(final Long vertexId, final Iterable<Edge> adjacentEdges) {
+  public void initialize(final Long vertexId, final Iterable<Edge<E>> adjacentEdges) {
     this.id = vertexId;
     this.edges = Lists.newArrayList();
     this.edges.addAll(Lists.newArrayList(adjacentEdges));
@@ -53,7 +54,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public void initialize(final Long vertexId, final V vertexValue, final Iterable<Edge> adjacentEdges) {
+  public void initialize(final Long vertexId, final V vertexValue, final Iterable<Edge<E>> adjacentEdges) {
     this.id = vertexId;
     this.value = vertexValue;
     this.edges = Lists.newArrayList();
@@ -87,7 +88,7 @@ public class DefaultVertex<V> implements Vertex<V> {
   }
 
   @Override
-  public Iterable<Edge> getEdges() {
+  public Iterable<Edge<E>> getEdges() {
     return edges;
   }
 

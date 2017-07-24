@@ -65,7 +65,8 @@ final class PregelMaster {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
-    isAllVerticesHalt = false;
+    isAllVerticesHalt = true;
+    isIncomingMsgNone = true;
     initControlThread();
   }
 
@@ -101,7 +102,8 @@ final class PregelMaster {
         }
 
         // reset for next superstep
-        isAllVerticesHalt = false;
+        isAllVerticesHalt = true;
+        isIncomingMsgNone = true;
         msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
     }).start();
@@ -126,8 +128,10 @@ final class PregelMaster {
 
       final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
-      isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
-      isIncomingMsgNone = isIncomingMsgNone || resultMsg.getIsIncomingMsgNone();
+      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isIncomingMsgNone : {1}",
+          new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsIncomingMsgNone()});
+      isAllVerticesHalt = isAllVerticesHalt && resultMsg.getIsAllVerticesHalt();
+      isIncomingMsgNone = isIncomingMsgNone && resultMsg.getIsIncomingMsgNone();
 
       msgCountDownLatch.countDown();
     }

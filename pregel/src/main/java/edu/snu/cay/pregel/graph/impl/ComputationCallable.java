@@ -19,10 +19,13 @@ import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Compute around the verticesPartition in the partitionStore. Every thread will has
@@ -30,14 +33,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <V> vertex value
  */
-public class ComputationCallable<V, M> implements Callable<Integer> {
+public class ComputationCallable<V, E, M> implements Callable<Integer> {
 
-  private final Computation<V, M> computation;
-  private final Iterable<Vertex<V>> verticesPartition;
+  private static final Logger LOG = Logger.getLogger(ComputationCallable.class.getName());
+  private final Computation<V, E, M> computation;
+  private final Iterable<Vertex<V, E>> verticesPartition;
   private final Table<Long, List<M>, M> currMessageTable;
 
-  public ComputationCallable(final Computation<V, M> computation,
-                             final Iterable<Vertex<V>> verticesPartition,
+  public ComputationCallable(final Computation<V, E, M> computation,
+                             final Iterable<Vertex<V, E>> verticesPartition,
                              final Table<Long, List<M>, M> currMessageTable) {
 
     this.computation = computation;
@@ -57,7 +61,12 @@ public class ComputationCallable<V, M> implements Callable<Integer> {
 
     verticesPartition.forEach(vertex -> {
       try {
-        final List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
+
+        LOG.log(Level.INFO, "vertex id : {0}", vertex .getId());
+        List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
+        if (msgsForVertex == null) {
+          msgsForVertex = new ArrayList<>();
+        }
 
         if (vertex.isHalted() && !msgsForVertex.isEmpty()) {
           vertex.wakeUp();

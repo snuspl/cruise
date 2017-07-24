@@ -25,7 +25,7 @@ import javax.inject.Inject;
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public final class PagerankComputation extends AbstractComputation<Double, Double> {
+public final class PagerankComputation extends AbstractComputation<Double, Void, Double> {
   /**
    * Damping factor of the pagerank algorithm.
    */
@@ -42,7 +42,7 @@ public final class PagerankComputation extends AbstractComputation<Double, Doubl
   }
 
   @Override
-  public void compute(final Vertex<Double> vertex, final Iterable<Double> messages) {
+  public void compute(final Vertex<Double, Void> vertex, final Iterable<Double> messages) {
 
     if (getSuperstep() == 0) {
 

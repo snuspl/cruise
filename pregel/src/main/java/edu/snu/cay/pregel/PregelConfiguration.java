@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.pregel;
 
-import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import org.apache.reef.annotations.audience.ClientSide;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 
@@ -37,19 +37,22 @@ public final class PregelConfiguration {
 
   private final Class<? extends Computation> computationClass;
 
-  private final Class<? extends Codec> vertexCodecClass;
+  private final Class<? extends StreamingCodec> vertexValueCodecClass;
+  private final Class<? extends StreamingCodec> edgeCodecClass;
   private final Class<? extends DataParser> dataParserClass;
 
   private final Class<? extends Codec> messageCodecClass;
   private final List<Class<? extends Name<?>>> userParamList;
 
   private PregelConfiguration(final Class<? extends Computation> computationClass,
-                              final Class<? extends Codec> vertexCodecClass,
+                              final Class<? extends StreamingCodec> vertexValueCodecClass,
+                              final Class<? extends StreamingCodec> edgeCodecClass,
                               final Class<? extends DataParser> dataParserClass,
                               final Class<? extends Codec> messageCodecClass,
                               final List<Class<? extends Name<?>>> userParamList) {
     this.computationClass = computationClass;
-    this.vertexCodecClass = vertexCodecClass;
+    this.vertexValueCodecClass = vertexValueCodecClass;
+    this.edgeCodecClass = edgeCodecClass;
     this.dataParserClass = dataParserClass;
     this.messageCodecClass = messageCodecClass;
     this.userParamList = userParamList;
@@ -59,8 +62,12 @@ public final class PregelConfiguration {
     return computationClass;
   }
 
-  public Class<? extends Codec> getVertexCodecClass() {
-    return vertexCodecClass;
+  public Class<? extends StreamingCodec> getVertexValueCodecClass() {
+    return vertexValueCodecClass;
+  }
+
+  public Class<? extends StreamingCodec> getEdgeCodecClass() {
+    return edgeCodecClass;
   }
 
   public Class<? extends DataParser> getDataParserClass() {
@@ -82,7 +89,9 @@ public final class PregelConfiguration {
   public static class Builder implements org.apache.reef.util.Builder<PregelConfiguration> {
 
     private Class<? extends Computation> computationClass;
-    private Class<? extends Codec> vertexCodecClass = DefaultVertexCodec.class;
+    private Class<? extends StreamingCodec> vertexValueCodecClass;
+    private Class<? extends StreamingCodec> edgeCodecClass;
+
     private Class<? extends DataParser> dataParserClass;
 
     private Class<? extends Codec> messageCodecClass;
@@ -93,8 +102,13 @@ public final class PregelConfiguration {
       return this;
     }
 
-    public Builder setVertexCodecClass(final Class<? extends Codec> vertexCodecClass) {
-      this.vertexCodecClass = vertexCodecClass;
+    public Builder setVertexValueCodecClass(final Class<? extends StreamingCodec> vertexValueCodecClass) {
+      this.vertexValueCodecClass = vertexValueCodecClass;
+      return this;
+    }
+
+    public Builder setEdgeCodecClass(final Class<? extends StreamingCodec> edgeCodecClass) {
+      this.edgeCodecClass = edgeCodecClass;
       return this;
     }
 
@@ -115,7 +129,7 @@ public final class PregelConfiguration {
 
     @Override
     public PregelConfiguration build() {
-      return new PregelConfiguration(computationClass, vertexCodecClass, dataParserClass,
+      return new PregelConfiguration(computationClass, vertexValueCodecClass, edgeCodecClass, dataParserClass,
           messageCodecClass, userParamList);
     }
   }

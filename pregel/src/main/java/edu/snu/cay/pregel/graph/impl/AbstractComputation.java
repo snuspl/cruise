@@ -29,7 +29,7 @@ import java.util.concurrent.Future;
 /**
  * Created by cmslab on 7/20/17.
  */
-public abstract class AbstractComputation<V, M> implements Computation<V, M> {
+public abstract class AbstractComputation<V, E, M> implements Computation<V, E, M> {
 
   private Integer superstep;
   /**
@@ -55,7 +55,7 @@ public abstract class AbstractComputation<V, M> implements Computation<V, M> {
   }
 
   @Override
-  public abstract void compute(Vertex<V> vertex, Iterable<M> messages);
+  public abstract void compute(Vertex<V, E> vertex, Iterable<M> messages);
 
   @Override
   public int getSuperstep() {
@@ -68,7 +68,7 @@ public abstract class AbstractComputation<V, M> implements Computation<V, M> {
   }
 
   @Override
-  public List<Future<?>> sendMessagesToAdjacents(final Vertex<V> vertex, final M message) {
+  public List<Future<?>> sendMessagesToAdjacents(final Vertex<V, E> vertex, final M message) {
     final List<Future<?>> futureList = new ArrayList<>();
     vertex.getEdges().forEach(edge -> futureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
     return futureList;
