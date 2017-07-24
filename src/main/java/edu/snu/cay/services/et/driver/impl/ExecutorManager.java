@@ -31,8 +31,11 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.JVMProcess;
+import org.apache.reef.driver.evaluator.JVMProcessFactory;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.io.network.naming.NameServer;
+import org.apache.reef.runtime.common.parameters.JVMHeapSlack;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.annotations.Parameter;
@@ -66,6 +69,9 @@ final class ExecutorManager {
   private final String etIdentifier;
   private final String driverIdentifier;
 
+  private final double jvmHeapSlack;
+  private final JVMProcessFactory jvmProcessFactory;
+
   private final AtomicInteger contextIdCounter = new AtomicInteger(0);
 
   private final Map<String, AllocatedExecutor> executors = new ConcurrentHashMap<>();
@@ -76,6 +82,8 @@ final class ExecutorManager {
                           final NameServer nameServer,
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
+                          final JVMProcessFactory jvmProcessFactory,
+                          @Parameter(JVMHeapSlack.class) final double jvmHeapSlack,
                           @Parameter(ETIdentifier.class) final String etIdentifier,
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.callbackRegistry = callbackRegistry;
@@ -85,6 +93,8 @@ final class ExecutorManager {
     this.identifierFactory = identifierFactory;
     this.etIdentifier = etIdentifier;
     this.driverIdentifier = driverIdentifier;
+    this.jvmHeapSlack = jvmHeapSlack;
+    this.jvmProcessFactory = jvmProcessFactory;
   }
 
   /**
@@ -118,7 +128,7 @@ final class ExecutorManager {
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
         new AllocatedEvalHandler(userContextConf,
-            Configurations.merge(remoteAccessConf, userServiceConf)),
+            Configurations.merge(remoteAccessConf, userServiceConf), memSizeInMB),
         activeCtxHandlers);
 
     return executorListFuture;
@@ -156,15 +166,18 @@ final class ExecutorManager {
   private final class AllocatedEvalHandler implements EventHandler<AllocatedEvaluator> {
     private final Configuration contextConf;
     private final Configuration serviceConf;
+    private final int memSizeInMB;
 
     /**
      * @param contextConf a context configuration specified by user
      * @param serviceConf a service configuration specified by user
      */
     AllocatedEvalHandler(final Configuration contextConf,
-                         final Configuration serviceConf) {
+                         final Configuration serviceConf,
+                         final int memSizeInMB) {
       this.contextConf = contextConf;
       this.serviceConf = serviceConf;
+      this.memSizeInMB = memSizeInMB;
     }
 
     @Override
@@ -191,6 +204,12 @@ final class ExecutorManager {
           .build();
 
       serviceConfiguration = Configurations.merge(executorConfiguration, serviceConf);
+
+      final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+          .setMemory((int)(memSizeInMB * (1 - jvmHeapSlack)))
+          .addOption("-XX:+UseG1GC");
+
+      allocatedEvaluator.setProcess(jvmProcess);
 
       allocatedEvaluator.submitContextAndService(contextConfiguration, serviceConfiguration);
       LOG.log(Level.FINE, "Submitted context to evaluator {0}", allocatedEvaluator.getId());
