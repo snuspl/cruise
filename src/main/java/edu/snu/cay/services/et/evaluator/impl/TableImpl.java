@@ -25,6 +25,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
@@ -40,6 +41,8 @@ import java.util.concurrent.locks.Lock;
 @EvaluatorSide
 @ThreadSafe
 public final class TableImpl<K, V, U> implements Table<K, V, U> {
+  private static final String NULL_VALUE_ERR_MSG = "Value should not be null";
+
   /**
    * Table identifier.
    */
@@ -86,16 +89,20 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
-  public DataOpResult<V> put(final K key, final V value) {
+  public DataOpResult<V> put(final K key, @Nonnull final V value) {
     return putInternal(key, value, true);
   }
 
   @Override
-  public void putNoReply(final K key, final V value) {
+  public void putNoReply(final K key, @Nonnull final V value) {
     putInternal(key, value, false);
   }
 
-  private DataOpResult<V> putInternal(final K key, final V value, final boolean replyRequired) {
+  private DataOpResult<V> putInternal(final K key, @Nonnull final V value, final boolean replyRequired) {
+    if (value == null) {
+      throw new NullPointerException(NULL_VALUE_ERR_MSG);
+    }
+
     final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
 
     final int blockId = blockPartitioner.getBlockId(encodedKey);
@@ -127,12 +134,12 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
-  public DataOpResult<V> putIfAbsent(final K key, final V value) {
+  public DataOpResult<V> putIfAbsent(final K key, @Nonnull final V value) {
     return putIfAbsentInternal(key, value, true);
   }
 
   @Override
-  public void putIfAbsentNoReply(final K key, final V value) {
+  public void putIfAbsentNoReply(final K key, @Nonnull final V value) {
     putIfAbsentInternal(key, value, false);
   }
 
@@ -141,6 +148,10 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     final Map<Integer, List<Pair<K, V>>> blockToPairListMap = new HashMap<>();
     for (final Pair<K, V> kvPair : kvList) {
+      if (kvPair.getRight() == null) {
+        throw new NullPointerException(NULL_VALUE_ERR_MSG);
+      }
+
       final K key = kvPair.getLeft();
       final int blockId = blockPartitioner.getBlockId(key);
       blockToPairListMap.putIfAbsent(blockId, new ArrayList<>());
@@ -187,7 +198,11 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     return aggregateDataOpResult;
   }
 
-  private DataOpResult<V> putIfAbsentInternal(final K key, final V value, final boolean replyRequired) {
+  private DataOpResult<V> putIfAbsentInternal(final K key, @Nonnull final V value, final boolean replyRequired) {
+    if (value == null) {
+      throw new NullPointerException(NULL_VALUE_ERR_MSG);
+    }
+
     final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
 
     final int blockId = blockPartitioner.getBlockId(encodedKey);
@@ -285,7 +300,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
-  public DataOpResult<V> update(final K key, final U updateValue) {
+  public DataOpResult<V> update(final K key, @Nonnull final U updateValue) {
     return updateInternal(key, updateValue, true);
   }
 
@@ -294,6 +309,10 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     final Map<Integer, List<Pair<K, U>>> blockToPairListMap = new HashMap<>();
     for (final Pair<K, U> kuPair : kuList) {
+      if (kuPair.getRight() == null) {
+        throw new NullPointerException(NULL_VALUE_ERR_MSG);
+      }
+
       final K key = kuPair.getLeft();
       final int blockId = blockPartitioner.getBlockId(key);
       blockToPairListMap.putIfAbsent(blockId, new ArrayList<>());
@@ -341,11 +360,15 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
-  public void updateNoReply(final K key, final U updateValue) {
+  public void updateNoReply(final K key, @Nonnull final U updateValue) {
     updateInternal(key, updateValue, false);
   }
 
   private DataOpResult<V> updateInternal(final K key, final U updateValue, final boolean replyRequired) {
+    if (updateValue == null) {
+      throw new NullPointerException(NULL_VALUE_ERR_MSG);
+    }
+
     final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
 
     final int blockId = blockPartitioner.getBlockId(encodedKey);

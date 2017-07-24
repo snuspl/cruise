@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.evaluator.impl.TableImpl;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -36,45 +37,50 @@ public interface Table<K, V, U> {
    * Associates the specified value with the specified key.
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result when the request is complete.
+   * Value should be non-null value.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
    * @return {@link Future} that will provide the previous value associated with the key,
    *         or {@code null} if there was no mapping for the key
    */
-  Future<V> put(K key, V value);
+  Future<V> put(K key, @Nonnull V value);
 
   /**
    * See {@link #put}.
    * It returns immediately without waiting for the result.
+   * Value should be non-null value.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
    */
-  void putNoReply(K key, V value);
+  void putNoReply(K key, @Nonnull V value);
 
   /**
    * Associates the given value with the specified key only when the key is not associated with any value.
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
+   * Value should be non-null value.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
    * @return {@link Future} that will provide the previous value associated with the key,
    *         or {@code null} if there was no mapping for the key
    */
-  Future<V> putIfAbsent(K key, V value);
+  Future<V> putIfAbsent(K key, @Nonnull V value);
 
   /**
    * See {@link #putIfAbsent}.
    * It returns immediately without waiting for the result.
    * @param key key with which value is associated
    * @param value value to be associated with the specified key
+   * Value should be non-null value.
    */
-  void putIfAbsentNoReply(K key, V value);
+  void putIfAbsentNoReply(K key, @Nonnull V value);
 
   /**
    * It is a multi-key version of {@link #put}.
    * Associates multiple key-value pairs.
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
+   * Values should be non-null value.
    * @param kvList a key-value pair list
    * @return {@link Future} that will provide the {@link Map} of specified keys and values that
    *         each key has previously associated value. If there are no previous values,
@@ -115,11 +121,12 @@ public interface Table<K, V, U> {
    *
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
+   * Update value should be non-null value.
    * @param key global unique identifier of item
    * @param updateValue update value
    * @return {@link Future} that will provide the updated value associated with the key
    */
-  Future<V> update(K key, U updateValue);
+  Future<V> update(K key, @Nonnull U updateValue);
 
   /**
    * It is a multi-key version of {@link #update}.
@@ -127,6 +134,7 @@ public interface Table<K, V, U> {
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
    * Note that it doesn't support updating null value to any key.
+   * Update values should be non-null value.
    * @param kuList a key-updateValue pair list
    * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
    */
@@ -135,10 +143,11 @@ public interface Table<K, V, U> {
   /**
    * See {@link #update}.
    * It returns immediately without waiting for the result.
+   * Update value should be non-null value.
    * @param key global unique identifier of item
    * @param updateValue update value
    */
-  void updateNoReply(K key, U updateValue);
+  void updateNoReply(K key, @Nonnull U updateValue);
 
   /**
    * Removes association for the specified key.
