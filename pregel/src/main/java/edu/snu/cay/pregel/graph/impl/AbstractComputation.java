@@ -27,7 +27,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * Created by cmslab on 7/20/17.
+ * This is a abstract class helper for users to implement their computations.
+ * It implements all of the methods required by the {@link Computation}
+ * interface except for the {@link #compute(Vertex, Iterable)} which we leave
+ * to the user to define.
  */
 public abstract class AbstractComputation<V, E, M> implements Computation<V, E, M> {
 

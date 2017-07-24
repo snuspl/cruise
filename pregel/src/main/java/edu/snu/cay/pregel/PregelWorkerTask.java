@@ -90,19 +90,17 @@ public final class PregelWorkerTask<V, E, M> implements Task {
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
+
       computation.initialize(superStepCounter.get(), messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       // partition local graph-dataset as the number of threads
       final Map<Long, Vertex<V, E>> vertexMap = vertexTable.getLocalTablet().getDataMap();
       final List<Vertex<V, E>> vertexList = Lists.newArrayList(vertexMap.values());
-
-      // assumes that the numVertices are greater than the numThreads
       final int numVertices = vertexList.size();
       final int sizeByPartition = numVertices / numThreads;
       final List<List<Vertex<V, E>>> vertexPartitions = new ArrayList<>(numThreads);
 
-      // create vertex partitions
       int vertexIdx;
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
         vertexPartitions.add(new ArrayList<>());
@@ -138,9 +136,6 @@ public final class PregelWorkerTask<V, E, M> implements Task {
 
       // master will decide whether to continue or not
       final int incomingMsgSize = messageManager.getNextMessageTable().getLocalTablet().getDataMap().size();
-      messageManager.getNextMessageTable().getLocalTablet().getDataMap().forEach((key, value) -> {
-        LOG.log(Level.INFO, "Incoming message : {0}, {1}", new Object[]{key, value});
-      });
       final boolean continueSuperstep =
           workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices.get(), incomingMsgSize);
 

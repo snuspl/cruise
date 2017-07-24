@@ -23,7 +23,8 @@ import javax.inject.Inject;
 import java.io.*;
 
 /**
- * Created by cmslab on 7/21/17.
+ * Codec for a edge.
+ * Note that type of edge value is {@link Void}.
  */
 public final class NoneValueEdgeCodec implements StreamingCodec<Edge<Void>> {
 

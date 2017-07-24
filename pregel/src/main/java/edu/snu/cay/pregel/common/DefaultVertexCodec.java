@@ -32,8 +32,8 @@ import java.util.logging.Logger;
 
 /**
  * Codec for vertex.
- * Note that it assumes that vertex can be encoded
- * until the value of vertex is initialized.
+ * {@link VertexValueCodec} and {@link EdgeCodec} should be configured before
+ * {@link edu.snu.cay.pregel.PregelWorkerTask} starts.
  */
 public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
 
@@ -70,7 +70,6 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
     } catch (IOException e) {
       throw new RuntimeException("Could not serialize vertex");
     }
-
     return baos.toByteArray();
   }
 

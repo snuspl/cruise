@@ -21,7 +21,6 @@ import edu.snu.cay.pregel.graph.impl.AbstractComputation;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -40,6 +39,7 @@ public final class ShortestPathComputation extends AbstractComputation<Long, Lon
   @Override
   public void compute(final Vertex<Long, Long> vertex, final Iterable<Long> messages) {
 
+    // initialize vertices
     if (getSuperstep() == 0) {
       vertex.setValue(Long.MAX_VALUE);
     }
@@ -51,12 +51,12 @@ public final class ShortestPathComputation extends AbstractComputation<Long, Lon
       }
     }
 
+    // if minimum distance value from messages is lower than the original value of vertex
+    // update the new value
     if (minDist < vertex.getValue()) {
       vertex.setValue(minDist);
       for (final Edge edge : vertex.getEdges()) {
         final Long distance = minDist + (Long) edge.getValue();
-        LOG.log(Level.INFO, "vertex id : {0}, minDist : {1}, targetVertexId : {2}",
-            new Object[]{vertex.getId(), minDist, edge.getTargetVertexId()});
         getMsgFutureList().add(sendMessage(edge.getTargetVertexId(), distance));
       }
     }

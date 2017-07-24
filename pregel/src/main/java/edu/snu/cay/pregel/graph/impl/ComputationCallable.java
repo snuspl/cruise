@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -32,6 +31,8 @@ import java.util.logging.Logger;
  * its instance. It is instantiated at the start time of every superstep.
  *
  * @param <V> vertex value
+ * @param <E> edge value
+ * @param <M> message value
  */
 public class ComputationCallable<V, E, M> implements Callable<Integer> {
 
@@ -62,7 +63,6 @@ public class ComputationCallable<V, E, M> implements Callable<Integer> {
     verticesPartition.forEach(vertex -> {
       try {
 
-        LOG.log(Level.INFO, "vertex id : {0}", vertex .getId());
         List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
         if (msgsForVertex == null) {
           msgsForVertex = new ArrayList<>();

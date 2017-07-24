@@ -47,6 +47,7 @@ public final class DefaultGraphParser<V, E> implements DataParser<Pair<Long, Ver
         continue;
       }
 
+      // graph parser create a vertex by each line
       final List<String> lineDataList = Lists.newArrayList(line.split(" "));
       final Long vertexId = Long.parseLong(lineDataList.get(0));
       for (int i = 1; i < lineDataList.size() - 1; i += 2) {

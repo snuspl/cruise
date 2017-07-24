@@ -18,7 +18,6 @@ package edu.snu.cay.pregel;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
-import edu.snu.cay.pregel.common.NonEdgeValueVertexCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -87,6 +86,7 @@ public final class PregelDriver {
     this.etMaster = etMaster;
     this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
     this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
+
     final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
     final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
     this.executorConf = ExecutorConfiguration.newBuilder()
@@ -101,13 +101,13 @@ public final class PregelDriver {
             .setNumSenderThreads(1)
             .build())
         .setUserContextConf(centCommConfProvider.getContextConfiguration())
+        // configure vertex value codec, edge codec to executors
         .setUserServiceConf(Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
                 .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
                 .build()))
         .build();
-
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -157,7 +157,7 @@ public final class PregelDriver {
   /**
    * Build a configuration of vertex table.
    * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
-   * so set {@link NonEdgeValueVertexCodec} to value codec class.
+   * so set {@link DefaultVertexCodec} to value codec class.
    * Note that this configuration is for Pagerank app.
    *
    * @param tableId an identifier of {@link TableConfiguration}

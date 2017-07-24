@@ -24,11 +24,13 @@ import javax.inject.Inject;
 import java.io.*;
 
 /**
- * Created by cmslab on 7/21/17.
+ * Codec for a edge.
+ * Assume that type of edge value is {@link Serializable}.
  */
 public final class DefaultEdgeCodec<T extends Serializable> implements StreamingCodec<Edge<T>> {
 
   private StreamingSerializableCodec<T> edgeValueCodec;
+  
   @Inject
   private DefaultEdgeCodec(final StreamingSerializableCodec<T> edgeValueCodec) {
     this.edgeValueCodec = edgeValueCodec;

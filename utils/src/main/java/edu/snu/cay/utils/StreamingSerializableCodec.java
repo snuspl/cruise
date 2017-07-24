@@ -22,7 +22,7 @@ import javax.inject.Inject;
 import java.io.*;
 
 /**
- * Created by cmslab on 7/24/17.
+ * A {@link StreamingCodec} for {@link Serializable} objects.
  */
 public final class StreamingSerializableCodec<T extends Serializable> extends SerializableCodec<T>
     implements StreamingCodec<T> {
