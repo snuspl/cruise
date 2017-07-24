@@ -28,6 +28,26 @@ import java.util.logging.Logger;
  */
 final class ILPSolver {
   private static final Logger LOG = Logger.getLogger(ILPSolver.class.getName());
+  /**
+   * Set the following variables adequately to each experimental setting.
+   * INT_FEAS_TOL: tightening this tolerance can produce smaller integrality violations.
+   * MIP_GAP: gap between lower and upper objective bounds.
+   */
+  private static final double INT_FEAS_TOL = 1e-2;
+  private static final double MIP_GAP = 4e-1;
+  /**
+   * To solve ILP problem, we should convert {@code maxPullTimePerBatch} value to binary term. At this point, if
+   * maxPullTimePerBatch is smaller than 1, the value cannot be converted. Also, if {@code maxCommCost} is large,
+   * search space for {@link ILPSolver} includes a lot of redundant space. Thus, normalizing cost values can resolve the
+   * problem and reduces search space of {@link ILPSolver} significantly in some cases.
+   *
+   * Here, we normalize cost values with normalizationFactor = NORMALIZED_MAX_COMM_COST / maxCommCost.
+   * DIGIT_NUM_NORMALIZED_MAX_COMM_COST value is empirically chosen.
+   */
+  private static final int DIGIT_NUM_NORMALIZED_MAX_COMM_COST = 7;
+  private static final double NORMALIZED_MAX_COMM_COST = 1 << DIGIT_NUM_NORMALIZED_MAX_COMM_COST;
+  
+  private static final int THRESH_MODEL_BLOCK_NUM_PER_EVAL = 5;
   
   @Inject
   private ILPSolver() {
@@ -46,9 +66,8 @@ final class ILPSolver {
     // Gurobi environment configurations
     final GRBEnv env = new GRBEnv(filename);
     final GRBModel model = new GRBModel(env);
-    model.set(GRB.DoubleParam.IntFeasTol, 1e-2);
-    model.set(GRB.DoubleParam.MIPGap, 40e-2);
-    model.set(GRB.IntParam.Threads, 12);
+    model.set(GRB.DoubleParam.IntFeasTol, INT_FEAS_TOL);
+    model.set(GRB.DoubleParam.MIPGap, MIP_GAP);
     
     // Variables
     final GRBVar[] m = new GRBVar[n];
@@ -72,15 +91,16 @@ final class ILPSolver {
     // 3. m[i] == 0 iff s[i] == 0
     basicConstraints(model, m, mTotal, n, sImJ, s);
     
-    // maxCommCost occurs when there is only one server and server is bottleneck for communication cost.
+    // maxCommCost occurs when there is only one server and the server is bottleneck for communication cost.
     final double maxCommCost = (double) n * mTotal * p / findMin(bandwidth);
-    final double normalizationTerm = (double) (1 << 7) / maxCommCost;
-    final int logMaxCommCost = 7;
+    // here, normalize all the costs with {@code normalizationFactor} by making maxCommCost to be
+    // NORMALIZED_MAX_COMM_COST.
+    final double normalizationFactor = NORMALIZED_MAX_COMM_COST / maxCommCost;
     
     // Express maxPullTimePerBatch with binary.
-    final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][logMaxCommCost];
+    final GRBVar[][] maxPullTimePerBatch = new GRBVar[n][DIGIT_NUM_NORMALIZED_MAX_COMM_COST];
     for (int j = 0; j < n; j++) {
-      for (int i = 0; i < logMaxCommCost; i++) {
+      for (int i = 0; i < DIGIT_NUM_NORMALIZED_MAX_COMM_COST; i++) {
         maxPullTimePerBatch[j][i] =
             model.addVar(0.0, 1.0, 0.0, GRB.BINARY, String.format("maxPullTimePerBatch[%d][%d]", j, i));
       }
@@ -90,7 +110,7 @@ final class ILPSolver {
     for (int i = 0; i < n; i++) {
       final GRBLinExpr workerBottleneck = new GRBLinExpr();
       for (int j = 0; j < n; j++) {
-        workerBottleneck.addTerm(normalizationTerm * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
+        workerBottleneck.addTerm(normalizationFactor * p / Math.min(bandwidth[i], bandwidth[j]), m[j]);
       }
       model.addConstr(binToExpr(maxPullTimePerBatch[i]), GRB.GREATER_EQUAL, workerBottleneck,
           String.format("maxTransferTime>=Sigma(p*m[j]/min(BW[%d], BW[j]))", i));
@@ -98,17 +118,17 @@ final class ILPSolver {
     
     // if a server is the bottleneck
     final GRBVar serverBottleneck =
-        model.addVar(0.0, normalizationTerm * mTotal * p * n / findMin(bandwidth), 0.0,
-            GRB.CONTINUOUS, "serverBottlenectCost");
+        model.addVar(0.0, normalizationFactor * mTotal * p * n / findMin(bandwidth), 0.0,
+            GRB.CONTINUOUS, "serverBottleneckCost");
     
     for (int j = 0; j < n; j++) {
       final GRBLinExpr sumWIMJExpr = new GRBLinExpr();
-      sumWIMJExpr.addTerm(normalizationTerm * p * bandwidthHarmonicSum[j], m[j]);
+      sumWIMJExpr.addTerm(normalizationFactor * p * bandwidthHarmonicSum[j], m[j]);
       for (int i = 0; i < n; i++) {
-        sumWIMJExpr.addTerm(normalizationTerm * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
+        sumWIMJExpr.addTerm(normalizationFactor * -p / Math.min(bandwidth[i], bandwidth[j]), sImJ[i][j]);
       }
       model.addConstr(serverBottleneck, GRB.GREATER_EQUAL, sumWIMJExpr,
-          String.format("serverBottlenectCost>=W*m[%d]*p/bandwidth[%d]", j, j));
+          String.format("serverBottleneckCost>=W*m[%d]*p/bandwidth[%d]", j, j));
     }
     
     for (int  i = 0; i < n; i++) {
@@ -119,10 +139,10 @@ final class ILPSolver {
     // cost[i]*t[i] = 1
     for (int i = 0; i < n; i++) {
       final GRBQuadExpr costItI = new GRBQuadExpr();
-      for (int j = 0; j < logMaxCommCost; j++) {
+      for (int j = 0; j < DIGIT_NUM_NORMALIZED_MAX_COMM_COST; j++) {
         costItI.addTerm(Math.pow(2, j), t[i], maxPullTimePerBatch[i][j]);
       }
-      costItI.addTerm(normalizationTerm * cWProc[i], t[i]);
+      costItI.addTerm(normalizationFactor * cWProc[i], t[i]);
       model.addQConstr(costItI, GRB.EQUAL, 1, String.format("cost[%d]*t[%d]=1", i, i));
     }
     
@@ -165,8 +185,8 @@ final class ILPSolver {
     model.dispose();
     env.dispose();
     
-    LOG.log(Level.INFO, "dVal : " + encodeArray(dVal));
-    LOG.log(Level.INFO, "wVal : " + encodeArray(wVal));
+    LOG.log(Level.INFO, "dVal : {0}", encodeArray(dVal));
+    LOG.log(Level.INFO, "wVal : {0}", encodeArray(wVal));
     LOG.log(Level.INFO, "totalCost : {0}, compCost : {1}, commCost : {2}",
         new Object[]{costSet.getFirst(), costSet.getSecond(), costSet.getThird()});
     
@@ -224,7 +244,7 @@ final class ILPSolver {
       harmonicEstimatedCostSum += 1.0 / estimatedCost[i];
     }
     
-    // Determine mVal[i] proportional to the 1 / estimatedCost[i]
+    // Determine dVal[i] proportional to the 1 / estimatedCost[i]
     for (int i = 0; i < n; i++) {
       if (mVal[i] != 0) {
         dVal[i] = 0;
@@ -233,6 +253,9 @@ final class ILPSolver {
       }
     }
     
+    // Since dVal is integer value, when determining dVal[i] proprotional to 1 / estimatedCost[i] like above, some
+    // data blocks can be omitted. To keep the number of total data blocks with constant value, the omitted blocks
+    // should be included fairly in worker evaluators.
     int sumD = 0;
     for (int i = 0; i < n; i++) {
       sumD += dVal[i];
@@ -337,11 +360,10 @@ final class ILPSolver {
     model.addConstr(sumSM, GRB.EQUAL, mTotal, "sum(s[i]*m[i])=M");
     
     // Servers should have at least five model blocks. You can control this number if mTotal or total number of machines
-    // are changed.
-    // This constraint is applied because of gurobi issue. In some cases, gurobi's problem solving time is very long.
+    // are changed. This constraint is necessary for gurobi issue.
     for (int i = 0; i < n; i++) {
       final GRBLinExpr fiveS = new GRBLinExpr();
-      fiveS.addTerm(5.0, s[i]);
+      fiveS.addTerm(THRESH_MODEL_BLOCK_NUM_PER_EVAL, s[i]);
       model.addConstr(m[i], GRB.GREATER_EQUAL, fiveS, String.format("m[%d]>=s[%d}", i, i));
     }
   }
@@ -450,6 +472,9 @@ final class ILPSolver {
     return sb.toString();
   }
   
+  /**
+   * A callback triggered by Gurobi. This callback is used to print the intermediate solutions.
+   */
   private static class DolphinSolverCallback extends GRBCallback {
     private final long startTimeMs;
     private final int n;

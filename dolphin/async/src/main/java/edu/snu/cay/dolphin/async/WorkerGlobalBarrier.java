@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
-  private volatile StateMachine stateMachine;
+  private final StateMachine stateMachine;
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
@@ -43,7 +43,7 @@ final class WorkerGlobalBarrier {
   @Inject
   private WorkerGlobalBarrier(final WorkerSideMsgSender workerSideMsgSender) {
     this.workerSideMsgSender = workerSideMsgSender;
-    init();
+    this.stateMachine = initStateMachine();
   }
 
   enum State {
@@ -56,15 +56,22 @@ final class WorkerGlobalBarrier {
    * Initialize its state machine.
    * By calling this method in any state, you can reset the state of {@link WorkerGlobalBarrier} to initial state.
    */
-  public void init() {
-    this.stateMachine = StateMachine.newBuilder()
+  private static StateMachine initStateMachine() {
+    return StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
         .addState(State.RUN, "Workers are running their tasks. Optimization can take place")
         .addState(State.CLEANUP, "Workers are cleaning up the task")
-        .addTransition(State.INIT, State.RUN, "The worker init is finished, time to start running task")
+        .addTransition(State.INIT, State.RUN, "The worker reset is finished, time to start running task")
         .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(State.INIT)
         .build();
+  }
+  
+  /**
+   * Reset its state machine with INIT state.
+   */
+  void reset() {
+    this.stateMachine.setState(State.INIT);
   }
 
   /**

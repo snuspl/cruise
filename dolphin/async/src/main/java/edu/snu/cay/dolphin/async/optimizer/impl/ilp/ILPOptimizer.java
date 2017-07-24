@@ -35,7 +35,12 @@ import java.util.*;
  * Solves Integer Linear Programming problem to find the optimal configuration.
  */
 public final class ILPOptimizer implements Optimizer {
+  /**
+   * To indicate that the evaluator's cWProc is unknown because the evaluator's role was server, not a worker.
+   */
+  private static final double NON_WORKER = -1.0;
   private static final int NUM_EMPTY_BLOCK = 0;
+  
   private final double defNetworkBandwidth;
   private final int defCoreNum;
   private final Map<String, Double> hostToBandwidth;
@@ -82,13 +87,13 @@ public final class ILPOptimizer implements Optimizer {
     final double[] bandwidth = new double[n];
     final String[] evalIds = new String[n];
 
-    double avgCWProcPerCore = 0.0;
+    double sumCWProc = 0.0;
     double totalHarmonicCoreSum = 0.0;
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
-      avgCWProcPerCore += workerDescriptor.getcWProc();
+      sumCWProc += workerDescriptor.getcWProc();
       totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    avgCWProcPerCore /= totalHarmonicCoreSum;
+    double avgCWProcPerCore = sumCWProc / totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -100,8 +105,6 @@ public final class ILPOptimizer implements Optimizer {
       cWProc[idx] = avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
       idx++;
     }
-
-    System.out.println("n: " + n + " idx: " + idx);
 
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
       roleOld[idx] = EvaluatorRole.WORKER.getValue();
@@ -125,7 +128,7 @@ public final class ILPOptimizer implements Optimizer {
       
       planBuilder.setOptimizerType(OptimizerType.ILP);
 
-      // roleOpt[], dOpt[], mOpt[]
+      // Generate actual block moving plan by comparing old configuration and new configuration obtained from ILPSolver.
       final ILPPlanDescriptor planDescriptor = ILPPlanGenerator.generatePlanDescriptor(evalIds, roleOld, dOld, mOld,
           optConfDescriptor.getRole(), optConfDescriptor.getD(), optConfDescriptor.getM());
       final List<String> workerEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
@@ -174,7 +177,7 @@ public final class ILPOptimizer implements Optimizer {
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, NUM_EMPTY_BLOCK, -1.0, numModelBlocks, hostname));
+          new MachineDescriptor(id, bandwidth, NUM_EMPTY_BLOCK, NON_WORKER, numModelBlocks, hostname));
     }
     return machineDescriptors;
   }

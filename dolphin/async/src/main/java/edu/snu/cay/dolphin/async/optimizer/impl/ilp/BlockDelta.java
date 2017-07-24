@@ -16,14 +16,15 @@
 package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
 
 /**
- * This instance contains information about which evaluator should send or receive blocks
- * and how many blocks are need to be moved.
+ * This instance contains information about which evaluator should send or receive blocks and how many blocks are need
+ * to be moved.
+ * If the evaluator(with {@code evalIdx})'s role is a sender, {@code numBlocksToMove} is defined as a number of blocks
+ * to send. If the evaluator's role is a receiver, {@code numBlocksToMove} is defined as a number of blocks to receive.
+ * Thus, the value is always positive.
  */
 final class BlockDelta {
   /**
    * Number of blocks that evaluator with {@code evalIdx} sends or receives.
-   * If the evaluator's role is a sender, this value is defined as a number of blocks to send. If the evaluator's role
-   * is a receiver, this value is defined as a number of blocks to receive. Thus, it is always positive.
    */
   private int numBlocksToMove;
   private final int evalIdx;
