@@ -21,6 +21,7 @@ import edu.snu.cay.pregel.graph.api.MutableEdge;
 /**
  * A default implementation of {@link Edge}.
  *
+<<<<<<< HEAD
  * @param <E> edge value
  */
 public final class DefaultEdge<E> implements MutableEdge<E> {

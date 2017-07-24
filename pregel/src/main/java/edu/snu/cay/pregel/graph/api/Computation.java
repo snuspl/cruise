@@ -25,7 +25,7 @@ import java.util.concurrent.Future;
  * Interface for an application for computation for a superstep.
  *
  * @param <V> vertex value
-*  @param <E> edge value
+ * @param <E> edge value
  * @param <M> message value
  */
 public interface Computation<V, E, M> {

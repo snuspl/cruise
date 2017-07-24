@@ -90,7 +90,6 @@ public final class PregelWorkerTask<V, E, M> implements Task {
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
-
       computation.initialize(superStepCounter.get(), messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
