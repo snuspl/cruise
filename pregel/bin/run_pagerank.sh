@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_pregel.sh -input_path inputs/adj_list
+# ./run_pagerank.sh -input_path file://$(pwd)/inputs/adj_list
 
 SELF_JAR=`echo ../target/pregel-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-JOB=edu.snu.cay.pregel.PregelLauncher
+JOB=edu.snu.cay.pregel.graphapps.pagerank.PagerankET
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $JOB $*"
 echo $CMD

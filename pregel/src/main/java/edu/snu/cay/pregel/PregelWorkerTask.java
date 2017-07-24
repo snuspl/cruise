@@ -55,6 +55,8 @@ public final class PregelWorkerTask implements Task {
 
   private final TableAccessor tableAccessor;
 
+  private final Computation computation;
+
   /**
    * The number of active vertices in local graph partitions.
    * This value is set at the end of each superstep.
@@ -65,9 +67,11 @@ public final class PregelWorkerTask implements Task {
   @Inject
   private PregelWorkerTask(final MessageManager messageManager,
                            final WorkerMsgManager workerMsgManager,
+                           final Computation computation,
                            final TableAccessor tableAccessor) {
     this.messageManager = messageManager;
     this.workerMsgManager = workerMsgManager;
+    this.computation = computation;
     this.tableAccessor = tableAccessor;
   }
 
@@ -86,9 +90,7 @@ public final class PregelWorkerTask implements Task {
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
-      // TODO #1177: Support generic type of computation for other apps than page-rank
-      final Computation computation =
-          new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageTable());
+      computation.initialize(superStepCounter.get(), messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       // partition local graph-dataset as the number of threads

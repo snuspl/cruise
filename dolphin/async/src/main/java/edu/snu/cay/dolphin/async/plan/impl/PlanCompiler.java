@@ -165,18 +165,18 @@ public final class PlanCompiler {
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
     /*
-     We have two switch translations here. (Ordering is important!)
-     The first is for a pair of add/del that has the same target eval id.
-     It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
+    We have two switch translations here.
+    The first is for a pair of add/del that has the same target eval id.
+    It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
 
-     The second translation does not care about the eval id of each add/del operation.
-     It just picks add/del ops randomly to eliminate all pairs of add/del in different namespace.
-     It's for all other existing optimizers.
-     Actually in this case, optimizers do not specify meaningful eval id for add op,
-     because they think add op is for acquiring a 'new' resource and
-     the newly allocated eval's id will be assigned by RM or REEF.
+    The second translation does not care about the eval id of each add/del operation.
+    It just picks add/del ops randomly to eliminate all pairs of add/del in different namespace.
+    It's for all other existing optimizers.
+    Actually in this case, optimizers do not specify meaningful eval id for add op,
+    because they think add op is for acquiring a 'new' resource and
+    the newly allocated eval's id will be assigned by RM or REEF.
      */
-
+  
     // First switch translation.
     if (dolphinPlan.getOptimizerType() == OptimizerType.ILP) {
       final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
@@ -190,11 +190,12 @@ public final class PlanCompiler {
   
       srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
       serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
+
+      // Second switch translation.
     } else if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
       final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
       final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
-  
-      // Second switch translation.
+
       if (numSwitchesFromServerToWorker > 0) { // server -> worker
         final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
             translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
