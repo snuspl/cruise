@@ -31,19 +31,26 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Codec for vertex.
- * {@link VertexValueCodec} and {@link EdgeCodec} should be configured before
- * {@link edu.snu.cay.pregel.PregelWorkerTask} starts.
+ * Codec for vertex, is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
+ * So they should be configured before {@link edu.snu.cay.pregel.PregelWorkerTask} starts.
+ *
+ * Encoding format of vertex is as follows:
+ * 1. Vertex w/ value : [ long: vertex id | true | V: vertex value | E: edge | E: edge | E: edge ...],
+ * 2. Vertex w/o value : [ long: vertex id | false | E: edge | E: edge | E: edge ...]
+ *
+ * Encoding format of edge is as follows:
+ * 1. Edge w/ value : [ long: target vertex id | E: edge value ]
+ * 2. Edge w/o value : [ long: target vertex id ]
  */
-public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
+public final class VertexCodec<V, E> implements Codec<Vertex<V, E>> {
 
-  private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
+  private static final Logger LOG = Logger.getLogger(VertexCodec.class.getName());
   private final StreamingCodec<V> vertexValueCodec;
   private final StreamingCodec<Edge<E>> edgeCodec;
 
   @Inject
-  private DefaultVertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
-                             @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
+  private VertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
+                      @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
     this.vertexValueCodec = vertexValueCodec;
     this.edgeCodec = edgeCodec;
   }

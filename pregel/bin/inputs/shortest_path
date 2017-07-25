@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Format of this input file is as follows
+# {vertexId} {edge target vertex id} {edge value} {edge target vertex id} {edge value} ...
+
 0 1 2 2 3
 1 0 2 4 5 3 4
 2 0 3 3 1 6 3

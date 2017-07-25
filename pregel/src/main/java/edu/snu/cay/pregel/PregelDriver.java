@@ -16,7 +16,7 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.pregel.common.DefaultVertexCodec;
+import edu.snu.cay.pregel.common.VertexCodec;
 import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
@@ -157,7 +157,7 @@ public final class PregelDriver {
   /**
    * Build a configuration of vertex table.
    * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
-   * so set {@link DefaultVertexCodec} to value codec class.
+   * so set {@link VertexCodec} to value codec class.
    * Note that this configuration is for Pagerank app.
    *
    * @param tableId an identifier of {@link TableConfiguration}
@@ -169,7 +169,7 @@ public final class PregelDriver {
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(DefaultVertexCodec.class)
+        .setValueCodecClass(VertexCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)

@@ -24,7 +24,8 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * Implementation of {@link edu.snu.cay.pregel.graph.api.Computation} to execute a pagerank algorithm.
+ * Implementation of {@link edu.snu.cay.pregel.graph.api.Computation} to execute a shortest-path algorithm.
+ * It calculates all vertices distances from given {@link SourceId}.
  */
 public final class ShortestPathComputation extends AbstractComputation<Long, Long, Long> {
 

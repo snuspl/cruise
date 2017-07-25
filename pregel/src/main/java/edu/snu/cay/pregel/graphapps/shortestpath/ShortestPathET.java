@@ -27,6 +27,7 @@ import java.io.IOException;
 
 /**
  * Application launching code for Shortest path.
+ * It calculates all vertices distances from given {@link SourceId}.
  */
 public final class ShortestPathET {
 

@@ -16,7 +16,6 @@
 package edu.snu.cay.utils;
 
 import org.apache.reef.io.network.impl.StreamingCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -24,8 +23,7 @@ import java.io.*;
 /**
  * A {@link StreamingCodec} for {@link Serializable} objects.
  */
-public final class StreamingSerializableCodec<T extends Serializable> extends SerializableCodec<T>
-    implements StreamingCodec<T> {
+public final class StreamingSerializableCodec<T extends Serializable> implements StreamingCodec<T> {
 
   @Inject
   private StreamingSerializableCodec() {
@@ -52,12 +50,22 @@ public final class StreamingSerializableCodec<T extends Serializable> extends Se
 
   @Override
   public byte[] encode(final T obj) {
-    return super.encode(obj);
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         ObjectOutputStream oos = new ObjectOutputStream(baos);
+         DataOutputStream daos = new DataOutputStream(oos)) {
+      encodeToStream(obj, daos);
+      return baos.toByteArray();
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override
   public T decode(final byte[] buf) {
-    return super.decode(buf);
+    try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(buf))) {
+      return decodeFromStream(dis);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
-
 }

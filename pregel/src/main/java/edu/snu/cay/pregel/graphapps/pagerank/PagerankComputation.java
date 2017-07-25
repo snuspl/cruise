@@ -53,8 +53,8 @@ public final class PagerankComputation extends AbstractComputation<Double, Void,
     } else {
 
       // If incoming messages are not null, reduce it before update the value of this vertex.
-      final double sum = messages == null ? 0d :
-          Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
+      final double sum = Lists.newArrayList(messages).stream()
+          .mapToDouble(Double::doubleValue).reduce(0.0, (a, b) -> a + b);
       vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
 
