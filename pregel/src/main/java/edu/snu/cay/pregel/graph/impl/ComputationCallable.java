@@ -42,18 +42,18 @@ public class ComputationCallable<V, E, M> implements Callable<Integer> {
   private final Table<Long, List<M>, M> currMessageTable;
 
   public ComputationCallable(final Computation<V, E, M> computation,
-                             final Iterable<Vertex<V, E>> verticesPartition,
+                             final Iterable<Vertex<V, E>> vertexPartition,
                              final Table<Long, List<M>, M> currMessageTable) {
 
     this.computation = computation;
-    this.verticesPartition = verticesPartition;
+    this.verticesPartition = vertexPartition;
     this.currMessageTable = currMessageTable;
   }
 
   /**
    * Compute around the verticesPartition in one superstep.
    *
-   * @return the number of active verticesPartition in this partitionStore
+   * @return the number of active vertices in this partition
    */
   @Override
   public Integer call() throws Exception {
