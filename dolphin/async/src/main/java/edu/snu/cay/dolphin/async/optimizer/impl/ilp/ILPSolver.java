@@ -25,6 +25,11 @@ import java.util.logging.Logger;
 
 /**
  * Computes Dolphin's optimal cost and configuration (w.r.t. w, s, d, m).
+ *
+ * There are some empirical issues. You should keep in mind the following issues when you use ILPSolver.
+ * 1. GUROBI environment setting(e.g. IntFeasTol, MIPGap)
+ * 2. Cost normalization.
+ * 3. Minimum threshold of number of model blocks for each server.
  */
 final class ILPSolver {
   private static final Logger LOG = Logger.getLogger(ILPSolver.class.getName());

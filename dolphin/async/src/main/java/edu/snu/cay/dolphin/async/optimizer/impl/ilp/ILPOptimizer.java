@@ -93,7 +93,7 @@ public final class ILPOptimizer implements Optimizer {
       sumCWProc += workerDescriptor.getcWProc();
       totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    double avgCWProcPerCore = sumCWProc / totalHarmonicCoreSum;
+    final double avgCWProcPerCore = sumCWProc / totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
