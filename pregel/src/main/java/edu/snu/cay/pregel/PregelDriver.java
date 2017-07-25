@@ -76,6 +76,9 @@ public final class PregelDriver {
   private final Injector masterConfInjector;
   private final Configuration taskConf;
 
+  private final StreamingCodec vertexValueCodec;
+  private final StreamingCodec edgeCodec;
+
   @Inject
   private PregelDriver(final ETMaster etMaster,
                        final CentCommConfProvider centCommConfProvider,
@@ -87,8 +90,9 @@ public final class PregelDriver {
     this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
     this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
 
-    final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
-    final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
+    this.vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
+    this.edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
+
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)
@@ -101,12 +105,7 @@ public final class PregelDriver {
             .setNumSenderThreads(1)
             .build())
         .setUserContextConf(centCommConfProvider.getContextConfiguration())
-        // configure vertex value codec, edge codec to executors
-        .setUserServiceConf(Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
-            Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
-                .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
-                .build()))
+        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
   }
 
@@ -176,6 +175,10 @@ public final class PregelDriver {
         .setIsOrderedTable(false)
         .setDataParserClass(dataParser.getClass())
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
+        .setUserParamConf(Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
+            .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
+            .build())
         .build();
   }
 
