@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * This is a abstract class helper for users to implement their computations.
+ * This is an abstract helper class for users to implement their computations.
  * It implements all of the methods required by the {@link Computation}
  * interface except for the {@link #compute(Vertex, Iterable)} which we leave
  * to the user to define.

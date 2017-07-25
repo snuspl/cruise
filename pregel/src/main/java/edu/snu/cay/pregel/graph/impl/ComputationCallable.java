@@ -20,6 +20,7 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -65,9 +66,10 @@ public class ComputationCallable<V, E, M> implements Callable<Integer> {
 
         List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
         if (msgsForVertex == null) {
-          msgsForVertex = new ArrayList<>();
+          msgsForVertex = Collections.emptyList();
         }
 
+        // wake up vertex, when there're incoming messages
         if (vertex.isHalted() && !msgsForVertex.isEmpty()) {
           vertex.wakeUp();
         }

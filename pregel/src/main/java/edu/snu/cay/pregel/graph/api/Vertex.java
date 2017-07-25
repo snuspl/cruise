@@ -19,9 +19,11 @@ import edu.snu.cay.pregel.graph.impl.DefaultVertex;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for vertex which has vertex id, data and outgoing {@link Edge}s.
+ * Interface for vertex which has vertex id, value and outgoing {@link Edge}s.
+ * Note that it assumes that vertex id is always {@link Long} type.
  *
- * @param <V> Vertex data
+ * @param <V> Vertex value type
+ * @param <E> Edge value type
  */
 @DefaultImplementation(DefaultVertex.class)
 public interface Vertex<V, E> {
@@ -98,7 +100,7 @@ public interface Vertex<V, E> {
   Iterable<Edge<E>> getEdges();
 
   /**
-   * Re-active vertex if halted.
+   * Re-activate vertex if halted.
    */
   void wakeUp();
 
