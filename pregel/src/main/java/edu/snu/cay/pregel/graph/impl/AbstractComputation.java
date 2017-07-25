@@ -20,7 +20,6 @@ import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -66,15 +65,13 @@ public abstract class AbstractComputation<V, E, M> implements Computation<V, E, 
   }
 
   @Override
-  public Future<?> sendMessage(final Long id, final M message) {
-    return nextMessageTable.update(id, message);
+  public void sendMessage(final Long id, final M message) {
+    msgFutureList.add(nextMessageTable.update(id, message));
   }
 
   @Override
-  public List<Future<?>> sendMessagesToAdjacents(final Vertex<V, E> vertex, final M message) {
-    final List<Future<?>> futureList = new ArrayList<>();
-    vertex.getEdges().forEach(edge -> futureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
-    return futureList;
+  public void sendMessagesToAdjacents(final Vertex<V, E> vertex, final M message) {
+    vertex.getEdges().forEach(edge -> msgFutureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
   }
 
   @Override
@@ -83,9 +80,5 @@ public abstract class AbstractComputation<V, E, M> implements Computation<V, E, 
       msgFuture.get();
     }
     msgFutureList.clear();
-  }
-  
-  protected List<Future<?>> getMsgFutureList() {
-    return msgFutureList;
   }
 }

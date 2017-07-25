@@ -57,7 +57,7 @@ public final class ShortestPathComputation extends AbstractComputation<Long, Lon
       vertex.setValue(minDist);
       for (final Edge edge : vertex.getEdges()) {
         final Long distance = minDist + (Long) edge.getValue();
-        getMsgFutureList().add(sendMessage(edge.getTargetVertexId(), distance));
+        sendMessage(edge.getTargetVertexId(), distance);
       }
     }
     vertex.voteToHalt();

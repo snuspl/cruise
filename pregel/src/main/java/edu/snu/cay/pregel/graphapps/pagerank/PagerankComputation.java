@@ -59,7 +59,7 @@ public final class PagerankComputation extends AbstractComputation<Double, Void,
     }
 
     if (getSuperstep() < NUM_TOTAL_SUPERSTEP) {
-      getMsgFutureList().addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
+      sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());
     } else {
       vertex.voteToHalt();
     }
