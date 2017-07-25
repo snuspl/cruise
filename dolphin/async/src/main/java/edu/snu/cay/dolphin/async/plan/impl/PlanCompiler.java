@@ -209,7 +209,7 @@ public final class PlanCompiler {
         srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch.getLeft());
         serverTransferSteps = evalIdsToTransfersForSwitch.getRight();
       }
-    } else if (dolphinPlan.getOptimizerType() != OptimizerType.EMPTY) {
+    } else {
       throw new RuntimeException("Unknown optimizer type!");
     }
 

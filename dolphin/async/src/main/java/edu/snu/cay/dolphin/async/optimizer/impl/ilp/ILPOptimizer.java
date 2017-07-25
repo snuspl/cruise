@@ -121,7 +121,7 @@ public final class ILPOptimizer implements Optimizer {
           ilpSolver.optimize(n, numTotalDataBlocks, numTotalModelBlocks, p, cWProc, bandwidth);
 
       if (optConfDescriptor == null) {
-        return new EmptyPlan();
+        return new EmptyPlan(OptimizerType.ILP);
       }
 
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();

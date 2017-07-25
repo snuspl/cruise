@@ -198,7 +198,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
-        new EmptyPlan() : generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
+        new EmptyPlan(OptimizerType.HETEROGENEOUS) :
+        generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
           serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
   }
 

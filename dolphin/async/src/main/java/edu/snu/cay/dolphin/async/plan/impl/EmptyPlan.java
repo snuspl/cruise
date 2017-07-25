@@ -27,10 +27,13 @@ import java.util.Collections;
  */
 public final class EmptyPlan implements Plan {
 
+  private final OptimizerType optimizerType;
+
   /**
    * Constructs an empty plan involving no operation.
    */
-  public EmptyPlan() {
+  public EmptyPlan(final OptimizerType optimizerType) {
+    this.optimizerType = optimizerType;
   }
 
   @Override
@@ -55,6 +58,6 @@ public final class EmptyPlan implements Plan {
   
   @Override
   public OptimizerType getOptimizerType() {
-    return OptimizerType.EMPTY;
+    return optimizerType;
   }
 }
