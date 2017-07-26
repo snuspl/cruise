@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,13 +56,6 @@ public final class PregelWorkerTask<V, E, M> implements Task {
 
   private final Computation<V, E, M> computation;
 
-  /**
-   * The number of active vertices in local graph partitions.
-   * This value is set at the end of each superstep.
-   * It is used to determine whether task finishes or not by {@link WorkerMsgManager}
-   */
-  private final AtomicInteger numActiveVertices = new AtomicInteger(0);
-
   @Inject
   private PregelWorkerTask(final MessageManager messageManager,
                            final WorkerMsgManager workerMsgManager,
@@ -83,14 +75,13 @@ public final class PregelWorkerTask<V, E, M> implements Task {
     final int numThreads = NUM_THREADS;
     final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(numThreads);
 
-    final AtomicInteger superStepCounter = new AtomicInteger(0);
+    int superStepCount = 0;
     final Table<Long, Vertex<V, E>, ?> vertexTable = tableAccessor.getTable(PregelDriver.VERTEX_TABLE_ID);
-    numActiveVertices.set(vertexTable.getLocalTablet().getNumDataItems());
 
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
-      computation.initialize(superStepCounter.get(), messageManager.getNextMessageTable());
+      computation.initialize(superStepCount, messageManager.getNextMessageTable());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       // partition local graph-dataset as the number of threads
@@ -123,19 +114,19 @@ public final class PregelWorkerTask<V, E, M> implements Task {
       }
 
       // aggregate the number of active vertices from the processed partitions
-      numActiveVertices.set(0);
+      int numActiveVertices = 0;
       for (final Future<Integer> computeFuture : futureList) {
-        numActiveVertices.getAndAdd(computeFuture.get());
+        final int numActiveVerticesInPartition = computeFuture.get();
+        numActiveVertices += numActiveVerticesInPartition;
       }
 
       // before finishing superstep, confirm that all outgoing messages are completely sent out
       final int sentMsgSize = computation.flushAllMessages();
 
-      LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
+      LOG.log(Level.INFO, "Superstep {0} is finished", superStepCount);
 
       // master will decide whether to continue or not
-      final boolean continueSuperstep =
-          workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices.get(), sentMsgSize);
+      final boolean continueSuperstep = workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices, sentMsgSize);
 
       if (!continueSuperstep) {
         break;
@@ -143,10 +134,10 @@ public final class PregelWorkerTask<V, E, M> implements Task {
 
       // prepare next superstep
       messageManager.prepareForNextSuperstep();
-      superStepCounter.getAndIncrement();
+      superStepCount++;
     }
 
-    LOG.log(Level.INFO, "Pregel job has been finished after {0} supersteps.", superStepCounter.get());
+    LOG.log(Level.INFO, "Pregel job has been finished after {0} supersteps.", superStepCount);
     vertexTable.getLocalTablet().getDataMap().values().forEach(vertex ->
         LOG.log(Level.INFO, "Vertex id : {0}, value : {1}", new Object[]{vertex.getId(), vertex.getValue()}));
 

@@ -86,7 +86,6 @@ public final class PregelDriver {
     this.etMaster = etMaster;
     this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
     this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
-
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)

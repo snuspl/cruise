@@ -31,8 +31,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Codec for vertex, is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
- * So they should be configured before {@link edu.snu.cay.pregel.PregelWorkerTask} starts.
+ * Codec for vertex, which is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
  *
  * Encoding format of vertex is as follows:
  * 1. Vertex w/ value : [ long: vertex id | true | V: vertex value | E: edge | E: edge | E: edge ...],
