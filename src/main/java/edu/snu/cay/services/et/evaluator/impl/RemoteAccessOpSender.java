@@ -21,7 +21,6 @@ import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOp
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.SenderQueueSize;
 import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -61,7 +60,7 @@ final class RemoteAccessOpSender {
    * A map holding ongoing operations until they finish.
    * It only maintains operations requested from local clients.
    */
-  private final Map<String, Map<Long, RemoteDataOp>> tableIdToOngoingOps = new ConcurrentHashMap<>();
+  private final Map<String, OngoingOps> tableIdToOngoingOps = new ConcurrentHashMap<>();
 
   /**
    * A boolean flag that becomes true when {@link #close()} is called,
@@ -69,19 +68,16 @@ final class RemoteAccessOpSender {
    */
   private volatile boolean closeFlag = false;
 
-  private final InjectionFuture<Tables> tablesFuture;
   private final String executorId;
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture;
 
   @Inject
-  private RemoteAccessOpSender(final InjectionFuture<Tables> tablesFuture,
-                               @Parameter(ExecutorIdentifier.class) final String executorId,
+  private RemoteAccessOpSender(@Parameter(ExecutorIdentifier.class) final String executorId,
                                @Parameter(SenderQueueSize.class) final int queueSize,
                                @Parameter(NumRemoteOpsSenderThreads.class) final int numSenderThreads,
                                final InjectionFuture<MessageSender> msgSenderFuture,
                                final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture) {
-    this.tablesFuture = tablesFuture;
     this.executorId = executorId;
     this.numSenderThreads = numSenderThreads;
     this.msgSenderFuture = msgSenderFuture;
@@ -172,13 +168,7 @@ final class RemoteAccessOpSender {
       LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, table: {2}]]",
           new Object[]{opMetadata.getOpId(), opMetadata.getOrigId(), tableId});
 
-      final TableComponents<K, V, U> tableComponents;
-
-      try {
-        tableComponents = tablesFuture.get().getTableComponents(tableId);
-      } catch (TableNotExistException e) {
-        throw new RuntimeException(e);
-      }
+      final TableComponents<K, V, U> tableComponents = tableIdToOngoingOps.get(tableId).tableComponents;
       encodeAndSendRequestMsg(opMetadata, op.getTargetId(), executorId, tableComponents, msgSenderFuture.get());
 
       // for operations that require replies, deregister them when receiving the reply
@@ -404,6 +394,7 @@ final class RemoteAccessOpSender {
                                          @Nullable final U updateValue,
                                          final String targetEvalId,
                                          final boolean replyRequired,
+                                         final TableComponents tableComponents,
                                          final DataOpResult<V> dataOpResult) {
     final long operationId = remoteOpIdCounter.getAndIncrement();
     final RemoteDataOp<K, V, U> operation = new RemoteDataOp<>(executorId, targetEvalId,
@@ -413,7 +404,7 @@ final class RemoteAccessOpSender {
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}, targetId: {2}",
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
 
-    registerOp(operation);
+    registerOp(operation, tableComponents);
 
     final int threadIdx = getThreadIdx(blockId);
     senderThreads.get(threadIdx).enqueue(operation);
@@ -428,6 +419,7 @@ final class RemoteAccessOpSender {
                                         final List<U> updateValueList,
                                         final String targetEvalId,
                                         final boolean replyRequired,
+                                        final TableComponents tableComponents,
                                         final DataOpResult<Map<K, V>> aggregateDataOpResult) {
 
     final long operationId = remoteOpIdCounter.getAndIncrement();
@@ -438,7 +430,7 @@ final class RemoteAccessOpSender {
     LOG.log(Level.FINER, "Send op to remote. OpId: {0}, OpType: {1}, targetId: {2}",
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
 
-    registerOp(operation);
+    registerOp(operation, tableComponents);
     final int threadIdx = getThreadIdx(blockId);
     senderThreads.get(threadIdx).enqueue(operation);
   }
@@ -455,47 +447,43 @@ final class RemoteAccessOpSender {
     final String tableId = msg.getTableId();
     final boolean isSuccess = msg.getIsSuccess();
 
-    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.get(tableId);
-    final RemoteDataOp operation = ongoingOp.get(opId);
+    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
+    final RemoteDataOp operation = ongoingOps.queuedOps.get(opId);
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", opId);
       return;
     }
 
-    try {
-      final Codec<K> keyCodec = (Codec<K>) tablesFuture.get().getTableComponents(tableId)
-          .getSerializer().getKeyCodec();
-      final Codec<V> valueCodec = (Codec<V>) tablesFuture.get().getTableComponents(tableId)
-          .getSerializer().getValueCodec();
+    final KVUSerializer kvuSerializer = ongoingOps.tableComponents.getSerializer();
 
-      final OpType opType = operation.getMetadata().getOpType();
-      if (operation.getMetadata().isSingleKey()) {
-        final DataValue remoteDataValue = msg.getDataValue();
-        final V decodedValue = isSuccess && remoteDataValue != null ?
-            valueCodec.decode(remoteDataValue.getValue().array()) : null;
+    final Codec<K> keyCodec = (Codec<K>) kvuSerializer.getKeyCodec();
+    final Codec<V> valueCodec = (Codec<V>) kvuSerializer.getValueCodec();
 
-        // TODO #106: Collect metrics about all remote access operations
-        if ((opType.equals(OpType.GET) || opType.equals(OpType.GET_OR_INIT)) && remoteDataValue != null) {
-          networkUsageStatFuture.get().incBytesReceivedGetResp(tableId, remoteDataValue.getValue().array().length);
-        }
-        operation.getDataOpResult().onCompleted(decodedValue, isSuccess);
-      } else {
-        final List<ByteBuffer> encodedKeys = msg.getDataKeys().getKeys();
-        final List<ByteBuffer> encodedValues = msg.getDataValues().getValues();
-        final Map<K, V> decodedMap = new HashMap<>();
-        for (int index = 0; index < encodedKeys.size(); index++) {
-          final K key = keyCodec.decode(encodedKeys.get(index).array());
-          final V value = valueCodec.decode(encodedValues.get(index).array());
-          decodedMap.put(key, value);
-        }
-        operation.getDataOpResult().onCompleted(decodedMap, isSuccess);
+    final OpType opType = operation.getMetadata().getOpType();
+    if (operation.getMetadata().isSingleKey()) {
+      final DataValue remoteDataValue = msg.getDataValue();
+      final V decodedValue = isSuccess && remoteDataValue != null ?
+          valueCodec.decode(remoteDataValue.getValue().array()) : null;
+
+      // TODO #106: Collect metrics about all remote access operations
+      if ((opType.equals(OpType.GET) || opType.equals(OpType.GET_OR_INIT)) && remoteDataValue != null) {
+        networkUsageStatFuture.get().incBytesReceivedGetResp(tableId, remoteDataValue.getValue().array().length);
       }
-
-      deregisterOp(tableId, opId);
-      LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", opId);
-    } catch (final TableNotExistException e) {
-      throw new RuntimeException(e);
+      operation.getDataOpResult().onCompleted(decodedValue, isSuccess);
+    } else {
+      final List<ByteBuffer> encodedKeys = msg.getDataKeys().getKeys();
+      final List<ByteBuffer> encodedValues = msg.getDataValues().getValues();
+      final Map<K, V> decodedMap = new HashMap<>();
+      for (int index = 0; index < encodedKeys.size(); index++) {
+        final K key = keyCodec.decode(encodedKeys.get(index).array());
+        final V value = valueCodec.decode(encodedValues.get(index).array());
+        decodedMap.put(key, value);
+      }
+      operation.getDataOpResult().onCompleted(decodedMap, isSuccess);
     }
+
+    deregisterOp(tableId, opId);
+    LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", opId);
   }
 
   /**
@@ -504,43 +492,63 @@ final class RemoteAccessOpSender {
    * @param tableId a table id
    */
   void waitOpsTobeFlushed(final String tableId) {
-    final Map ongoingOps = tableIdToOngoingOps.get(tableId);
+    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
     if (ongoingOps == null) {
       return;
     }
 
-    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", ongoingOps.size());
-    while (!ongoingOps.isEmpty()) {
+    final Map remainingOps = ongoingOps.queuedOps;
+
+    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", remainingOps.size());
+    while (!remainingOps.isEmpty()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
         // ignore interrupt
       }
-      LOG.log(Level.INFO, "ongoingOps.size(): {0}", ongoingOps.size());
+      LOG.log(Level.INFO, "remainingOps.size(): {0}", remainingOps.size());
     }
     tableIdToOngoingOps.remove(tableId);
     LOG.log(Level.INFO, "ops for {0} has been flushed out", tableId);
   }
 
   /**
+   * A class for encapsulating ongoing operations and {@link TableComponents} together.
+   * It is to maintain {@link TableComponents} until processing all operations,
+   * even if the table has been dropped from this executor.
+   */
+  private class OngoingOps {
+    private final TableComponents tableComponents;
+    private final Map<Long, RemoteDataOp> queuedOps;
+
+    OngoingOps(final TableComponents tableComponents) {
+      this.tableComponents = tableComponents;
+      this.queuedOps = new ConcurrentHashMap<>();
+    }
+  }
+
+  /**
    * Registers an operation before sending it to remote executor.
    */
-  private void registerOp(final RemoteDataOp operation) {
-    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.computeIfAbsent(
-        operation.getMetadata().getTableId(), key -> new ConcurrentHashMap<>());
-    final RemoteDataOp unhandledOperation = ongoingOp.put(operation.getMetadata().getOpId(), operation);
-    if (unhandledOperation != null) {
-      LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
-          unhandledOperation.getMetadata().getOpId());
-    }
+  private void registerOp(final RemoteDataOp operation, final TableComponents tableComponents) {
+    tableIdToOngoingOps.compute(operation.getMetadata().getTableId(), (tId, ongoingOps) -> {
+      final OngoingOps result = ongoingOps == null ? new OngoingOps(tableComponents) : ongoingOps;
+      final RemoteDataOp unhandledOperation = result.queuedOps.put(operation.getMetadata().getOpId(), operation);
+      if (unhandledOperation != null) {
+        LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
+            unhandledOperation.getMetadata().getOpId());
+      }
+      return result;
+    });
   }
 
   /**
    * Deregisters an operation after its remote access is finished.
    */
   private void deregisterOp(final String tableId, final long operationId) {
-    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.get(tableId);
-    if (ongoingOp == null || ongoingOp.remove(operationId) == null) {
+    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
+
+    if (ongoingOps == null || ongoingOps.queuedOps.remove(operationId) == null) {
       LOG.log(Level.WARNING, "No ongoing ops with opId: {0}", operationId);
     }
   }

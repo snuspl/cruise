@@ -28,7 +28,6 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -63,7 +62,7 @@ public class RemoteAccessOpSenderTest {
 
   private RemoteAccessOpSender remoteAccessOpSender;
   private MessageSender mockMsgSender;
-  private Codec<String> keyCodec;
+  private TableComponents tableComponents;
 
   @Before
   public void setup() throws InjectionException, IOException, TableNotExistException {
@@ -92,8 +91,7 @@ public class RemoteAccessOpSenderTest {
 
     final Tables tables = evalInjector.getInstance(Tables.class);
     tables.initTable(buildTableConf(TABLE_ID, NUM_TOTAL_BLOCKS).getConfiguration(), blockOwners);
-    final TableComponents<String, Integer, ?> tableComponents = tables.getTableComponents(TABLE_ID);
-    keyCodec = tableComponents.getSerializer().getKeyCodec();
+    tableComponents = tables.getTableComponents(TABLE_ID);
   }
 
   private TableConfiguration buildTableConf(final String tableId, final int numTotalBlocks) {
@@ -132,7 +130,7 @@ public class RemoteAccessOpSenderTest {
     final int blockId = 0; // block id means nothing here, so just set it as 0
     final DataOpResult<Integer> opResult = new SingleKeyDataOpResult<>();
     remoteAccessOpSender.sendSingleKeyOpToRemote(OpType.PUT, TABLE_ID, blockId,
-        key, value, null, RECEIVER_ID, true, opResult);
+        key, value, null, RECEIVER_ID, true, tableComponents, opResult);
 
     try {
       assertEquals("output value should be same with input value",

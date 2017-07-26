@@ -54,9 +54,9 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   private final Codec<K> keyCodec;
 
   /**
-   * Local cache for ownership mapping.
+   * Internal components for a table.
    */
-  private final OwnershipCache ownershipCache;
+  private final TableComponents tableComponents;
 
   /**
    * A tablet which means an abstraction of local portion of table.
@@ -76,13 +76,13 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   @Inject
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
                     @Parameter(KeyCodec.class) final Codec<K> keyCodec,
-                    final OwnershipCache ownershipCache,
+                    final TableComponents tableComponents,
                     final Tablet<K, V, U> tablet,
                     final RemoteAccessOpSender remoteAccessOpSender,
                     final BlockPartitioner<K> blockPartitioner) {
     this.tableId = tableId;
     this.keyCodec = keyCodec;
-    this.ownershipCache = ownershipCache;
+    this.tableComponents = tableComponents;
     this.tablet = tablet;
     this.remoteAccessOpSender = remoteAccessOpSender;
     this.blockPartitioner = blockPartitioner;
@@ -108,7 +108,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -121,7 +122,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.PUT, tableId, blockId, key, value, null,
-            remoteIdOptional.get(), replyRequired, dataOpResult);
+            remoteIdOptional.get(), replyRequired, tableComponents, dataOpResult);
 
         return dataOpResult;
       }
@@ -160,7 +161,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
     blockToPairListMap.forEach((blockId, kvPairList) -> {
-      final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+      final Pair<Optional<String>, Lock> remoteIdWithLock =
+          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
       final Optional<String> remoteIdOptional;
       remoteIdOptional = remoteIdWithLock.getKey();
       try {
@@ -185,7 +187,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
           // send operation to remote
           remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.PUT, tableId, blockId, keyList, valueList,
-              Collections.emptyList(), remoteIdOptional.get(), true, aggregateDataOpResult);
+              Collections.emptyList(), remoteIdOptional.get(), true, tableComponents, aggregateDataOpResult);
         }
       } catch (BlockNotExistsException e) {
         throw new RuntimeException(e);
@@ -208,7 +210,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -222,7 +225,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.PUT_IF_ABSENT, tableId, blockId, key, value, null,
-            remoteIdOptional.get(), replyRequired, dataOpResult);
+            remoteIdOptional.get(), replyRequired, tableComponents, dataOpResult);
         return dataOpResult;
       }
     } catch (final BlockNotExistsException e) {
@@ -241,7 +244,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -254,7 +258,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.GET, tableId, blockId, key, null, null,
-            remoteIdOptional.get(), true, dataOpResult);
+            remoteIdOptional.get(), true, tableComponents, dataOpResult);
 
         return dataOpResult;
       }
@@ -273,7 +277,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -286,7 +291,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.GET_OR_INIT, tableId, blockId, key, null, null,
-            remoteIdOptional.get(), true, dataOpResult);
+            remoteIdOptional.get(), true, tableComponents, dataOpResult);
 
         return dataOpResult;
       }
@@ -321,7 +326,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
     blockToPairListMap.forEach((blockId, kuPairList) -> {
-      final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+      final Pair<Optional<String>, Lock> remoteIdWithLock =
+          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
       final Optional<String> remoteIdOptional;
       remoteIdOptional = remoteIdWithLock.getKey();
       try {
@@ -346,7 +352,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
           // send operation to remote
           remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.UPDATE, tableId, blockId, keyList, Collections.emptyList(),
-              updateValueList, remoteIdOptional.get(), true, aggregateDataOpResult);
+              updateValueList, remoteIdOptional.get(), true, tableComponents, aggregateDataOpResult);
         }
       } catch (BlockNotExistsException e) {
         throw new RuntimeException(e);
@@ -374,7 +380,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -387,7 +394,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.UPDATE, tableId, blockId, key, null,
-            updateValue, remoteIdOptional.get(), replyRequired, dataOpResult);
+            updateValue, remoteIdOptional.get(), replyRequired, tableComponents, dataOpResult);
 
         return dataOpResult;
       }
@@ -415,7 +422,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
-    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    final Pair<Optional<String>, Lock> remoteIdWithLock =
+        tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
     try {
       remoteIdOptional = remoteIdWithLock.getKey();
 
@@ -428,7 +436,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         // send operation to remote
         remoteAccessOpSender.sendSingleKeyOpToRemote(
             OpType.REMOVE, tableId, blockId, key, null,
-            null, remoteIdOptional.get(), replyRequired, dataOpResult);
+            null, remoteIdOptional.get(), replyRequired, tableComponents, dataOpResult);
 
         return dataOpResult;
       }

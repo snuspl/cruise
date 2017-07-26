@@ -60,7 +60,7 @@ final class RemoteAccessOpHandler {
    * Operation should be identified with a pair of operation Id and and origin Id,
    * because operation Id is only unique within the original executor.
    */
-  private final Map<String, Set<Pair<Long, String>>> tableIdToQueuedOps = new ConcurrentHashMap<>();
+  private final Map<String, OngoingOps> tableIdToOngoingOps = new ConcurrentHashMap<>();
 
   private volatile boolean closeFlag = false;
 
@@ -170,56 +170,51 @@ final class RemoteAccessOpHandler {
       LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, tableId: {2}, blockId: {3}]]",
           new Object[]{opMetaData.getOpId(), opMetaData.getOrigId(), tableId, blockId});
 
+      final TableComponents<K, V, U> tableComponents = tableIdToOngoingOps.get(tableId).tableComponents;
+      final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
+
+      final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
       try {
-        final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
-        final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
-        final BlockStore<K, V, U> blockStore = tableComponents.getBlockStore();
+        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
+        final boolean isLocal = !remoteEvalIdOptional.isPresent();
+        if (isLocal) {
+          try {
+            final BlockStore<K, V, U> blockStore = tableComponents.getBlockStore();
+            final Block<K, V, U> block = blockStore.get(blockId);
 
-        final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
-        try {
-          final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
-          final boolean isLocal = !remoteEvalIdOptional.isPresent();
-          if (isLocal) {
-            try {
-              final Block<K, V, U> block = blockStore.get(blockId);
+            if (opMetaData.isSingleKey()) {
+              final boolean[] isSuccess = {true};
+              final V singleKeyOutput =
+                  (V) processSingleKeyOp(block, (SingleKeyDataOpMetadata) opMetaData, isSuccess);
 
-              if (opMetaData.isSingleKey()) {
-                final boolean[] isSuccess = {true};
-                final V singleKeyOutput =
-                    (V) processSingleKeyOp(block, (SingleKeyDataOpMetadata) opMetaData, isSuccess);
-
-                if (opMetaData.isReplyRequired()) {
-                  sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
-                      singleKeyOutput, Collections.emptyList(), isSuccess[0]);
-                }
-              } else {
-                final boolean[] isSuccess = {true};
-                final List<Pair<K, V>> multiKeyOutputs =
-                    (List<Pair<K, V>>) processMultiKeyOp(block, (MultiKeyDataOpMetadata) opMetaData, isSuccess);
-
-                if (opMetaData.isReplyRequired()) {
-                  sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
-                      null, multiKeyOutputs, isSuccess[0]);
-                }
+              if (opMetaData.isReplyRequired()) {
+                sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
+                    singleKeyOutput, Collections.emptyList(), isSuccess[0]);
               }
-            } catch (final BlockNotExistsException e) {
-              throw new RuntimeException(e);
+            } else {
+              final boolean[] isSuccess = {true};
+              final List<Pair<K, V>> multiKeyOutputs =
+                  (List<Pair<K, V>>) processMultiKeyOp(block, (MultiKeyDataOpMetadata) opMetaData, isSuccess);
+
+              if (opMetaData.isReplyRequired()) {
+                sendResultToOrigin(opMetaData, tableComponents.getSerializer(),
+                    null, multiKeyOutputs, isSuccess[0]);
+              }
             }
-
-          } else {
-            // a case that operation comes to this executor based on wrong or stale ownership info
-            redirect(opMetaData, tableComponents, remoteEvalIdOptional.get());
+          } catch (final BlockNotExistsException e) {
+            throw new RuntimeException(e);
           }
-        } finally {
-          final Lock ownershipLock = remoteEvalIdWithLock.getValue();
-          ownershipLock.unlock();
+
+        } else {
+          // a case that operation comes to this executor based on wrong or stale ownership info
+          redirect(opMetaData, tableComponents, remoteEvalIdOptional.get());
         }
-
-        deregisterOp(tableId, opMetaData.getOpId(), opMetaData.getOrigId());
-
-      } catch (final TableNotExistException e) {
-        throw new RuntimeException(e);
+      } finally {
+        final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+        ownershipLock.unlock();
       }
+
+      deregisterOp(tableId, opMetaData.getOpId(), opMetaData.getOrigId());
     }
 
     private <K, V, U> V processSingleKeyOp(final Block<K, V, U> block,
@@ -336,7 +331,7 @@ final class RemoteAccessOpHandler {
       final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
       // If getTableComponents() fails, the operation is not registered and handled by the Driver with a fallback logic.
 
-      registerOp(tableId, opId, origEvalId);
+      registerOp(tableId, tableComponents, opId, origEvalId);
 
       final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
@@ -471,10 +466,12 @@ final class RemoteAccessOpHandler {
    * @param tableId a table id
    */
   void waitOpsTobeFlushed(final String tableId) {
-    final Set remainingOps = tableIdToQueuedOps.get(tableId);
-    if (remainingOps == null) {
+    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
+    if (ongoingOps == null) {
       return;
     }
+
+    final Set remainingOps = ongoingOps.queuedOps;
 
     LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", remainingOps.size());
     while (!remainingOps.isEmpty()) {
@@ -485,20 +482,34 @@ final class RemoteAccessOpHandler {
       }
       LOG.log(Level.INFO, "remainingOps.size(): {0}", remainingOps.size());
     }
-    tableIdToQueuedOps.remove(tableId);
+    tableIdToOngoingOps.remove(tableId);
     LOG.log(Level.INFO, "ops for {0} has been flushed out", tableId);
+  }
+
+  /**
+   * A class for encapsulating ongoing operations and {@link TableComponents} together.
+   * It is to maintain {@link TableComponents} until processing all operations,
+   * even if the table has been dropped from this executor.
+   */
+  private class OngoingOps {
+    private final TableComponents tableComponents;
+    private final Set<Pair<Long, String>> queuedOps;
+
+    OngoingOps(final TableComponents tableComponents) {
+      this.tableComponents = tableComponents;
+      this.queuedOps = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    }
   }
 
   /**
    * Registers an operation before.
    */
-  private void registerOp(final String tableId, final long opId, final String origId) {
-    tableIdToQueuedOps.compute(tableId, (k, v) -> {
-      final Set<Pair<Long, String>> queuedOps = v == null ?
-          Collections.newSetFromMap(new ConcurrentHashMap<>()) : v;
-
-      queuedOps.add(Pair.of(opId, origId));
-      return queuedOps;
+  private void registerOp(final String tableId, final TableComponents tableComponents,
+                          final long opId, final String origId) {
+    tableIdToOngoingOps.compute(tableId, (tId, ongoingOps) -> {
+      final OngoingOps result = ongoingOps == null ? new OngoingOps(tableComponents) : ongoingOps;
+      result.queuedOps.add(Pair.of(opId, origId));
+      return result;
     });
   }
 
@@ -506,8 +517,9 @@ final class RemoteAccessOpHandler {
    * Deregisters an operation after processing it.
    */
   private void deregisterOp(final String tableId, final long opId, final String origId) {
-    final Set<Pair<Long, String>> queuedOps = tableIdToQueuedOps.get(tableId);
-    if (queuedOps == null || !queuedOps.remove(Pair.of(opId, origId))) {
+    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
+
+    if (ongoingOps == null || !ongoingOps.queuedOps.remove(Pair.of(opId, origId))) {
       LOG.log(Level.WARNING, "No existing ops with opId: {0}, origId: {1}", new Object[]{opId, origId});
     }
   }
