@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
 
-  private static StateMachine stateMachine;
+  private volatile StateMachine stateMachine;
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
@@ -57,7 +57,7 @@ final class WorkerGlobalBarrier {
    * By calling this method in any state, you can reset the state of {@link WorkerGlobalBarrier} to initial state.
    */
   public void init() {
-    stateMachine = StateMachine.newBuilder()
+    this.stateMachine = StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
         .addState(State.RUN, "Workers are running their tasks. Optimization can take place")
         .addState(State.CLEANUP, "Workers are cleaning up the task")
