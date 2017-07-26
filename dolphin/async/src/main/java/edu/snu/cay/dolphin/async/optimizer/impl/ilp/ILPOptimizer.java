@@ -36,9 +36,9 @@ import java.util.*;
  */
 public final class ILPOptimizer implements Optimizer {
   /**
-   * To indicate that the evaluator's cWProc is unknown because the evaluator's role was server, not a worker.
+   * To indicate that the evaluator's cWProc is unknown because the evaluator's role was a server, not a worker.
    */
-  private static final double NON_WORKER = -1.0;
+  private static final double UNKNOWN_CWPROC = -1.0;
   private static final int NUM_EMPTY_BLOCK = 0;
   
   private final double defNetworkBandwidth;
@@ -177,7 +177,7 @@ public final class ILPOptimizer implements Optimizer {
       final String hostname = serverEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, NUM_EMPTY_BLOCK, NON_WORKER, numModelBlocks, hostname));
+          new MachineDescriptor(id, bandwidth, NUM_EMPTY_BLOCK, UNKNOWN_CWPROC, numModelBlocks, hostname));
     }
     return machineDescriptors;
   }
