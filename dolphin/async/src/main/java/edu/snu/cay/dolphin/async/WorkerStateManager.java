@@ -109,7 +109,7 @@ public final class WorkerStateManager {
         .addState(State.OPTIMIZE, "Job are in optimization phase. The number of workers can be changed in this state")
         .addState(State.RUN_FINISHING, "At least one worker has finished RUN phase. From now, optimization is banned.")
         .addState(State.CLEANUP, "Workers are cleaning up the task")
-        .addTransition(State.INIT, State.RUN, "The worker reset is finished, time to start running task")
+        .addTransition(State.INIT, State.RUN, "The worker init is finished, time to start running task")
         .addTransition(State.RUN, State.OPTIMIZE, "Start optimization.")
         .addTransition(State.OPTIMIZE, State.RUN, "Optimization is finished.")
         .addTransition(State.RUN, State.RUN_FINISHING, "A worker has finished its RUN procedure.")

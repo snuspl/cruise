@@ -128,7 +128,7 @@ public final class ILPOptimizer implements Optimizer {
       
       planBuilder.setOptimizerType(OptimizerType.ILP);
 
-      // Generate actual block moving plan by comparing old configuration and new configuration obtained from ILPSolver.
+      // Generate a reconfiguration plan by comparing old configuration and new configuration obtained from ILPSolver.
       final ILPPlanDescriptor planDescriptor = ILPPlanGenerator.generatePlanDescriptor(evalIds, roleOld, dOld, mOld,
           optConfDescriptor.getRole(), optConfDescriptor.getD(), optConfDescriptor.getM());
       final List<String> workerEvalIdxsToAdd = planDescriptor.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);

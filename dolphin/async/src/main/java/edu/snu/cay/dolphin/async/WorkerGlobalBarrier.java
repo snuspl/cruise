@@ -61,7 +61,7 @@ final class WorkerGlobalBarrier {
         .addState(State.INIT, "Workers are initializing themselves")
         .addState(State.RUN, "Workers are running their tasks. Optimization can take place")
         .addState(State.CLEANUP, "Workers are cleaning up the task")
-        .addTransition(State.INIT, State.RUN, "The worker reset is finished, time to start running task")
+        .addTransition(State.INIT, State.RUN, "The worker init is finished, time to start running task")
         .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(State.INIT)
         .build();
