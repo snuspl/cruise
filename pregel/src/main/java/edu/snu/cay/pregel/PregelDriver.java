@@ -32,6 +32,7 @@ import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.ConfigurationUtils;
+import edu.snu.cay.utils.NullCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
@@ -148,8 +149,7 @@ public final class PregelDriver {
 
   /**
    * Build a configuration of vertex table.
-   * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
-   * so set {@link VertexCodec} to value codec class.
+   * Need to provide codecs for vertex value and edge.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
@@ -169,7 +169,7 @@ public final class PregelDriver {
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(VertexCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setUpdateValueCodecClass(NullCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
