@@ -18,7 +18,7 @@ package edu.snu.cay.utils;
 import org.apache.reef.io.serialization.Codec;
 
 /**
- *
+ * A null codec, which returns empty values.
  */
 public class NullCodec implements Codec<Void> {
   @Override
