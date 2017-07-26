@@ -87,8 +87,6 @@ public final class PregelDriver {
     this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
     this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
 
-    final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
-    final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)
@@ -101,12 +99,7 @@ public final class PregelDriver {
             .setNumSenderThreads(1)
             .build())
         .setUserContextConf(centCommConfProvider.getContextConfiguration())
-        // configure vertex value codec, edge codec to executors
-        .setUserServiceConf(Configurations.merge(centCommConfProvider.getServiceConfWithoutNameResolver(),
-            Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
-                .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
-                .build()))
+        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
   }
 
@@ -158,13 +151,20 @@ public final class PregelDriver {
    * Build a configuration of vertex table.
    * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
    * so set {@link VertexCodec} to value codec class.
-   * Note that this configuration is for Pagerank app.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
   private TableConfiguration buildVertexTableConf(final String tableId) throws InjectionException {
 
     final DataParser dataParser = masterConfInjector.getInstance(DataParser.class);
+
+    // configure vertex value codec, edge codec to vertex table
+    final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
+    final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
+    final Configuration vertexComponentCodecConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
+        .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
+        .build();
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
@@ -176,13 +176,13 @@ public final class PregelDriver {
         .setIsOrderedTable(false)
         .setDataParserClass(dataParser.getClass())
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
+        .setUserParamConf(vertexComponentCodecConf)
         .build();
   }
 
   /**
    * Build a configuration of message table.
    * Type of value is {@link Iterable<Double>} so set {@link DoubleMsgCodec} to value codec class.
-   * Note that this configuration is for Pagerank app.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
