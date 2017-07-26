@@ -85,7 +85,7 @@ final class ETWorkerTask<V> implements Task {
 
     trainer.initGlobalSettings();
     
-    workerGlobalBarrier.reset();
+    workerGlobalBarrier.init();
 
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
