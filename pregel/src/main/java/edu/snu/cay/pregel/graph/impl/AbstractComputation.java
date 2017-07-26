@@ -75,10 +75,12 @@ public abstract class AbstractComputation<V, E, M> implements Computation<V, E, 
   }
 
   @Override
-  public void flushAllMessages() throws ExecutionException, InterruptedException {
+  public int flushAllMessages() throws ExecutionException, InterruptedException {
+    final int size = msgFutureList.size();
     for (final Future<?> msgFuture : msgFutureList) {
       msgFuture.get();
     }
     msgFutureList.clear();
+    return size;
   }
 }

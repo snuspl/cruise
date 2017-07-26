@@ -27,18 +27,18 @@ import java.io.*;
  * Codec for a edge.
  * Assume that type of edge value is {@link Serializable}.
  */
-public final class DefaultEdgeCodec<T extends Serializable> implements StreamingCodec<Edge<T>> {
+public final class DefaultEdgeCodec<E extends Serializable> implements StreamingCodec<Edge<E>> {
 
-  private StreamingSerializableCodec<T> edgeValueCodec;
+  private final StreamingSerializableCodec<E> edgeValueCodec;
   
   @Inject
-  private DefaultEdgeCodec(final StreamingSerializableCodec<T> edgeValueCodec) {
+  private DefaultEdgeCodec(final StreamingSerializableCodec<E> edgeValueCodec) {
     this.edgeValueCodec = edgeValueCodec;
   }
 
   @Override
-  public byte[] encode(final Edge<T> edge) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(Long.BYTES);
+  public byte[] encode(final Edge<E> edge) {
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final DataOutputStream daos = new DataOutputStream(baos);
 
     try {
@@ -51,12 +51,12 @@ public final class DefaultEdgeCodec<T extends Serializable> implements Streaming
   }
 
   @Override
-  public Edge<T> decode(final byte[] bytes) {
+  public Edge<E> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     final DataInputStream dais = new DataInputStream(bais);
     try {
       final Long targetVertexId = dais.readLong();
-      final T value = edgeValueCodec.decodeFromStream(dais);
+      final E value = edgeValueCodec.decodeFromStream(dais);
       return new DefaultEdge<>(targetVertexId, value);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -64,7 +64,7 @@ public final class DefaultEdgeCodec<T extends Serializable> implements Streaming
   }
 
   @Override
-  public void encodeToStream(final Edge<T> edge, final DataOutputStream dataOutputStream) {
+  public void encodeToStream(final Edge<E> edge, final DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeLong(edge.getTargetVertexId());
       edgeValueCodec.encodeToStream(edge.getValue(), dataOutputStream);
@@ -74,10 +74,10 @@ public final class DefaultEdgeCodec<T extends Serializable> implements Streaming
   }
 
   @Override
-  public Edge<T> decodeFromStream(final DataInputStream dataInputStream) {
+  public Edge<E> decodeFromStream(final DataInputStream dataInputStream) {
     try {
       final long targetVertexId = dataInputStream.readLong();
-      final T value = edgeValueCodec.decodeFromStream(dataInputStream);
+      final E value = edgeValueCodec.decodeFromStream(dataInputStream);
       return new DefaultEdge<>(targetVertexId, value);
     } catch (final IOException e) {
       throw new RuntimeException(e);

@@ -51,8 +51,7 @@ public final class StreamingSerializableCodec<T extends Serializable> implements
   @Override
   public byte[] encode(final T obj) {
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         ObjectOutputStream oos = new ObjectOutputStream(baos);
-         DataOutputStream daos = new DataOutputStream(oos)) {
+         DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(obj, daos);
       return baos.toByteArray();
     } catch (final IOException e) {

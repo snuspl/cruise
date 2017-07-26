@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.pregel.graphapps.pagerank;
 
-import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.AbstractComputation;
