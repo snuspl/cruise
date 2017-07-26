@@ -38,7 +38,7 @@
   "fields":
   [
     {"name": "isAllVerticesHalt", "type": "boolean"},
-    {"name": "isIncomingMsgNone", "type": "boolean"}
+    {"name": "isNoOngoingMsgs", "type": "boolean"}
   ]
 }
 ]

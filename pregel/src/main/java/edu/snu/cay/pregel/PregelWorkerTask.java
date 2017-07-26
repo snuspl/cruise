@@ -121,12 +121,12 @@ public final class PregelWorkerTask<V, E, M> implements Task {
       }
 
       // before finishing superstep, confirm that all outgoing messages are completely sent out
-      final int sentMsgSize = computation.flushAllMessages();
+      final int numSentMsgs = computation.flushAllMessages();
 
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCount);
 
       // master will decide whether to continue or not
-      final boolean continueSuperstep = workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices, sentMsgSize);
+      final boolean continueSuperstep = workerMsgManager.waitForTryNextSuperstepMsg(numActiveVertices, numSentMsgs);
 
       if (!continueSuperstep) {
         break;

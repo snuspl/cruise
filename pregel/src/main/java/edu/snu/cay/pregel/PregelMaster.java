@@ -45,18 +45,12 @@ final class PregelMaster {
   private final Set<String> executorIds;
 
   /**
-   * This value is updated by the results of every worker at the end of a single superstep.
-   * It checks all vertices in workers are halt or not.
-   * And it determines whether {@link PregelMaster} starts next superstep or not.
+   * These two values are updated by the results of every worker at the end of a single superstep.
+   * Master checks 1) all vertices in workers are halt or not 2) and whether any ongoing messages are exist or not.
+   * When both values are true, {@link PregelMaster} stops workers to finish the job.
    */
   private volatile boolean isAllVerticesHalt;
-
-  /**
-   * This value is updated by the results of every worker at the end of a single superstep.
-   * It checks whether any incoming messages are exist or not.
-   * And it determines whether {@link PregelMaster} starts next superstep or not.
-   */
-  private volatile boolean isIncomingMsgNone;
+  private volatile boolean isNoOngoingMsgs;
 
   private volatile CountDownLatch msgCountDownLatch;
 
@@ -66,7 +60,7 @@ final class PregelMaster {
     this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
     isAllVerticesHalt = true;
-    isIncomingMsgNone = true;
+    isNoOngoingMsgs = true;
     initControlThread();
   }
 
@@ -82,7 +76,7 @@ final class PregelMaster {
           throw new RuntimeException("Unexpected exception", e);
         }
 
-        final ControlMsgType controlMsgType = isAllVerticesHalt && isIncomingMsgNone
+        final ControlMsgType controlMsgType = isAllVerticesHalt && isNoOngoingMsgs
             ? ControlMsgType.Stop : ControlMsgType.Start;
         final SuperstepControlMsg controlMsg = SuperstepControlMsg.newBuilder()
             .setType(controlMsgType)
@@ -103,7 +97,7 @@ final class PregelMaster {
 
         // reset for next superstep
         isAllVerticesHalt = true;
-        isIncomingMsgNone = true;
+        isNoOngoingMsgs = true;
         msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
     }).start();
@@ -128,10 +122,10 @@ final class PregelMaster {
 
       final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
-      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isIncomingMsgNone : {1}",
-          new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsIncomingMsgNone()});
-      isAllVerticesHalt = isAllVerticesHalt && resultMsg.getIsAllVerticesHalt();
-      isIncomingMsgNone = isIncomingMsgNone && resultMsg.getIsIncomingMsgNone();
+      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoSentMsgs : {1}",
+          new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsNoOngoingMsgs()});
+      isAllVerticesHalt &= resultMsg.getIsAllVerticesHalt();
+      isNoOngoingMsgs &= resultMsg.getIsNoOngoingMsgs();
 
       msgCountDownLatch.countDown();
     }

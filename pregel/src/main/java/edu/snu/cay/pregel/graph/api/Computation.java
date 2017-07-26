@@ -72,7 +72,7 @@ public interface Computation<V, E, M> {
    * Flushes out all messages sent by {@link #sendMessage} and {@link #sendMessagesToAdjacents}.
    * It returns after receiving ack messages.
    *
-   * @return size of flushed messages
+   * @return the number of flushed messages
    */
   int flushAllMessages() throws ExecutionException, InterruptedException;
 }
