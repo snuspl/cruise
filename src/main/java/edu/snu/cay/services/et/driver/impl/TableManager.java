@@ -46,9 +46,11 @@ final class TableManager {
 
   @Inject
   private TableManager(final MigrationManager migrationManager,
+                       final SubscriptionManager subscriptionManager,
                        final TableControlAgent tableControlAgent) throws InjectionException {
     this.baseTableInjector = Tang.Factory.getTang().newInjector();
     baseTableInjector.bindVolatileInstance(MigrationManager.class, migrationManager);
+    baseTableInjector.bindVolatileInstance(SubscriptionManager.class, subscriptionManager);
     baseTableInjector.bindVolatileInstance(TableControlAgent.class, tableControlAgent);
     baseTableInjector.bindVolatileInstance(TableManager.class, this);
 

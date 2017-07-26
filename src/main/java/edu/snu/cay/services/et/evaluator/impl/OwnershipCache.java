@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
+import edu.snu.cay.services.et.driver.impl.SubscriptionManager;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -194,8 +195,11 @@ public final class OwnershipCache {
     try {
       localOldOwnerId = blockOwnerArray.getAndSet(blockId, newOwnerId);
       if (!localOldOwnerId.equals(oldOwnerId)) {
-        LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}, but it was actually in {2}",
-            new Object[]{blockId, localOldOwnerId, oldOwnerId});
+        // check whether it's one of accumulated updates while init
+        if (!oldOwnerId.equals(SubscriptionManager.SUBSCRIPTION_MANAGER_NAME)) {
+          LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}," +
+                  " but it was actually in {2}", new Object[]{blockId, localOldOwnerId, oldOwnerId});
+        }
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from {1} to {2}",
           new Object[]{blockId, localOldOwnerId, newOwnerId});

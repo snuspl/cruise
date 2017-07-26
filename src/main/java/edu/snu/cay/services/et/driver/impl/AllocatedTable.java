@@ -44,6 +44,7 @@ public final class AllocatedTable {
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
+  private final SubscriptionManager subscriptionManager;
   private final TableControlAgent tableControlAgent;
   private final TableManager tableManager;
 
@@ -60,10 +61,12 @@ public final class AllocatedTable {
   @Inject
   private AllocatedTable(final BlockManager blockManager,
                          final MigrationManager migrationManager,
+                         final SubscriptionManager subscriptionManager,
                          final TableControlAgent tableControlAgent,
                          final TableManager tableManager) {
     this.blockManager = blockManager;
     this.migrationManager = migrationManager;
+    this.subscriptionManager = subscriptionManager;
     this.tableControlAgent = tableControlAgent;
     this.tableManager = tableManager;
     this.stateMachine = initStateMachine();
@@ -97,7 +100,7 @@ public final class AllocatedTable {
     final Set<String> executorIds = new HashSet<>(initialAssociators.size());
     initialAssociators.forEach(executor -> {
       executorIds.add(executor.getId());
-      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
+      subscriptionManager.registerSubscription(tableConf.getId(), executor.getId());
     });
 
     // partition table into blocks and initialize them in associators
@@ -132,9 +135,14 @@ public final class AllocatedTable {
 
     final Set<String> executorIdSet = executors.stream().map(AllocatedExecutor::getId).collect(Collectors.toSet());
 
-    executorIdSet.forEach(executorId -> migrationManager.registerSubscription(tableConf.getId(), executorId));
+    final int opId = subscriptionManager.startSubscriptionInit(tableConf.getId(), executorIdSet);
 
-    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus());
+    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
+        blockManager.getOwnershipStatus());
+
+    future.addListener(o -> subscriptionManager.finishSubscriptionInit(opId));
+
+    return future;
   }
 
   /**
@@ -146,7 +154,7 @@ public final class AllocatedTable {
 
     final ListenableFuture<?> future = tableControlAgent.dropTable(
         tableConf.getId(), Collections.singleton(executorId));
-    future.addListener(o -> migrationManager.unregisterSubscription(tableConf.getId(), executorId));
+    future.addListener(o -> subscriptionManager.unregisterSubscription(tableConf.getId(), executorId));
 
     return future;
   }
@@ -165,13 +173,17 @@ public final class AllocatedTable {
   private synchronized ListenableFuture<?> associate(final Set<String> executorIdSet) {
     stateMachine.checkState(State.INITIALIZED);
 
-    executorIdSet.forEach(executorId -> {
-      blockManager.registerExecutor(executorId);
-      migrationManager.registerSubscription(tableConf.getId(), executorId);
+    final int opId = subscriptionManager.startSubscriptionInit(tableConf.getId(), executorIdSet);
+
+    final ListenableFuture<?> future = tableControlAgent.initTable(tableConf, executorIdSet,
+        blockManager.getOwnershipStatus());
+
+    future.addListener(o -> {
+      executorIdSet.forEach(blockManager::registerExecutor);
+      subscriptionManager.finishSubscriptionInit(opId);
     });
 
-    return tableControlAgent.initTable(tableConf, executorIdSet,
-        blockManager.getOwnershipStatus());
+    return future;
   }
 
   private synchronized ListenableFuture<?> associate(final String executorId) {
@@ -194,11 +206,7 @@ public final class AllocatedTable {
     final ResultFuture<Void> resultFuture = new ResultFuture<>();
 
     // sync ownership caches in all executors that can access the table
-    final Set<String> associators = blockManager.getAssociatorIds();
-    final Set<String> subscribers = migrationManager.getSubscribers(tableConf.getId());
-
-    final Set<String> executorsToSync = new HashSet<>(associators);
-    executorsToSync.addAll(subscribers);
+    final Set<String> executorsToSync = subscriptionManager.getSubscribers(tableConf.getId());
     executorsToSync.remove(executorId);
 
     // do actual unassociation after sync
@@ -206,7 +214,7 @@ public final class AllocatedTable {
         .addListener(o -> tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId))
             .addListener(o1 -> {
               blockManager.deregisterExecutor(executorId);
-              migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+              subscriptionManager.unregisterSubscription(tableConf.getId(), executorId);
               resultFuture.onCompleted(null);
             }));
 
@@ -269,7 +277,7 @@ public final class AllocatedTable {
     stateMachine.checkState(State.INITIALIZED);
 
     final Set<String> associators = blockManager.getAssociatorIds();
-    final Set<String> subscribers = migrationManager.unregisterSubscribers(tableConf.getId());
+    final Set<String> subscribers = subscriptionManager.unregisterSubscribers(tableConf.getId());
 
     final Set<String> executorsToDeleteTable = new HashSet<>(associators);
     executorsToDeleteTable.addAll(subscribers);

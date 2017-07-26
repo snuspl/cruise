@@ -43,6 +43,7 @@ final class MigrationManager {
       migrationResult -> LOG.log(Level.INFO, migrationResult.getMsg());
 
   private final MessageSender msgSender;
+  private final SubscriptionManager subscriptionManager;
   private final CallbackRegistry callbackRegistry;
 
   private final AtomicLong opIdCounter = new AtomicLong(0);
@@ -53,69 +54,13 @@ final class MigrationManager {
    */
   private final Map<Long, Migration> ongoingMigrations = new ConcurrentHashMap<>();
 
-  /**
-   * A mapping between table id and a set of ids of corresponding subscribers.
-   */
-  private final Map<String, Set<String>> subscribersPerTable = new ConcurrentHashMap<>();
-
   @Inject
   private MigrationManager(final MessageSender msgSender,
+                           final SubscriptionManager subscriptionManager,
                            final CallbackRegistry callbackRegistry) {
     this.msgSender = msgSender;
+    this.subscriptionManager = subscriptionManager;
     this.callbackRegistry = callbackRegistry;
-  }
-
-  /**
-   * Registers a subscriber for the update of partition status of a table whose id is {@code tableId}.
-   * Whenever a block has been moved, the executor with {@code executorId} will be notified.
-   * @param tableId a table id
-   * @param executorId a executor id
-   */
-  synchronized void registerSubscription(final String tableId, final String executorId) {
-    subscribersPerTable.compute(tableId, (tId, executorIdSet) -> {
-      final Set<String> value = executorIdSet == null ? Collections.synchronizedSet(new HashSet<>()) : executorIdSet;
-      if (!value.add(executorId)) {
-        throw new RuntimeException(String.format("Table %s already has subscriber %s", tId, executorId));
-      }
-
-      return value;
-    });
-  }
-
-  /**
-   * Unregisters a subscriber for the update of partition status of a table whose id is {@code tableId}.
-   * @param tableId a table id
-   * @param executorId a executor id
-   */
-  synchronized void unregisterSubscription(final String tableId, final String executorId) {
-    subscribersPerTable.compute(tableId, (tId, executorIdSet) -> {
-      if (executorIdSet == null) {
-        throw new RuntimeException(String.format("Table %s does not exist", tId));
-      }
-      if (!executorIdSet.remove(executorId)) {
-        throw new RuntimeException(String.format("Table %s does not have subscriber %s", tId, executorId));
-      }
-
-      return executorIdSet.isEmpty() ? null : executorIdSet;
-    });
-  }
-
-  /**
-   * Unregisters all subscribers of a table with id {@code tableId}.
-   * @param tableId a table id
-   * @return a set of unregistered executor ids
-   */
-  synchronized Set<String> unregisterSubscribers(final String tableId) {
-    return subscribersPerTable.remove(tableId);
-  }
-
-  /**
-   * @param tableId a table id
-   * @return a set of executor ids that subscribe the table
-   */
-  Set<String> getSubscribers(final String tableId) {
-    final Set<String> subscribers = subscribersPerTable.get(tableId);
-    return subscribers == null ? Collections.emptySet() : new HashSet<>(subscribers);
   }
 
   /**
@@ -160,26 +105,19 @@ final class MigrationManager {
           " or it has already been finished.", opId));
     }
 
-    updateBlockOwnership(migration, opId, blockId);
+    updateBlockOwnership(migration, blockId);
+
+    LOG.log(Level.FINE, "Ownership moved. opId: {0}, blockId: {1}.", new Object[]{opId, blockId});
   }
 
-  private synchronized void updateBlockOwnership(final Migration migration, final long opId, final int blockId) {
+  private synchronized void updateBlockOwnership(final Migration migration, final int blockId) {
     final Migration.MigrationMetadata migrationMetadata = migration.getMigrationMetadata();
     final String tableId = migrationMetadata.getTableId();
     final String senderId = migrationMetadata.getSenderId();
     final String receiverId = migrationMetadata.getReceiverId();
 
     migration.getBlockManager().updateOwner(blockId, senderId, receiverId);
-
-    final Set<String> subscribers = new HashSet<>(subscribersPerTable.get(tableId));
-    subscribers.remove(senderId);
-    subscribers.remove(receiverId);
-
-    LOG.log(Level.FINE, "Ownership moved. opId: {0}, blockId: {1}." +
-        " Broadcast the ownership update to other subscribers: {2}", new Object[]{opId, blockId, subscribers});
-
-    subscribers.forEach(executorId ->
-        msgSender.sendOwnershipUpdateMsg(executorId, tableId, blockId, senderId, receiverId));
+    subscriptionManager.broadcastUpdate(tableId, blockId, senderId, receiverId);
   }
 
   /**
@@ -227,7 +165,9 @@ final class MigrationManager {
           " or it has already been finished.", opId));
     }
 
-    updateBlockOwnership(migration, opId, blockId);
+    updateBlockOwnership(migration, blockId);
     blockMigrationCompleted(migration, opId, blockId);
+
+    LOG.log(Level.FINE, "Data and ownership moved. opId: {0}, blockId: {1}.", new Object[]{opId, blockId});
   }
 }

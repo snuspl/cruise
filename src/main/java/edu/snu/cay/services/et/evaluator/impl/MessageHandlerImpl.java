@@ -234,7 +234,7 @@ public final class MessageHandlerImpl implements MessageHandler {
             .getOwnershipCache();
         ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
       } catch (final TableNotExistException e) {
-        throw new RuntimeException(e);
+        // ignore. It may happen when dropping table, because unsubscription is done after drop is completed.
       }
     });
   }

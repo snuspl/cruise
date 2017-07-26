@@ -65,6 +65,7 @@ public final class MigrationManagerTest {
   private BlockManager blockManager;
 
   private MigrationManager migrationManager;
+  private SubscriptionManager subscriptionManager;
   private MockedMsgSender messageSender;
 
   private static final String EXECUTOR_ID_PREFIX = "Executor-";
@@ -82,13 +83,14 @@ public final class MigrationManagerTest {
     blockManager = injector.getInstance(BlockManager.class);
     messageSender = (MockedMsgSender) injector.getInstance(MessageSender.class);
     migrationManager = injector.getInstance(MigrationManager.class);
+    subscriptionManager = injector.getInstance(SubscriptionManager.class);
 
     // initialize BlockManager and MigrationManager with executors
     final Set<String> initExecutors = new HashSet<>();
     for (int i = 0; i < NUM_INIT_EXECUTORS; i++) {
       final String executorId = EXECUTOR_ID_PREFIX + i;
       initExecutors.add(executorId);
-      migrationManager.registerSubscription(TABLE_ID, executorId);
+      subscriptionManager.registerSubscription(TABLE_ID, executorId);
     }
     blockManager.init(initExecutors);
   }
@@ -165,7 +167,7 @@ public final class MigrationManagerTest {
 
     // 2. Second moves with a new subscriber
     final int newExecutorIdx = NUM_INIT_EXECUTORS;
-    migrationManager.registerSubscription(TABLE_ID, EXECUTOR_ID_PREFIX + newExecutorIdx);
+    subscriptionManager.registerSubscription(TABLE_ID, EXECUTOR_ID_PREFIX + newExecutorIdx);
     numOtherExecutors++;
 
     // movedLatch is countdown in FinishedCallback.onNext()
