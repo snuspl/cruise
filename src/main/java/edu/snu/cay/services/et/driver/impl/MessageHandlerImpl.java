@@ -17,27 +17,39 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A message handler implementation.
  */
 @DriverSide
 public final class MessageHandlerImpl implements MessageHandler {
+  private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
+
+  private final String driverId;
+
   private final InjectionFuture<TableControlAgent> tableControlAgentFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
   private final InjectionFuture<FallbackManager> fallbackManagerFuture;
+  private final InjectionFuture<TableManager> tableManagerFuture;
+  private final InjectionFuture<MessageSender> messageSenderFuture;
 
   /**
    * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
@@ -47,14 +59,20 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final Set<Integer> migrationMsgArrivedBlockIds = Collections.synchronizedSet(new HashSet<>());
 
   @Inject
-  private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableControlAgentFuture,
+  private MessageHandlerImpl(@Parameter(DriverIdentifier.class) final String driverId,
+                             final InjectionFuture<TableControlAgent> tableControlAgentFuture,
+                             final InjectionFuture<TableManager> tableManagerFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture,
                              final InjectionFuture<MetricReceiver> metricReceiver,
+                             final InjectionFuture<MessageSender> messageSenderFuture,
                              final InjectionFuture<FallbackManager> fallbackManagerFuture) {
+    this.driverId = driverId;
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
     this.fallbackManagerFuture = fallbackManagerFuture;
+    this.tableManagerFuture = tableManagerFuture;
+    this.messageSenderFuture = messageSenderFuture;
   }
 
   @Override
@@ -62,7 +80,8 @@ public final class MessageHandlerImpl implements MessageHandler {
     final ETMsg etMsg = SingleMessageExtractor.extract(msg);
     switch (etMsg.getType()) {
     case TableControlMsg:
-      onTableControlMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableControlMsg.class));
+      onTableControlMsg(msg.getSrcId().toString(),
+          AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableControlMsg.class));
       break;
 
     case MigrationMsg:
@@ -91,7 +110,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     metricReceiver.get().onMetricMsg(srcId, metricMsg);
   }
 
-  private void onTableControlMsg(final TableControlMsg msg) {
+  private void onTableControlMsg(final String srcId, final TableControlMsg msg) {
     final Long opId = msg.getOperationId();
     switch (msg.getType()) {
     case TableInitAckMsg:
@@ -105,6 +124,9 @@ public final class MessageHandlerImpl implements MessageHandler {
       break;
     case OwnershipSyncAckMsg:
       onOwnershipSyncAckMsg(opId, msg.getOwnershipSyncAckMsg());
+      break;
+    case OwnershipReqMsg:
+      onOwnershipReqMsg(srcId, msg.getOwnershipReqMsg());
       break;
     default:
       throw new RuntimeException("Unexpected message: " + msg);
@@ -125,6 +147,24 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onOwnershipSyncAckMsg(final long opId, final OwnershipSyncAckMsg msg) {
     tableControlAgentFuture.get().onOwnershipSyncAck(opId, msg.getTableId(), msg.getDeletedExecutorId());
+  }
+
+  private void onOwnershipReqMsg(final String srcId, final OwnershipReqMsg msg) {
+    try {
+      final AllocatedTable table = tableManagerFuture.get().getAllocatedTable(msg.getTableId());
+      final String owner = table.getOwnerId(msg.getBlockId());
+
+      LOG.log(Level.INFO, "Ownership request from {0}. TableId: {1}, BlockId: {2}, Owner: {3}",
+          new Object[]{srcId, msg.getTableId(), msg.getBlockId(), owner});
+
+      // It's different from ordinary ownership update.
+      // So use driverId for oldOwnerId, then executor can distinguish that it's the response for ownership request.
+      final String oldOwnerId = driverId;
+      messageSenderFuture.get().sendOwnershipUpdateMsg(srcId, msg.getTableId(), msg.getBlockId(), oldOwnerId, owner);
+
+    } catch (TableNotExistException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

@@ -81,6 +81,11 @@ public interface MessageSender {
   void sendTableDropAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
+   * Sends a OwnershipReqMsg that requests up-to-date owner of a block.
+   */
+  void sendOwnershipReqMsg(String tableId, int blockId) throws NetworkException;
+
+  /**
    * Sends a OwnershipSyncAckMsg that responds to OwnershipSyncMsg.
    */
   void sendOwnershipSyncAckMsg(long opId, String tableId, String deletedExecutorId) throws NetworkException;

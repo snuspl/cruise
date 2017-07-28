@@ -18,11 +18,11 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
-import edu.snu.cay.services.et.driver.impl.SubscriptionManager;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -76,6 +76,7 @@ public final class OwnershipCache {
 
   private final String tableId;
   private final String localExecutorId;
+  private final String driverId;
 
   private final InjectionFuture<MessageSender> msgSenderFuture;
 
@@ -83,10 +84,12 @@ public final class OwnershipCache {
   private OwnershipCache(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                          @Parameter(TableIdentifier.class) final String tableId,
                          @Parameter(ExecutorIdentifier.class) final String executorId,
+                         @Parameter(DriverIdentifier.class) final String driverId,
                          final InjectionFuture<MessageSender> msgSenderFuture) {
     this.blockOwnerArray = new AtomicReferenceArray<>(numTotalBlocks);
     this.tableId = tableId;
     this.localExecutorId = executorId;
+    this.driverId = driverId;
     this.msgSenderFuture = msgSenderFuture;
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
@@ -195,10 +198,10 @@ public final class OwnershipCache {
     try {
       localOldOwnerId = blockOwnerArray.getAndSet(blockId, newOwnerId);
       if (!localOldOwnerId.equals(oldOwnerId)) {
-        // check whether it's one of accumulated updates while init
-        if (!oldOwnerId.equals(SubscriptionManager.SUBSCRIPTION_MANAGER_NAME)) {
-          LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}," +
-                  " but it was actually in {2}", new Object[]{blockId, localOldOwnerId, oldOwnerId});
+        // check whether it's one of accumulated updates while init or a response for ownership request
+        if (!oldOwnerId.equals(driverId)) {
+          LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}, but it was actually in {2}",
+              new Object[]{blockId, localOldOwnerId, oldOwnerId});
         }
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from {1} to {2}",

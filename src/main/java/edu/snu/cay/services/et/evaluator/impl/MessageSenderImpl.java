@@ -225,6 +225,26 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendOwnershipReqMsg(final String tableId, final int blockId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableControlMsg.newBuilder()
+            .setType(TableControlMsgType.OwnershipReqMsg)
+            .setOwnershipReqMsg(
+                OwnershipReqMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockId(blockId)
+                    .build())
+            .build(), TableControlMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
   public void sendOwnershipSyncAckMsg(final long opId, final String tableId,
                                       final String deletedExecutorId) throws NetworkException {
     final byte[] innerMsg = AvroUtils.toBytes(

@@ -239,6 +239,13 @@ final class RemoteAccessOpSender {
         LOG.log(Level.WARNING, "NetworkException while sending a msg. Resend", e);
       }
 
+      // request up-to-date ownership info
+      try {
+        msgSender.sendOwnershipReqMsg(opMetadata.getTableId(), opMetadata.getBlockId());
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
+
       LOG.log(Level.INFO, "Wait {0} ms before resending a msg", RESEND_INTERVAL_MS);
       try {
         // may not sleep for RESEND_INTERVAL_MS due to interrupt
@@ -271,6 +278,13 @@ final class RemoteAccessOpSender {
         break;
       } catch (NetworkException e) {
         LOG.log(Level.WARNING, "NetworkException while sending a msg. Resend", e);
+      }
+
+      // request up-to-date ownership info
+      try {
+        msgSender.sendOwnershipReqMsg(opMetadata.getTableId(), opMetadata.getBlockId());
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
       }
 
       LOG.log(Level.INFO, "Wait {0} ms before resending a msg", RESEND_INTERVAL_MS);

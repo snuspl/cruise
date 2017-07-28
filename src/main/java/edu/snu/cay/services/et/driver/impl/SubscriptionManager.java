@@ -16,6 +16,8 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.driver.api.MessageSender;
+import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -32,7 +34,6 @@ import java.util.logging.Logger;
  */
 public final class SubscriptionManager {
   private static final Logger LOG = Logger.getLogger(SubscriptionManager.class.getName());
-  public static final String SUBSCRIPTION_MANAGER_NAME = SubscriptionManager.class.getName();
 
   /**
    * A mapping between table id and a set of ids of corresponding subscribers.
@@ -48,10 +49,13 @@ public final class SubscriptionManager {
   private final AtomicInteger initOpIdCount = new AtomicInteger(0);
 
   private final MessageSender msgSender;
+  private final String driverId;
 
   @Inject
-  private SubscriptionManager(final MessageSender msgSender) {
+  private SubscriptionManager(final MessageSender msgSender,
+                              @Parameter(DriverIdentifier.class) final String driverId) {
     this.msgSender = msgSender;
+    this.driverId = driverId;
   }
 
   /**
@@ -178,8 +182,7 @@ public final class SubscriptionManager {
         new Object[]{subscriptionInit.tableId, subscriptionInit.accumulatedUpdates, subscriptionInit.preSubscribers});
     subscriptionInit.accumulatedUpdates.forEach((blockId, ownerId) ->
         subscriptionInit.preSubscribers.forEach(executorId ->
-            msgSender.sendOwnershipUpdateMsg(executorId, subscriptionInit.tableId, blockId,
-                SUBSCRIPTION_MANAGER_NAME, ownerId)));
+            msgSender.sendOwnershipUpdateMsg(executorId, subscriptionInit.tableId, blockId, driverId, ownerId)));
   }
 
   /**
