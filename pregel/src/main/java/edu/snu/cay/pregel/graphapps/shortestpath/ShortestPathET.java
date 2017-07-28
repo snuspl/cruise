@@ -13,36 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graphapps.pagerank;
+package edu.snu.cay.pregel.graphapps.shortestpath;
 
 import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
-import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
-import edu.snu.cay.pregel.common.NoneValueEdgeCodec;
+import edu.snu.cay.pregel.common.DefaultEdgeCodec;
+import edu.snu.cay.pregel.common.DefaultGraphParser;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
 
 /**
- * Application launching code for Pagerank.
+ * Application launching code for Shortest path.
+ * It calculates all vertices distances from given {@link SourceId}.
  */
-public final class PagerankET {
+public final class ShortestPathET {
 
   /**
    * Should not be initialized this.
    */
-  private PagerankET() {
+  private ShortestPathET() {
 
   }
 
   public static void main(final String[] args) throws IOException, InjectionException {
     PregelLauncher.launch(args, PregelConfiguration.newBuilder()
-        .setComputationClass(PagerankComputation.class)
-        .setDataParserClass(NoneEdgeValueGraphParser.class)
+        .setComputationClass(ShortestPathComputation.class)
+        .setDataParserClass(DefaultGraphParser.class)
         .setMessageValueCodecClass(StreamingSerializableCodec.class)
         .setVertexValueCodecClass(StreamingSerializableCodec.class)
-        .setEdgeCodecClass(NoneValueEdgeCodec.class)
+        .setEdgeCodecClass(DefaultEdgeCodec.class)
+        .addParameterClass(SourceId.class)
         .build());
   }
 }

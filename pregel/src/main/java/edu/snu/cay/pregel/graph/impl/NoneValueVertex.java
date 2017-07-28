@@ -22,27 +22,22 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import java.util.List;
 
 /**
- * Default implementation of {@link Vertex}.
+ * The implementation of none-value {@link Vertex}.
+ * It only has vertex id, edges
  *
- * @param <V> vertex value
  * @param <E> edge value
  */
-public class DefaultVertex<V, E> implements Vertex<V, E> {
+public class NoneValueVertex<E> implements Vertex<Void, E> {
 
   private Long id;
-
-  private V value;
 
   private List<Edge<E>> edges;
 
   private boolean isHalt;
 
   @Override
-  public void initialize(final Long vertexId, final V vertexValue) {
-    this.id = vertexId;
-    this.value = vertexValue;
-    this.edges = Lists.newArrayList();
-    isHalt = false;
+  public void initialize(final Long vertexId, final Void vertexValue) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -54,12 +49,8 @@ public class DefaultVertex<V, E> implements Vertex<V, E> {
   }
 
   @Override
-  public void initialize(final Long vertexId, final V vertexValue, final Iterable<Edge<E>> adjacentEdges) {
-    this.id = vertexId;
-    this.value = vertexValue;
-    this.edges = Lists.newArrayList();
-    this.edges.addAll(Lists.newArrayList(adjacentEdges));
-    isHalt = false;
+  public void initialize(final Long vertexId, final Void vertexValue, final Iterable<Edge<E>> adjacentEdges) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -68,13 +59,13 @@ public class DefaultVertex<V, E> implements Vertex<V, E> {
   }
 
   @Override
-  public V getValue() {
-    return value;
+  public Void getValue() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void setValue(final V value) {
-    this.value = value;
+  public void setValue(final Void value) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

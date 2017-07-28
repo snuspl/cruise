@@ -13,38 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.graph.impl;
+package edu.snu.cay.utils;
 
-import edu.snu.cay.pregel.graph.api.Edge;
-import edu.snu.cay.pregel.graph.api.MutableEdge;
+import org.apache.reef.io.serialization.Codec;
+
+import javax.inject.Inject;
 
 /**
- * A default implementation of {@link Edge}.
- *
- * @param <E> edge value
+ * A null codec, which returns empty values.
  */
-public final class DefaultEdge<E> implements MutableEdge<E> {
+public final class NullCodec implements Codec<Void> {
 
-  private final Long vertexId;
-  private E value;
+  @Inject
+  private NullCodec() {
 
-  public DefaultEdge(final Long vertexId, final E value) {
-    this.vertexId = vertexId;
-    this.value = value;
   }
 
   @Override
-  public Long getTargetVertexId() {
-    return vertexId;
+  public byte[] encode(final Void obj) {
+    return new byte[0];
   }
 
   @Override
-  public E getValue() {
-    return value;
-  }
-
-  @Override
-  public void setValue(final E newValue) {
-    this.value = newValue;
+  public Void decode(final byte[] buf) {
+    return null;
   }
 }

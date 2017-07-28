@@ -45,10 +45,12 @@ final class PregelMaster {
   private final Set<String> executorIds;
 
   /**
-   * This value is updated by the results of every worker at the end of a single superstep.
-   * And it determines whether {@link PregelMaster} starts next superstep or not.
+   * These two values are updated by the results of every worker at the end of a single superstep.
+   * Master checks whether 1) all vertices in workers are halt or not, 2) and any ongoing messages are exist or not.
+   * When both values are true, {@link PregelMaster} stops workers to finish the job.
    */
   private volatile boolean isAllVerticesHalt;
+  private volatile boolean isNoOngoingMsgs;
 
   private volatile CountDownLatch msgCountDownLatch;
 
@@ -57,7 +59,8 @@ final class PregelMaster {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
-    isAllVerticesHalt = false;
+    this.isAllVerticesHalt = true;
+    this.isNoOngoingMsgs = true;
     initControlThread();
   }
 
@@ -73,7 +76,8 @@ final class PregelMaster {
           throw new RuntimeException("Unexpected exception", e);
         }
 
-        final ControlMsgType controlMsgType = isAllVerticesHalt ? ControlMsgType.Stop : ControlMsgType.Start;
+        final ControlMsgType controlMsgType = isAllVerticesHalt && isNoOngoingMsgs
+            ? ControlMsgType.Stop : ControlMsgType.Start;
         final SuperstepControlMsg controlMsg = SuperstepControlMsg.newBuilder()
             .setType(controlMsgType)
             .build();
@@ -92,7 +96,8 @@ final class PregelMaster {
         }
 
         // reset for next superstep
-        isAllVerticesHalt = false;
+        isAllVerticesHalt = true;
+        isNoOngoingMsgs = true;
         msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
       }
     }).start();
@@ -117,7 +122,10 @@ final class PregelMaster {
 
       final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
-      isAllVerticesHalt = isAllVerticesHalt || resultMsg.getIsAllVerticesHalt();
+      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoOngoingMsgs : {1}",
+          new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsNoOngoingMsgs()});
+      isAllVerticesHalt &= resultMsg.getIsAllVerticesHalt();
+      isNoOngoingMsgs &= resultMsg.getIsNoOngoingMsgs();
 
       msgCountDownLatch.countDown();
     }

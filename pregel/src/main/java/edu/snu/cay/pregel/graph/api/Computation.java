@@ -19,15 +19,15 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 /**
  * Interface for an application for computation for a superstep.
  *
  * @param <V> vertex value
+ * @param <E> edge value
  * @param <M> message value
  */
-public interface Computation<V, M> {
+public interface Computation<V, E, M> {
 
   /**
    * This class must be initialized before a single superstep starts.
@@ -43,7 +43,7 @@ public interface Computation<V, M> {
    * @param vertex vertex
    * @param messages messages that were sent to this vertex in the previous superstep.
    */
-  void compute(Vertex<V> vertex, Iterable<M> messages);
+  void compute(Vertex<V, E> vertex, Iterable<M> messages);
 
   /**
    * Retrieves the current superstep.
@@ -58,7 +58,7 @@ public interface Computation<V, M> {
    * @param id vertex id to send the message to
    * @param message message to send
    */
-  Future<?> sendMessage(Long id, M message);
+  void sendMessage(Long id, M message);
 
   /**
    * Send a messages to all adjacent vertices of {@code vertex}.
@@ -66,12 +66,14 @@ public interface Computation<V, M> {
    * @param vertex vertex
    * @param message message to send
    */
-  List<Future<?>> sendMessagesToAdjacents(Vertex<V> vertex, M message);
+  void sendMessagesToAdjacents(Vertex<V, E> vertex, M message);
 
   /**
    * Flushes out all messages sent by {@link #sendMessage} and {@link #sendMessagesToAdjacents}.
    * It returns after receiving ack messages.
+   *
+   * @return the number of flushed messages
    */
-  void flushAllMessages() throws ExecutionException, InterruptedException;
+  int flushAllMessages() throws ExecutionException, InterruptedException;
 }
 

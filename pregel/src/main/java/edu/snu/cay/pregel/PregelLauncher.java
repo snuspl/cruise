@@ -31,7 +31,6 @@ import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.ConfigurationBuilder;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
@@ -65,11 +64,10 @@ public final class PregelLauncher {
   private static Configuration parseCommandLine(final String[] args,
                                                 final List<Class<? extends Name<?>>> userParamList)
       throws IOException {
-    final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
-    final CommandLine cl = new CommandLine(cb);
-    cl.registerShortNameOfClass(InputPath.class).processCommandLine(args);
+    final CommandLine cl = new CommandLine();
+    cl.registerShortNameOfClass(InputPath.class);
     userParamList.forEach(cl::registerShortNameOfClass);
-    return cb.build();
+    return cl.processCommandLine(args).getBuilder().build();
   }
 
   public static LauncherStatus launch(final String[] args, final PregelConfiguration pregelConf)
@@ -105,8 +103,9 @@ public final class PregelLauncher {
     final Configuration masterConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(DataParser.class, pregelConf.getDataParserClass())
         .bindNamedParameter(InputPath.class, inputPath)
-        .bindNamedParameter(VertexCodec.class, pregelConf.getVertexCodecClass())
-        .bindNamedParameter(MessageCodec.class, pregelConf.getMessageCodecClass())
+        .bindNamedParameter(VertexValueCodec.class, pregelConf.getVertexValueCodecClass())
+        .bindNamedParameter(EdgeCodec.class, pregelConf.getEdgeCodecClass())
+        .bindNamedParameter(MessageValueCodec.class, pregelConf.getMessageValueCodecClass())
         .build();
 
     final Configuration centCommConfiguration = CentCommConf.newBuilder()

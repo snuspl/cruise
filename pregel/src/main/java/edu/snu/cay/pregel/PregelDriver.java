@@ -16,8 +16,8 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.DefaultVertexCodec;
+import edu.snu.cay.pregel.common.MessageCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -32,7 +32,9 @@ import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.ConfigurationUtils;
+import edu.snu.cay.utils.NullCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -80,8 +82,11 @@ public final class PregelDriver {
                        final CentCommConfProvider centCommConfProvider,
                        final PregelMaster pregelMaster,
                        @Parameter(SerializedTaskConf.class) final String serializedTaskConf,
-                       @Parameter(SerializedMasterConf.class) final String serializedMasterConf) throws IOException {
+                       @Parameter(SerializedMasterConf.class) final String serializedMasterConf)
+      throws IOException {
     this.etMaster = etMaster;
+    this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
+    this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)
@@ -96,9 +101,6 @@ public final class PregelDriver {
         .setUserContextConf(centCommConfProvider.getContextConfiguration())
         .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
-
-    this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
-    this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -147,49 +149,59 @@ public final class PregelDriver {
 
   /**
    * Build a configuration of vertex table.
-   * Type of value is {@link edu.snu.cay.pregel.graph.api.Vertex}
-   * so set {@link DefaultVertexCodec} to value codec class.
-   * Note that this configuration is for Pagerank app.
+   * Need to provide codecs for vertex value and edge.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
   private TableConfiguration buildVertexTableConf(final String tableId) throws InjectionException {
 
-    final Codec vertexCodec = masterConfInjector.getNamedInstance(VertexCodec.class);
     final DataParser dataParser = masterConfInjector.getInstance(DataParser.class);
+
+    // configure vertex value codec, edge codec to vertex table
+    final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
+    final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
+    final Configuration vertexComponentCodecConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
+        .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
+        .build();
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(vertexCodec.getClass())
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setValueCodecClass(DefaultVertexCodec.class) // TODO #1223: allow other types of vertex implementation
+        .setUpdateValueCodecClass(NullCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .setDataParserClass(dataParser.getClass())
         .setBulkDataLoaderClass(ExistKeyBulkDataLoader.class)
+        .setUserParamConf(vertexComponentCodecConf)
         .build();
   }
 
   /**
    * Build a configuration of message table.
-   * Type of value is {@link Iterable<Double>} so set {@link DoubleMsgCodec} to value codec class.
-   * Note that this configuration is for Pagerank app.
+   * Type of value is {@link Iterable} so set {@link MessageCodec} to value codec class.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
   private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
 
-    final Codec messageCodec = masterConfInjector.getNamedInstance(MessageCodec.class);
+    // configure message value codec to message table
+    final StreamingCodec messageValueStreamingCodec = masterConfInjector.getNamedInstance(MessageValueCodec.class);
+    final Configuration messageValueConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(MessageValueCodec.class, messageValueStreamingCodec.getClass())
+        .build();
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(messageCodec.getClass())
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setValueCodecClass(MessageCodec.class)
+        .setUpdateValueCodecClass(((Codec) messageValueStreamingCodec).getClass())
         .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
+        .setUserParamConf(messageValueConf)
         .build();
   }
 }
