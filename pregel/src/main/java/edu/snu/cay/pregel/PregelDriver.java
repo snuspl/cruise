@@ -83,7 +83,7 @@ public final class PregelDriver {
                        final PregelMaster pregelMaster,
                        @Parameter(SerializedTaskConf.class) final String serializedTaskConf,
                        @Parameter(SerializedMasterConf.class) final String serializedMasterConf)
-      throws IOException, InjectionException {
+      throws IOException {
     this.etMaster = etMaster;
     this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
     this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
@@ -165,11 +165,10 @@ public final class PregelDriver {
         .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
         .build();
 
-    // TODO #1223: Enable to configure the implementation of the vertex and the vertex codec.
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(DefaultVertexCodec.class)
+        .setValueCodecClass(DefaultVertexCodec.class) // TODO #1223: allow other types of vertex implementation
         .setUpdateValueCodecClass(NullCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)

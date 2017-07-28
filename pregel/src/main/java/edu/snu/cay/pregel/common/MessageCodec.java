@@ -43,36 +43,32 @@ public final class MessageCodec<M> implements Codec<Iterable<M>> {
 
   @Override
   public byte[] encode(final Iterable<M> msgs) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final DataOutputStream daos = new DataOutputStream(baos);
-    final List<M> msgList = Lists.newArrayList(msgs);
-    final int msgsSize = msgList.size();
-    try {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         DataOutputStream daos = new DataOutputStream(baos)) {
+      final List<M> msgList = Lists.newArrayList(msgs);
+      final int msgsSize = msgList.size();
       daos.writeInt(msgsSize);
       for (final M message : msgList) {
         daos.write(valueCodec.encode(message));
       }
+      return baos.toByteArray();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return baos.toByteArray();
   }
 
   @Override
   public Iterable<M> decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dais = new DataInputStream(bais);
-    final List<M> msgList = Lists.newArrayList();
-    try {
-
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+         DataInputStream dais = new DataInputStream(bais)) {
+      final List<M> msgList = Lists.newArrayList();
       final int size = dais.readInt();
       for (int index = 0; index < size; index++) {
         msgList.add(valueCodec.decodeFromStream(dais));
       }
-
+      return msgList;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return msgList;
   }
 }
