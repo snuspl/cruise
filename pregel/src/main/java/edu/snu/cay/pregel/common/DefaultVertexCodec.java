@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Codec for vertex, which is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
+ * Codec for {@link DefaultVertex}, which is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
  *
  * Encoding format of vertex is as follows:
  * 1. Vertex w/ value : [ long: vertex id | true | V: vertex value | E: edge | E: edge | E: edge ...],
@@ -41,15 +41,15 @@ import java.util.logging.Logger;
  * 1. Edge w/ value : [ long: target vertex id | E: edge value ]
  * 2. Edge w/o value : [ long: target vertex id ]
  */
-public final class VertexCodec<V, E> implements Codec<Vertex<V, E>> {
+public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
 
-  private static final Logger LOG = Logger.getLogger(VertexCodec.class.getName());
+  private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
   private final StreamingCodec<V> vertexValueCodec;
   private final StreamingCodec<Edge<E>> edgeCodec;
 
   @Inject
-  private VertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
-                      @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
+  private DefaultVertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
+                             @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
     this.vertexValueCodec = vertexValueCodec;
     this.edgeCodec = edgeCodec;
   }

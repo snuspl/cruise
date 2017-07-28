@@ -16,7 +16,7 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.pregel.common.VertexCodec;
+import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.common.MessageCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
@@ -165,10 +165,11 @@ public final class PregelDriver {
         .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
         .build();
 
+    // TODO #1223: Enable to configure the implementation of the vertex and the vertex codec.
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(VertexCodec.class)
+        .setValueCodecClass(DefaultVertexCodec.class)
         .setUpdateValueCodecClass(NullCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
