@@ -57,9 +57,8 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
   @Override
   public byte[] encode(final Vertex<V, E> vertex) {
     final Iterable<Edge<E>> edges = vertex.getEdges();
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final DataOutputStream daos = new DataOutputStream(baos);
-    try {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeLong(vertex.getId());
       final V vertexValue = vertex.getValue();
       if (vertexValue != null) {
@@ -72,20 +71,18 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
       for (final Edge<E> edge : edges) {
         daos.write(edgeCodec.encode(edge));
       }
+      return baos.toByteArray();
 
     } catch (IOException e) {
-      throw new RuntimeException("Could not serialize vertex");
+      throw new RuntimeException(e);
     }
-    return baos.toByteArray();
   }
 
   @Override
   public Vertex<V, E> decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dais = new DataInputStream(bais);
     final Vertex<V, E> decodedVertex = new DefaultVertex<>();
-
-    try {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+         DataInputStream dais = new DataInputStream(bais)) {
       final Long vertexId = dais.readLong();
       final boolean isExistValue = dais.readBoolean();
       V vertexValue = null;
@@ -99,9 +96,10 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
       }
 
       decodedVertex.initialize(vertexId, vertexValue, edges);
+      return decodedVertex;
+
     } catch (IOException e) {
-      throw new RuntimeException("Could not deserialize vertex");
+      throw new RuntimeException(e);
     }
-    return decodedVertex;
   }
 }

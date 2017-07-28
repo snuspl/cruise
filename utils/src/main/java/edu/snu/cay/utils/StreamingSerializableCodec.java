@@ -62,7 +62,8 @@ public final class StreamingSerializableCodec<T extends Serializable> implements
 
   @Override
   public T decode(final byte[] buf) {
-    try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(buf))) {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(buf);
+         DataInputStream dis = new DataInputStream(bais)) {
       return decodeFromStream(dis);
     } catch (IOException e) {
       throw new RuntimeException(e);

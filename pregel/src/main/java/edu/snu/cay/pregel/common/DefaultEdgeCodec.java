@@ -38,23 +38,20 @@ public final class DefaultEdgeCodec<E extends Serializable> implements Streaming
 
   @Override
   public byte[] encode(final Edge<E> edge) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final DataOutputStream daos = new DataOutputStream(baos);
-
-    try {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeLong(edge.getTargetVertexId());
       daos.write(edgeValueCodec.encode(edge.getValue()));
+      return baos.toByteArray();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return baos.toByteArray();
   }
 
   @Override
   public Edge<E> decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dais = new DataInputStream(bais);
-    try {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+         DataInputStream dais = new DataInputStream(bais)) {
       final Long targetVertexId = dais.readLong();
       final E value = edgeValueCodec.decodeFromStream(dais);
       return new DefaultEdge<>(targetVertexId, value);

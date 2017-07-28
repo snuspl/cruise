@@ -46,28 +46,26 @@ public final class NoneValueVertexCodec<E> implements Codec<Vertex<Void, E>> {
   @Override
   public byte[] encode(final Vertex<Void, E> vertex) {
     final Iterable<Edge<E>> edges = vertex.getEdges();
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final DataOutputStream daos = new DataOutputStream(baos);
-    try {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeLong(vertex.getId());
       daos.writeInt(Iterables.size(edges));
       for (final Edge<E> edge : edges) {
         daos.write(edgeCodec.encode(edge));
       }
+      return baos.toByteArray();
 
     } catch (IOException e) {
-      throw new RuntimeException("Could not serialize vertex");
+      throw new RuntimeException(e);
     }
-    return baos.toByteArray();
   }
 
   @Override
   public Vertex<Void, E> decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dais = new DataInputStream(bais);
-    final Vertex<Void, E> decodedVertex = new NoneValueVertex<>();
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+         DataInputStream dais = new DataInputStream(bais)) {
+      final Vertex<Void, E> decodedVertex = new NoneValueVertex<>();
 
-    try {
       final Long vertexId = dais.readLong();
       final List<Edge<E>> edges = Lists.newArrayList();
       final int edgesSize = dais.readInt();
@@ -76,9 +74,10 @@ public final class NoneValueVertexCodec<E> implements Codec<Vertex<Void, E>> {
       }
 
       decodedVertex.initialize(vertexId, edges);
+      return decodedVertex;
+
     } catch (IOException e) {
-      throw new RuntimeException("Could not deserialize vertex");
+      throw new RuntimeException(e);
     }
-    return decodedVertex;
   }
 }

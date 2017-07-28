@@ -35,23 +35,19 @@ public final class NoneValueEdgeCodec implements StreamingCodec<Edge<Void>> {
 
   @Override
   public byte[] encode(final Edge<Void> edge) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(Long.BYTES);
-    final DataOutputStream daos = new DataOutputStream(baos);
-
-    try {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(Long.BYTES);
+         DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeLong(edge.getTargetVertexId());
+      return baos.toByteArray();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-
-    return baos.toByteArray();
   }
 
   @Override
   public Edge<Void> decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dais = new DataInputStream(bais);
-    try {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+         DataInputStream dais = new DataInputStream(bais)) {
       final Long targetVertexId = dais.readLong();
       return new NoneValueEdge(targetVertexId);
     } catch (IOException e) {

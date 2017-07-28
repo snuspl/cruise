@@ -102,8 +102,7 @@ public final class PregelWorkerTask<V, E, M> implements Task {
       // aggregate the number of active vertices from the processed partitions
       int numActiveVertices = 0;
       for (final Future<Integer> computeFuture : futureList) {
-        final int numActiveVerticesInPartition = computeFuture.get();
-        numActiveVertices += numActiveVerticesInPartition;
+        numActiveVertices += computeFuture.get();
       }
 
       // before finishing superstep, confirm that all outgoing messages are completely sent out
