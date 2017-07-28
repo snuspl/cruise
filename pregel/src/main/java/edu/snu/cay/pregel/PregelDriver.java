@@ -188,7 +188,6 @@ public final class PregelDriver {
   private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
 
     // configure message value codec to message table
-    final Codec messageValueCodec = (Codec)masterConfInjector.getNamedInstance(MessageValueCodec.class);
     final StreamingCodec messageValueStreamingCodec = masterConfInjector.getNamedInstance(MessageValueCodec.class);
     final Configuration messageValueConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(MessageValueCodec.class, messageValueStreamingCodec.getClass())
@@ -198,7 +197,7 @@ public final class PregelDriver {
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(MessageCodec.class)
-        .setUpdateValueCodecClass(messageValueCodec.getClass())
+        .setUpdateValueCodecClass(((Codec) messageValueStreamingCodec).getClass())
         .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
