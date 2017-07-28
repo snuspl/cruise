@@ -34,6 +34,12 @@ import java.util.Map;
 public interface MessageSender {
 
   /**
+   * Sends a ETMsg to the executor specified with {@code destId}.
+   * This method is useful when especially resending failed messages, which are already in a form of {@link ETMsg}.
+   */
+  void sendMsg(String destId, ETMsg etMsg) throws NetworkException;
+
+  /**
    * Sends a TableAccessReqMsg that requests the executor specified with {@code destId} to
    * process a remote access, parceling request metadata into the message.
    * Since the request can be transmitted multiple times through the multiple executors,

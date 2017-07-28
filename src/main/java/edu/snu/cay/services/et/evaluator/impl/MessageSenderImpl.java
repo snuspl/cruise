@@ -52,6 +52,11 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendMsg(final String destId, final ETMsg etMsg) throws NetworkException {
+    networkConnection.send(destId, etMsg);
+  }
+
+  @Override
   public void sendTableAccessReqMsg(final String origId, final String destId,
                                     final long opId, final String tableId,
                                     final OpType opType, final boolean replyRequired,

@@ -21,8 +21,10 @@ import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOp
 import edu.snu.cay.services.et.configuration.parameters.remoteaccess.SenderQueueSize;
 import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -42,7 +44,7 @@ import java.util.logging.Logger;
  * and 2) handles the result received from the executor.
  */
 
-final class RemoteAccessOpSender {
+public final class RemoteAccessOpSender {
   private static final Logger LOG = Logger.getLogger(RemoteAccessOpSender.class.getName());
   private static final int QUEUE_TIMEOUT_MS = 3000;
   private static final long RESEND_INTERVAL_MS = 100;
@@ -69,16 +71,22 @@ final class RemoteAccessOpSender {
   private volatile boolean closeFlag = false;
 
   private final String executorId;
+  private final String driverId;
+  private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture;
 
   @Inject
-  private RemoteAccessOpSender(@Parameter(ExecutorIdentifier.class) final String executorId,
+  private RemoteAccessOpSender(final InjectionFuture<Tables> tablesFuture,
+                               @Parameter(ExecutorIdentifier.class) final String executorId,
+                               @Parameter(DriverIdentifier.class) final String driverId,
                                @Parameter(SenderQueueSize.class) final int queueSize,
                                @Parameter(NumRemoteOpsSenderThreads.class) final int numSenderThreads,
                                final InjectionFuture<MessageSender> msgSenderFuture,
                                final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture) {
+    this.tablesFuture = tablesFuture;
     this.executorId = executorId;
+    this.driverId = driverId;
     this.numSenderThreads = numSenderThreads;
     this.msgSenderFuture = msgSenderFuture;
     this.networkUsageStatFuture = networkUsageStatFuture;
@@ -498,6 +506,64 @@ final class RemoteAccessOpSender {
 
     deregisterOp(tableId, opId);
     LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", opId);
+  }
+
+  /**
+   * Handle failed messages, by resending after re-resolving target executor.
+   */
+  public <K, V, U> void onFailedMsg(final String tableId, final DataKey dataKey,
+                                    final boolean replyRequired, final long opId, final ETMsg etMsg) {
+
+    final TableComponents<K, V, U> tableComponents;
+    try {
+      tableComponents = replyRequired ? tableIdToOngoingOps.get(tableId).tableComponents :
+          tablesFuture.get().getTableComponents(tableId);
+
+      final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
+
+      final K key = tableComponents.getSerializer().getKeyCodec().decode(dataKey.getKey().array());
+      final int blockId = tableComponents.getBlockPartitioner().getBlockId(key);
+
+      String executorIdToSendMsg;
+
+      while (true) {
+        // re-resolve target executor id on fail
+        final Optional<String> targetIdOptional = ownershipCache.resolveExecutor(blockId);
+
+        // send to local when it's migrated into local
+        executorIdToSendMsg = targetIdOptional.orElse(executorId);
+
+        try {
+          msgSenderFuture.get().sendMsg(executorIdToSendMsg, etMsg);
+          break;
+        } catch (NetworkException e) {
+          LOG.log(Level.WARNING, "NetworkException while sending a msg. Resend", e);
+        }
+
+        // request up-to-date ownership info
+        try {
+          msgSenderFuture.get().sendOwnershipReqMsg(tableId, blockId);
+        } catch (NetworkException e) {
+          throw new RuntimeException(e);
+        }
+
+        LOG.log(Level.INFO, "Wait {0} ms before resending a msg", RESEND_INTERVAL_MS);
+        try {
+          // may not sleep for RESEND_INTERVAL_MS due to interrupt
+          Thread.sleep(RESEND_INTERVAL_MS);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.FINEST, "Interrupted while waiting for ownership cache to be updated", e);
+        }
+      }
+    } catch (TableNotExistException e) {
+      try {
+        LOG.log(Level.WARNING, "The table access request (Table: {0}, opId: {1}) has failed." +
+            " Will redirect the message to the Driver for fallback.", new Object[] {tableId, opId});
+        msgSenderFuture.get().sendMsg(driverId, etMsg);
+      } catch (NetworkException e1) {
+        throw new RuntimeException(e1);
+      }
+    }
   }
 
   /**

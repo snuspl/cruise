@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.et.common.impl;
 
-import edu.snu.cay.services.et.avro.ETMsg;
+import edu.snu.cay.services.et.avro.*;
+import edu.snu.cay.services.et.evaluator.impl.RemoteAccessOpSender;
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.remote.transport.LinkListener;
@@ -32,8 +34,12 @@ import java.util.logging.Logger;
 final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
   private static final Logger LOG = Logger.getLogger(NetworkLinkListener.class.getName());
 
+  // TODO #209: OpSender is an executor-specific component for now
+  private final RemoteAccessOpSender remoteAccessOpSender;
+
   @Inject
-  private NetworkLinkListener() {
+  private NetworkLinkListener(final RemoteAccessOpSender remoteAccessOpSender) {
+    this.remoteAccessOpSender = remoteAccessOpSender;
   }
 
   @Override
@@ -48,6 +54,16 @@ final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
                           final Message<ETMsg> stringMessage) {
     for (final ETMsg msg : stringMessage.getData()) {
       LOG.log(Level.WARNING, "Failure on sending message: " + msg + " to SockAddr: " + socketAddress, throwable);
+
+      // handle failed table access request msgs, which may fail by reconfiguration
+      if (msg.getType().equals(ETMsgType.TableAccessMsg)) {
+        final TableAccessMsg tableAccessMsg = AvroUtils.fromBytes(msg.getInnerMsg().array(), TableAccessMsg.class);
+        if (tableAccessMsg.getType().equals(TableAccessMsgType.TableAccessReqMsg)) {
+          final TableAccessReqMsg tableAccessReqMsg = tableAccessMsg.getTableAccessReqMsg();
+          remoteAccessOpSender.onFailedMsg(tableAccessReqMsg.getTableId(), tableAccessReqMsg.getDataKey(),
+              tableAccessReqMsg.getReplyRequired(), tableAccessMsg.getOperationId(), msg);
+        }
+      }
     }
   }
 }

@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.configuration.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Identifier of Executor.")
+// TODO #209: remove the default value when master really starts using RemoteOpSender
+@NamedParameter(doc = "Identifier of Executor.", default_value = "")
 public final class ExecutorIdentifier implements Name<String> {
 }
