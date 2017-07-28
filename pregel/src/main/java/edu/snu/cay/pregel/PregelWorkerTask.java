@@ -89,11 +89,11 @@ public final class PregelWorkerTask<V, E, M> implements Task {
 
       // partition local graph-dataset as the number of threads
       final Map<Long, Vertex<V, E>> vertexMap = vertexTable.getLocalTablet().getDataMap();
-      final List<List<Vertex<V, E>>> vertexPartitions = partitionVertices(vertexMap, numThreads);
+      final List<Partition<V, E>> vertexPartitions = partitionVertices(vertexMap, numThreads);
 
       // compute each partition with a thread pool
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-        final List<Vertex<V, E>> partition = vertexPartitions.get(threadIdx);
+        final Partition<V, E> partition = vertexPartitions.get(threadIdx);
         final Callable<Integer> computationCallable =
             new ComputationCallable<>(computation, partition, messageManager.getCurrentMessageTable());
         futureList.add(executorService.submit(computationCallable));
@@ -136,24 +136,23 @@ public final class PregelWorkerTask<V, E, M> implements Task {
    * @param numPartitions the number of partitions
    * @return a list of partition
    */
-  private List<List<Vertex<V, E>>> partitionVertices(final Map<Long, Vertex<V, E>> vertexMap, final int numPartitions) {
+  private List<Partition<V, E>> partitionVertices(final Map<Long, Vertex<V, E>> vertexMap, final int numPartitions) {
     final List<Vertex<V, E>> vertexList = Lists.newArrayList(vertexMap.values());
     final int numVertices = vertexList.size();
     final int sizeByPartition = numVertices / numPartitions;
-    final List<List<Vertex<V, E>>> vertexPartitions = new ArrayList<>(numPartitions);
+    int remainder = numVertices % numPartitions;
 
-    int vertexIdx;
+    final List<Partition<V, E>> vertexPartitions = new ArrayList<>(numPartitions);
+
+    int partitionStartIdx = 0;
     for (int threadIdx = 0; threadIdx < numPartitions; threadIdx++) {
-      vertexPartitions.add(new ArrayList<>());
-      for (vertexIdx = threadIdx * sizeByPartition; vertexIdx < (threadIdx + 1) * sizeByPartition; vertexIdx++) {
-        vertexPartitions.get(threadIdx).add(vertexList.get(vertexIdx));
-      }
-      if (threadIdx == numPartitions - 1) {
-        while (vertexIdx < numVertices) {
-          vertexPartitions.get(threadIdx).add(vertexList.get(vertexIdx));
-          vertexIdx++;
-        }
-      }
+      final int partitionSize = sizeByPartition + (remainder-- > 0 ? 1 : 0);
+
+      final List<Vertex<V, E>> partitionVertices = vertexList.subList(partitionStartIdx,
+          partitionStartIdx + partitionSize);
+      partitionStartIdx += partitionSize; // for next partition
+
+      vertexPartitions.add(new Partition<>(partitionVertices));
     }
     return vertexPartitions;
   }

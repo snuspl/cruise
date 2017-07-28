@@ -16,7 +16,6 @@
 package edu.snu.cay.pregel.graph.impl;
 
 import edu.snu.cay.pregel.graph.api.Computation;
-import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.services.et.evaluator.api.Table;
 
 import java.util.Collections;
@@ -38,11 +37,11 @@ public class ComputationCallable<V, E, M> implements Callable<Integer> {
 
   private static final Logger LOG = Logger.getLogger(ComputationCallable.class.getName());
   private final Computation<V, E, M> computation;
-  private final Iterable<Vertex<V, E>> verticesPartition;
+  private final Partition<V, E> verticesPartition;
   private final Table<Long, List<M>, M> currMessageTable;
 
   public ComputationCallable(final Computation<V, E, M> computation,
-                             final Iterable<Vertex<V, E>> vertexPartition,
+                             final Partition<V, E> vertexPartition,
                              final Table<Long, List<M>, M> currMessageTable) {
 
     this.computation = computation;
@@ -60,7 +59,7 @@ public class ComputationCallable<V, E, M> implements Callable<Integer> {
 
     final AtomicInteger numActiveVertices = new AtomicInteger(0);
 
-    verticesPartition.forEach(vertex -> {
+    verticesPartition.getVertices().forEach(vertex -> {
       try {
 
         List<M> msgsForVertex = currMessageTable.remove(vertex.getId()).get();
