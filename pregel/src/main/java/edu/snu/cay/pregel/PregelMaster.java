@@ -46,7 +46,7 @@ final class PregelMaster {
 
   /**
    * These two values are updated by the results of every worker at the end of a single superstep.
-   * Master checks 1) all vertices in workers are halt or not 2) and whether any ongoing messages are exist or not.
+   * Master checks whether 1) all vertices in workers are halt or not, 2) and any ongoing messages are exist or not.
    * When both values are true, {@link PregelMaster} stops workers to finish the job.
    */
   private volatile boolean isAllVerticesHalt;
@@ -59,8 +59,8 @@ final class PregelMaster {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
     this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
-    isAllVerticesHalt = true;
-    isNoOngoingMsgs = true;
+    this.isAllVerticesHalt = true;
+    this.isNoOngoingMsgs = true;
     initControlThread();
   }
 
@@ -122,7 +122,7 @@ final class PregelMaster {
 
       final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
 
-      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoSentMsgs : {1}",
+      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoOngoingMsgs : {1}",
           new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsNoOngoingMsgs()});
       isAllVerticesHalt &= resultMsg.getIsAllVerticesHalt();
       isNoOngoingMsgs &= resultMsg.getIsNoOngoingMsgs();
