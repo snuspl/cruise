@@ -15,35 +15,43 @@
  */
 package edu.snu.cay.pregel.common;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import edu.snu.cay.pregel.PregelParameters.*;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.*;
 import java.util.List;
 
 /**
- * Codec for message list which element type is long.
+ * Codec for message, which is composed of {@link MessageValueCodec}.
+ *
+ * Encoding format of message is as follows:
+ * [ int: size of message list | M : message value | M : message value | ... ]
+ *
+ * @param <M> message value
  */
-public final class LongMsgCodec implements Codec<Iterable<Long>> {
+public final class MessageCodec<M> implements Codec<Iterable<M>> {
 
+  private final StreamingCodec<M> valueCodec;
   @Inject
-  private LongMsgCodec() {
+  private MessageCodec(@Parameter(MessageValueCodec.class) final StreamingCodec<M> valueCodec) {
+    this.valueCodec = valueCodec;
   }
 
   @Override
-  public byte[] encode(final Iterable<Long> msgs) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(msgs));
+  public byte[] encode(final Iterable<M> msgs) {
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final DataOutputStream daos = new DataOutputStream(baos);
-    final List<Long> msgList = Lists.newArrayList(msgs);
+    final List<M> msgList = Lists.newArrayList(msgs);
     final int msgsSize = msgList.size();
     try {
       daos.writeInt(msgsSize);
-      for (final Long msg : msgList) {
-        daos.writeLong(msg);
+      for (final M message : msgList) {
+        daos.write(valueCodec.encode(message));
       }
-
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -51,24 +59,20 @@ public final class LongMsgCodec implements Codec<Iterable<Long>> {
   }
 
   @Override
-  public Iterable<Long> decode(final byte[] bytes) {
+  public Iterable<M> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     final DataInputStream dais = new DataInputStream(bais);
-    final List<Long> msgList = Lists.newArrayList();
+    final List<M> msgList = Lists.newArrayList();
     try {
 
       final int size = dais.readInt();
       for (int index = 0; index < size; index++) {
-        msgList.add(dais.readLong());
+        msgList.add(valueCodec.decodeFromStream(dais));
       }
 
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
     return msgList;
-  }
-
-  private int getNumBytes(final Iterable<Long> longs) {
-    return Integer.BYTES + Long.BYTES * Iterables.size(longs);
   }
 }

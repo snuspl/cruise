@@ -15,9 +15,6 @@
  */
 package edu.snu.cay.pregel.graph.api;
 
-import edu.snu.cay.pregel.graph.impl.DefaultVertex;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
  * Interface for vertex which has vertex id, value and outgoing {@link Edge}s.
  * Note that it assumes that vertex id is always {@link Long} type.
@@ -25,7 +22,6 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * @param <V> Vertex value type
  * @param <E> Edge value type
  */
-@DefaultImplementation(DefaultVertex.class)
 public interface Vertex<V, E> {
 
   /**

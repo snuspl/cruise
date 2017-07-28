@@ -17,10 +17,18 @@ package edu.snu.cay.utils;
 
 import org.apache.reef.io.serialization.Codec;
 
+import javax.inject.Inject;
+
 /**
  * A null codec, which returns empty values.
  */
-public class NullCodec implements Codec<Void> {
+public final class NullCodec implements Codec<Void> {
+
+  @Inject
+  private NullCodec() {
+
+  }
+
   @Override
   public byte[] encode(final Void obj) {
     return new byte[0];

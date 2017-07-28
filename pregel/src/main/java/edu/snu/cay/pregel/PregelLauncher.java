@@ -105,7 +105,7 @@ public final class PregelLauncher {
         .bindNamedParameter(InputPath.class, inputPath)
         .bindNamedParameter(VertexValueCodec.class, pregelConf.getVertexValueCodecClass())
         .bindNamedParameter(EdgeCodec.class, pregelConf.getEdgeCodecClass())
-        .bindNamedParameter(MessageCodec.class, pregelConf.getMessageCodecClass())
+        .bindNamedParameter(MessageValueCodec.class, pregelConf.getMessageValueCodecClass())
         .build();
 
     final Configuration centCommConfiguration = CentCommConf.newBuilder()

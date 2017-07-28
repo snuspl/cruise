@@ -16,6 +16,7 @@
 package edu.snu.cay.utils;
 
 import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -23,7 +24,7 @@ import java.io.*;
 /**
  * A {@link StreamingCodec} for {@link Serializable} objects.
  */
-public final class StreamingSerializableCodec<T extends Serializable> implements StreamingCodec<T> {
+public final class StreamingSerializableCodec<T extends Serializable> implements StreamingCodec<T>, Codec<T> {
 
   @Inject
   private StreamingSerializableCodec() {

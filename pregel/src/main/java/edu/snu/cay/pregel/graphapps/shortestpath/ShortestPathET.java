@@ -19,7 +19,6 @@ import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
 import edu.snu.cay.pregel.common.DefaultEdgeCodec;
 import edu.snu.cay.pregel.common.DefaultGraphParser;
-import edu.snu.cay.pregel.common.LongMsgCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.tang.exceptions.InjectionException;
 
@@ -42,7 +41,7 @@ public final class ShortestPathET {
     PregelLauncher.launch(args, PregelConfiguration.newBuilder()
         .setComputationClass(ShortestPathComputation.class)
         .setDataParserClass(DefaultGraphParser.class)
-        .setMessageCodecClass(LongMsgCodec.class)
+        .setMessageValueCodecClass(StreamingSerializableCodec.class)
         .setVertexValueCodecClass(StreamingSerializableCodec.class)
         .setEdgeCodecClass(DefaultEdgeCodec.class)
         .addParameterClass(SourceId.class)

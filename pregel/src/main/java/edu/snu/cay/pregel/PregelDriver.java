@@ -17,7 +17,7 @@ package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.pregel.common.VertexCodec;
-import edu.snu.cay.pregel.common.DoubleMsgCodec;
+import edu.snu.cay.pregel.common.MessageCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -181,22 +181,28 @@ public final class PregelDriver {
 
   /**
    * Build a configuration of message table.
-   * Type of value is {@link Iterable<Double>} so set {@link DoubleMsgCodec} to value codec class.
+   * Type of value is {@link Iterable} so set {@link MessageCodec} to value codec class.
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
   private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
 
-    final Codec messageCodec = masterConfInjector.getNamedInstance(MessageCodec.class);
+    // configure message value codec to message table
+    final Codec messageValueCodec = (Codec)masterConfInjector.getNamedInstance(MessageValueCodec.class);
+    final StreamingCodec messageValueStreamingCodec = masterConfInjector.getNamedInstance(MessageValueCodec.class);
+    final Configuration messageValueConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(MessageValueCodec.class, messageValueStreamingCodec.getClass())
+        .build();
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(messageCodec.getClass())
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setValueCodecClass(MessageCodec.class)
+        .setUpdateValueCodecClass(messageValueCodec.getClass())
         .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
+        .setUserParamConf(messageValueConf)
         .build();
   }
 }

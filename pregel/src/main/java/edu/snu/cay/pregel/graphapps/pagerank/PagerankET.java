@@ -17,7 +17,6 @@ package edu.snu.cay.pregel.graphapps.pagerank;
 
 import edu.snu.cay.pregel.PregelConfiguration;
 import edu.snu.cay.pregel.PregelLauncher;
-import edu.snu.cay.pregel.common.DoubleMsgCodec;
 import edu.snu.cay.pregel.common.NoneEdgeValueGraphParser;
 import edu.snu.cay.pregel.common.NoneValueEdgeCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;
@@ -41,7 +40,7 @@ public final class PagerankET {
     PregelLauncher.launch(args, PregelConfiguration.newBuilder()
         .setComputationClass(PagerankComputation.class)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
-        .setMessageCodecClass(DoubleMsgCodec.class)
+        .setMessageValueCodecClass(StreamingSerializableCodec.class)
         .setVertexValueCodecClass(StreamingSerializableCodec.class)
         .setEdgeCodecClass(NoneValueEdgeCodec.class)
         .build());
