@@ -74,6 +74,7 @@ final class LDATrainer implements Trainer<Document> {
 
     this.modelHolder = modelHolder;
 
+    // Note that this number of trainer threads does not consider hyper-thread.
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", Runtime.getRuntime().availableProcessors());
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
     LOG.log(Level.INFO, "All random topic assignments are updated");

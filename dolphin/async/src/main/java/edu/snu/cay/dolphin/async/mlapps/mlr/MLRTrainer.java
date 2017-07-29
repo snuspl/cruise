@@ -155,7 +155,8 @@ final class MLRTrainer implements Trainer<MLRData> {
         classPartitionIndices.add(classIndex * numPartitionsPerClass + partitionIndex);
       }
     }
-
+  
+    // Note that this number of trainer threads does not consider hyper-thread.
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);
