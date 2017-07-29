@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.pregel;
 
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -35,12 +35,17 @@ public final class PregelParameters {
   }
 
   @NamedParameter(doc = "The codec class for encoding and decoding message objects")
-  public final class MessageCodec implements Name<Codec> {
+  public final class MessageValueCodec implements Name<StreamingCodec> {
 
   }
 
-  @NamedParameter(doc = "The codec class for encoding and decoding vertices")
-  public final class VertexCodec implements Name<Codec> {
+  @NamedParameter(doc = "The codec class for encoding and decoding vertex values")
+  public final class VertexValueCodec implements Name<StreamingCodec> {
+
+  }
+
+  @NamedParameter(doc = "The codec class for encoding and decoding edge values")
+  public final class EdgeCodec implements Name<StreamingCodec> {
 
   }
 

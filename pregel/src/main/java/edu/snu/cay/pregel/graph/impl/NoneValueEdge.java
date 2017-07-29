@@ -21,7 +21,7 @@ import edu.snu.cay.pregel.graph.api.Edge;
  * The implementation of non-value edge.
  * It only has target vertex id.
  */
-public class NoneValueEdge<V> implements Edge<V> {
+public class NoneValueEdge implements Edge<Void> {
 
   private final Long vertexId;
 
@@ -35,7 +35,7 @@ public class NoneValueEdge<V> implements Edge<V> {
   }
 
   @Override
-  public V getValue() {
+  public Void getValue() {
     throw new UnsupportedOperationException();
   }
 }

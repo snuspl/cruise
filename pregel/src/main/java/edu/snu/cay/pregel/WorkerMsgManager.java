@@ -75,9 +75,10 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
    * Synchronize with other executors.
    * It sends a message to master and waits a response message.
    *
-   * @param numActiveVertices the number of active vertices
+   * @param numActiveVertices the number of active vertices after superstep
+   * @param numSentMsgs the number of sent messages in this superstep
    */
-  boolean waitForTryNextSuperstepMsg(final int numActiveVertices) {
+  boolean waitForTryNextSuperstepMsg(final int numActiveVertices, final int numSentMsgs) {
 
     // 1. reset state
     this.goNextSuperstep = false;
@@ -85,8 +86,10 @@ final class WorkerMsgManager implements EventHandler<CentCommMsg> {
 
     // 2. send a message
     final boolean isAllVerticesHalt = numActiveVertices == 0;
+    final boolean isNoOngoingMsgs = numSentMsgs == 0;
     final SuperstepResultMsg resultMsg = SuperstepResultMsg.newBuilder()
         .setIsAllVerticesHalt(isAllVerticesHalt)
+        .setIsNoOngoingMsgs(isNoOngoingMsgs)
         .build();
 
     centCommMsgSender.send(PregelDriver.CENTCOMM_CLIENT_ID, AvroUtils.toBytes(resultMsg, SuperstepResultMsg.class));

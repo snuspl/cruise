@@ -15,36 +15,24 @@
  */
 package edu.snu.cay.pregel.graph.impl;
 
-import edu.snu.cay.pregel.graph.api.Edge;
-import edu.snu.cay.pregel.graph.api.MutableEdge;
+import edu.snu.cay.pregel.graph.api.Vertex;
+
+import java.util.List;
 
 /**
- * A default implementation of {@link Edge}.
- *
- * @param <E> edge value
+ * A partition class that represent a collection of vertices.
+ * One partition is assigned to a worker thread.
+ * @param <V> a value value type
+ * @param <E> an edge value type
  */
-public final class DefaultEdge<E> implements MutableEdge<E> {
+public class Partition<V, E> {
+  private final List<Vertex<V, E>> vertices;
 
-  private final Long vertexId;
-  private E value;
-
-  public DefaultEdge(final Long vertexId, final E value) {
-    this.vertexId = vertexId;
-    this.value = value;
+  public Partition(final List<Vertex<V, E>> vertices) {
+    this.vertices = vertices;
   }
 
-  @Override
-  public Long getTargetVertexId() {
-    return vertexId;
-  }
-
-  @Override
-  public E getValue() {
-    return value;
-  }
-
-  @Override
-  public void setValue(final E newValue) {
-    this.value = newValue;
+  public List<Vertex<V, E>> getVertices() {
+    return vertices;
   }
 }

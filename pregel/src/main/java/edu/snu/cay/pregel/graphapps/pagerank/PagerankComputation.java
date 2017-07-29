@@ -15,22 +15,16 @@
  */
 package edu.snu.cay.pregel.graphapps.pagerank;
 
-import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.api.Vertex;
-import edu.snu.cay.services.et.evaluator.api.Table;
+import edu.snu.cay.pregel.graph.impl.AbstractComputation;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 /**
  * Implementation of {@link Computation} to execute a pagerank algorithm.
  */
-public final class PagerankComputation implements Computation<Double, Double> {
+public final class PagerankComputation extends AbstractComputation<Double, Void, Double> {
   /**
    * Damping factor of the pagerank algorithm.
    */
@@ -41,33 +35,13 @@ public final class PagerankComputation implements Computation<Double, Double> {
    */
   private static final int NUM_TOTAL_SUPERSTEP = 10;
 
-  private Integer superstep;
-
-  /**
-   * All messages are passed to this table during computation in a single superstep.
-   */
-  private Table<Long, List<Double>, Double> nextMessageTable;
-
-  /**
-   * All table commands are added the list for sync the non-blocking methods.
-   * At the finish of a single superstep, worker task calls {@link #flushAllMessages()} and gets all futures in it.
-   * Then clear it.
-   */
-  private final List<Future<?>> msgFutureList = Collections.synchronizedList(Lists.newArrayList());
-
   @Inject
   private PagerankComputation() {
-
+    super();
   }
 
   @Override
-  public void initialize(final Integer currentStep, final Table<Long, List<Double>, Double> nextTable) {
-    this.superstep = currentStep;
-    this.nextMessageTable = nextTable;
-  }
-
-  @Override
-  public void compute(final Vertex<Double> vertex, final Iterable<Double> messages) {
+  public void compute(final Vertex<Double, Void> vertex, final Iterable<Double> messages) {
 
     if (getSuperstep() == 0) {
 
@@ -78,40 +52,18 @@ public final class PagerankComputation implements Computation<Double, Double> {
     } else {
 
       // If incoming messages are not null, reduce it before update the value of this vertex.
-      final double sum = messages == null ? 0d :
-          Lists.newArrayList(messages).stream().mapToDouble(Double::doubleValue).sum();
+      double sum = 0.0;
+      for (final Double message : messages) {
+        sum += message;
+      }
+
       vertex.setValue((1 - DAMPING_FACTOR) + DAMPING_FACTOR * sum);
     }
 
-    msgFutureList.addAll(sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges()));
-
-    if (getSuperstep() == NUM_TOTAL_SUPERSTEP) {
+    if (getSuperstep() < NUM_TOTAL_SUPERSTEP) {
+      sendMessagesToAdjacents(vertex, vertex.getValue() / vertex.getNumEdges());
+    } else {
       vertex.voteToHalt();
     }
-  }
-
-  @Override
-  public int getSuperstep() {
-    return superstep;
-  }
-
-  @Override
-  public Future<?> sendMessage(final Long id, final Double message) {
-    return nextMessageTable.update(id, message);
-  }
-
-  @Override
-  public List<Future<?>> sendMessagesToAdjacents(final Vertex<Double> vertex, final Double message) {
-    final List<Future<?>> futureList = new ArrayList<>();
-    vertex.getEdges().forEach(edge -> futureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
-    return futureList;
-  }
-
-  @Override
-  public void flushAllMessages() throws ExecutionException, InterruptedException {
-    for (final Future<?> msgFuture : msgFutureList) {
-      msgFuture.get();
-    }
-    msgFutureList.clear();
   }
 }

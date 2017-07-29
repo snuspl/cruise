@@ -13,32 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
-/**
- * Type of message that master sends to workers to control them.
- */
-{
-  "namespace": "edu.snu.cay.pregel",
-  "type": "record",
-  "name": "SuperstepControlMsg",
-  "fields":
-  [
-    {"name": "type", "type": {"type": "enum", "name": "ControlMsgType",
-      "symbols": ["Start", "Stop"]}}
-  ]
-},
 
 /**
- * Type of message that workers send to master about the result of superstep.
+ * Classes for the shortest-path app.
  */
-{
-  "namespace": "edu.snu.cay.pregel",
-  "type": "record",
-  "name": "SuperstepResultMsg",
-  "fields":
-  [
-    {"name": "isAllVerticesHalt", "type": "boolean"},
-    {"name": "isNoOngoingMsgs", "type": "boolean"}
-  ]
-}
-]
+package edu.snu.cay.pregel.graphapps.shortestpath;

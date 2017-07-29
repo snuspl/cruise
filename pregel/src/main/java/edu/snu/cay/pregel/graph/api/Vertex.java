@@ -15,16 +15,14 @@
  */
 package edu.snu.cay.pregel.graph.api;
 
-import edu.snu.cay.pregel.graph.impl.DefaultVertex;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
- * Interface for vertex which has vertex id, data and outgoing {@link Edge}s.
+ * Interface for vertex which has vertex id, value and outgoing {@link Edge}s.
+ * Note that it assumes that vertex id is always {@link Long} type.
  *
- * @param <V> Vertex data
+ * @param <V> Vertex value type
+ * @param <E> Edge value type
  */
-@DefaultImplementation(DefaultVertex.class)
-public interface Vertex<V> {
+public interface Vertex<V, E> {
 
   /**
    * Initialize id and value. Vertex outgoing edges will be empty.
@@ -43,7 +41,7 @@ public interface Vertex<V> {
    * @param id vertex id
    * @param edges outgoing edges
    */
-  void initialize(Long id, Iterable<Edge> edges);
+  void initialize(Long id, Iterable<Edge<E>> edges);
 
   /**
    * Initialize id, value and outgoing edges.
@@ -53,7 +51,7 @@ public interface Vertex<V> {
    * @param value vertex value
    * @param edges outgoing edges
    */
-  void initialize(Long id, V value, Iterable<Edge> edges);
+  void initialize(Long id, V value, Iterable<Edge<E>> edges);
 
   /**
    * Get the vertex id.
@@ -95,10 +93,10 @@ public interface Vertex<V> {
    *
    * @return the outgoing edges
    */
-  Iterable<Edge> getEdges();
+  Iterable<Edge<E>> getEdges();
 
   /**
-   * Re-active vertex if halted.
+   * Re-activate vertex if halted.
    */
   void wakeUp();
 

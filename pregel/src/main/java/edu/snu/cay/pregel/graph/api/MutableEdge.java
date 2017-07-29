@@ -18,12 +18,12 @@ package edu.snu.cay.pregel.graph.api;
 /**
  * An edge whose value can be modified.
  */
-public interface MutableEdge<V> extends Edge<V> {
+public interface MutableEdge<E> extends Edge<E> {
 
   /**
    * Set the value for this edge.
    *
    * @param value new edge value
    */
-  void setValue(V value);
+  void setValue(E value);
 }

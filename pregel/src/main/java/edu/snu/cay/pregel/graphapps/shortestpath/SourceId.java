@@ -13,32 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
-/**
- * Type of message that master sends to workers to control them.
- */
-{
-  "namespace": "edu.snu.cay.pregel",
-  "type": "record",
-  "name": "SuperstepControlMsg",
-  "fields":
-  [
-    {"name": "type", "type": {"type": "enum", "name": "ControlMsgType",
-      "symbols": ["Start", "Stop"]}}
-  ]
-},
+package edu.snu.cay.pregel.graphapps.shortestpath;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Type of message that workers send to master about the result of superstep.
+ * A source vertex if of shortest path app.
  */
-{
-  "namespace": "edu.snu.cay.pregel",
-  "type": "record",
-  "name": "SuperstepResultMsg",
-  "fields":
-  [
-    {"name": "isAllVerticesHalt", "type": "boolean"},
-    {"name": "isNoOngoingMsgs", "type": "boolean"}
-  ]
+@NamedParameter(doc = "a source vertex id of shortest path app", short_name = "source")
+public final class SourceId implements Name<Long> {
 }
-]

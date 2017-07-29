@@ -17,10 +17,10 @@ package edu.snu.cay.pregel.common;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import edu.snu.cay.pregel.PregelParameters.*;
+import edu.snu.cay.pregel.PregelParameters.EdgeCodec;
 import edu.snu.cay.pregel.graph.api.Edge;
 import edu.snu.cay.pregel.graph.api.Vertex;
-import edu.snu.cay.pregel.graph.impl.DefaultVertex;
+import edu.snu.cay.pregel.graph.impl.*;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -31,42 +31,24 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Codec for {@link DefaultVertex}, which is composed of {@link VertexValueCodec} and {@link EdgeCodec}.
- *
- * Encoding format of vertex is as follows:
- * 1. Vertex w/ value : [ long: vertex id | true | V: vertex value | E: edge | E: edge | E: edge ...],
- * 2. Vertex w/o value : [ long: vertex id | false | E: edge | E: edge | E: edge ...]
- *
- * Encoding format of edge is as follows:
- * 1. Edge w/ value : [ long: target vertex id | E: edge value ]
- * 2. Edge w/o value : [ long: target vertex id ]
+ * Codec for {@link NoneValueVertex}.
  */
-public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
+public final class NoneValueVertexCodec<E> implements Codec<Vertex<Void, E>> {
 
-  private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
-  private final StreamingCodec<V> vertexValueCodec;
+  private static final Logger LOG = Logger.getLogger(NoneValueVertexCodec.class.getName());
   private final StreamingCodec<Edge<E>> edgeCodec;
 
   @Inject
-  private DefaultVertexCodec(@Parameter(VertexValueCodec.class) final StreamingCodec<V> vertexValueCodec,
-                             @Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
-    this.vertexValueCodec = vertexValueCodec;
+  private NoneValueVertexCodec(@Parameter(EdgeCodec.class) final StreamingCodec<Edge<E>> edgeCodec) {
     this.edgeCodec = edgeCodec;
   }
 
   @Override
-  public byte[] encode(final Vertex<V, E> vertex) {
+  public byte[] encode(final Vertex<Void, E> vertex) {
     final Iterable<Edge<E>> edges = vertex.getEdges();
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
          DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeLong(vertex.getId());
-      final V vertexValue = vertex.getValue();
-      if (vertexValue != null) {
-        daos.writeBoolean(true);
-        daos.write(vertexValueCodec.encode(vertex.getValue()));
-      } else {
-        daos.writeBoolean(false);
-      }
       daos.writeInt(Iterables.size(edges));
       for (final Edge<E> edge : edges) {
         daos.write(edgeCodec.encode(edge));
@@ -79,23 +61,19 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
   }
 
   @Override
-  public Vertex<V, E> decode(final byte[] bytes) {
-    final Vertex<V, E> decodedVertex = new DefaultVertex<>();
+  public Vertex<Void, E> decode(final byte[] bytes) {
     try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
          DataInputStream dais = new DataInputStream(bais)) {
+      final Vertex<Void, E> decodedVertex = new NoneValueVertex<>();
+
       final Long vertexId = dais.readLong();
-      final boolean isExistValue = dais.readBoolean();
-      V vertexValue = null;
-      if (isExistValue) {
-        vertexValue = vertexValueCodec.decodeFromStream(dais);
-      }
       final List<Edge<E>> edges = Lists.newArrayList();
       final int edgesSize = dais.readInt();
       for (int index = 0; index < edgesSize; index++) {
         edges.add(edgeCodec.decodeFromStream(dais));
       }
 
-      decodedVertex.initialize(vertexId, vertexValue, edges);
+      decodedVertex.initialize(vertexId, edges);
       return decodedVertex;
 
     } catch (IOException e) {
