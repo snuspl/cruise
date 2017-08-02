@@ -42,8 +42,8 @@ import java.util.stream.IntStream;
  * This optimizer does not consider role change of existing container,
  * i.e. changing certain type of resource to act in a different role.
  */
-public final class HeterogeneousOptimizer implements Optimizer {
-  private static final Logger LOG = Logger.getLogger(HeterogeneousOptimizer.class.getName());
+public final class HomogeneousOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(HomogeneousOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
@@ -54,11 +54,11 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
-  private HeterogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
-                                 @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
-                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
+  private HomogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
+                               @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
+                               @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                    final double optBenefitThreshold,
-                                 final BandwidthInfoParser bandwidthInfoParser) {
+                               final BandwidthInfoParser bandwidthInfoParser) {
     this.numTotalMiniBatches = numTotalMiniBatches;
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
@@ -198,7 +198,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
-        new EmptyPlan(OptimizerType.HETEROGENEOUS) :
+        new EmptyPlan(OptimizerType.HOMOGENEOUS) :
         generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
           serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
   }

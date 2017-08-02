@@ -167,7 +167,7 @@ public final class PlanCompiler {
     /*
     We have two switch translations here.
     The first is for a pair of add/del that has the same target eval id.
-    It's for {@link ILPOptimizer}, which already knows that add/del op will be translated into switch op.
+    It's for {@link HeterogeneousOptimizer}, which already knows that add/del op will be translated into switch op.
 
     The second translation does not care about the eval id of each add/del operation.
     It just picks add/del ops randomly to eliminate all pairs of add/del in different namespace.
@@ -178,7 +178,7 @@ public final class PlanCompiler {
      */
   
     // First switch translation.
-    if (dolphinPlan.getOptimizerType() == OptimizerType.ILP) {
+    if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
       final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
           translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
   
@@ -192,7 +192,7 @@ public final class PlanCompiler {
       serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
 
       // Second switch translation.
-    } else if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
+    } else if (dolphinPlan.getOptimizerType() == OptimizerType.HOMOGENEOUS) {
       final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
       final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
 

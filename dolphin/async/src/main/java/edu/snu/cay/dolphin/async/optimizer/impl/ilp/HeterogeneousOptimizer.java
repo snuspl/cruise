@@ -34,7 +34,7 @@ import java.util.*;
 /**
  * Solves Integer Linear Programming problem to find the optimal configuration.
  */
-public final class ILPOptimizer implements Optimizer {
+public final class HeterogeneousOptimizer implements Optimizer {
   /**
    * To indicate that the evaluator's cWProc is unknown because the evaluator's role was a server, not a worker.
    */
@@ -48,11 +48,11 @@ public final class ILPOptimizer implements Optimizer {
   private final ILPSolver ilpSolver;
 
   @Inject
-  private ILPOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
-                       @Parameter(Parameters.DefaultCoreNum.class) final int defCoreNum,
-                       final ILPSolver ilpSolver,
-                       final BandwidthInfoParser bandwitdthInfoParser,
-                       final CoreInfoParser coreInfoParser) {
+  private HeterogeneousOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
+                                 @Parameter(Parameters.DefaultCoreNum.class) final int defCoreNum,
+                                 final ILPSolver ilpSolver,
+                                 final BandwidthInfoParser bandwitdthInfoParser,
+                                 final CoreInfoParser coreInfoParser) {
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.defCoreNum = defCoreNum;
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
@@ -121,12 +121,12 @@ public final class ILPOptimizer implements Optimizer {
           ilpSolver.optimize(n, numTotalDataBlocks, numTotalModelBlocks, p, cWProc, bandwidth);
 
       if (optConfDescriptor == null) {
-        return new EmptyPlan(OptimizerType.ILP);
+        return new EmptyPlan(OptimizerType.HETEROGENEOUS);
       }
 
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
       
-      planBuilder.setOptimizerType(OptimizerType.ILP);
+      planBuilder.setOptimizerType(OptimizerType.HETEROGENEOUS);
 
       // Generate a reconfiguration plan by comparing old configuration and new configuration obtained from ILPSolver.
       final ILPPlanDescriptor planDescriptor = ILPPlanGenerator.generatePlanDescriptor(evalIds, roleOld, dOld, mOld,

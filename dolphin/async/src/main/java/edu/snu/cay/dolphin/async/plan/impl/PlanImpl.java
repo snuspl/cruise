@@ -134,8 +134,8 @@ public final class PlanImpl implements Plan {
     private final Map<String, Set<String>> evaluatorsToAdd = new HashMap<>();
     private final Map<String, Set<String>> evaluatorsToDelete = new HashMap<>();
     private final Map<String, List<TransferStep>> allTransferSteps = new HashMap<>();
-    // default value of optimizerType is HETEROGENEOUS.
-    private OptimizerType optimizerType = OptimizerType.HETEROGENEOUS;
+    // default value of optimizerType is HOMOGENEOUS.
+    private OptimizerType optimizerType = OptimizerType.HOMOGENEOUS;
 
     // Optional.empty means that there's no resource limit
     private Optional<Integer> numAvailableExtraEvaluators = Optional.empty();
