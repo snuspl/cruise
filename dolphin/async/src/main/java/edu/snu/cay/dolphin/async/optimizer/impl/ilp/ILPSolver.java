@@ -29,8 +29,7 @@ import java.util.logging.Logger;
  * There are some empirical issues. You should keep in mind the following issues when you use ILPSolver.
  * 1. GUROBI environment setting(e.g. IntFeasTol, MIPGap). ILPSolver's search time and quality of solution is sensitive
  *    to environment setting.
- * 2. Normalize cost values. Two main reasons for normalization are the following:
- *    express maxPullTimePerBatch in binary term and reduce search space of ILPSolver.
+ * 2. Normalize cost values. This normalization reduces search space of ILPSolver.
  * 3. The number of model blocks for each server should be large enough(e.g. at least 5 model blocks for each server).
  */
 final class ILPSolver {
@@ -43,10 +42,9 @@ final class ILPSolver {
   private static final double INT_FEAS_TOL = 1e-2;
   private static final double MIP_GAP = 4e-1;
   /**
-   * To solve ILP problem, we should convert {@code maxPullTimePerBatch} value to binary term. At this point, if
-   * maxPullTimePerBatch is smaller than 1, the value cannot be converted. Also, if {@code maxCommCost} is large,
-   * search space for {@link ILPSolver} includes a lot of redundant space. Thus, normalizing cost values can resolve the
-   * problem and reduces search space of {@link ILPSolver} significantly in some cases.
+   * To solve ILP problem, we should convert {@code maxPullTimePerBatch} value to binary term.If {@code maxCommCost} is
+   * large, search space for {@link ILPSolver} includes a lot of redundant space. Thus, normalizing cost values can
+   * reduce search space of {@link ILPSolver} significantly in some cases.
    *
    * Here, we normalize cost values with normalizationFactor = NORMALIZED_MAX_COMM_COST / maxCommCost.
    * DIGIT_NUM_NORMALIZED_MAX_COMM_COST value is empirically chosen.
