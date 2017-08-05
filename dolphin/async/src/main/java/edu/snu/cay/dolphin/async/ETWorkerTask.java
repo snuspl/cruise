@@ -84,7 +84,8 @@ final class ETWorkerTask<V> implements Task {
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
     trainer.initGlobalSettings();
-    
+
+    // TODO #1225: WorkerGlobalBarrier should not be reused
     workerGlobalBarrier.init();
 
     // synchronize all workers before starting the main iterations
