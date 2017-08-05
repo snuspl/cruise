@@ -196,7 +196,7 @@
             <!-- TODO #1224: use profile feature to turn on/off the compile of ILP code -->
             <excludes>
               <exclude>**/ILPPlanDescriptor.java</exclude>
-              <exclude>**/ilp/**</exclude>
+              <exclude>**/hetero/**</exclude>
             </excludes>
           </configuration>
         </plugin>
