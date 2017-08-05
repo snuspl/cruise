@@ -193,6 +193,7 @@
             <target>1.8</target>
             <showDeprecation>true</showDeprecation>
             <encoding>${project.build.sourceEncoding}</encoding>
+            <!-- TODO #1224: use profile feature to turn on/off the compile of ILP code -->
             <excludes>
               <exclude>**/ILPPlanDescriptor.java</exclude>
               <exclude>**/ilp/**</exclude>
