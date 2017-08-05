@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.impl.ilp;
+package edu.snu.cay.dolphin.async.optimizer.impl.hetero;
 
 /**
  * This instance contains information about which evaluator should send or receive blocks and how many blocks are need
