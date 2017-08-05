@@ -32,7 +32,15 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Solves Integer Linear Programming problem to find the optimal configuration.
+ * This optimizer minimizes epoch(mini-batch) time,
+ * by allocating proper role (e.g., server/worker) and amount of workload (number of blocks) to resources.
+ * Different from {@link HomogeneousOptimizer}, this optimizer considers heterogeneity of resources.
+ *
+ * It solves Integer Linear Programming problem to find the optimal configuration (See {@link ILPSolver}).
+ *
+ * This optimizer
+ * 1) does not support change of total amount of resources.
+ * 2) generate a plan, being aware of switch operation.
  */
 public final class HeterogeneousOptimizer implements Optimizer {
   /**

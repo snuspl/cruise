@@ -38,9 +38,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This optimizer consider hardware capability of each resource, and distribute more workload to faster one.
- * This optimizer does not consider role change of existing container,
- * i.e. changing certain type of resource to act in a different role.
+ * This optimizer minimizes epoch(mini-batch) time,
+ * by finding optimal the worker/server ratio and workload distribution within each group.
+ * This optimizer does not consider heterogeneity of resources.
+ *
+ * It uses heuristic solution to find the optimal configuration.
+ *
+ * This optimizer
+ * 1) supports change of total amount of resources.
+ * 2) is not aware of switch operation. (so it uses a virtual Id for evaluator to be added)
  */
 public final class HomogeneousOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(HomogeneousOptimizer.class.getName());
