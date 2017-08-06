@@ -21,7 +21,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,24 +35,27 @@ public final class FIFOJobScheduler implements JobScheduler {
 
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 
-  private final AtomicInteger numAvailableResources;
+  private int numAvailableResources;
 
   @Inject
   private FIFOJobScheduler(@Parameter(Parameters.NumTotalResources.class) final int numTotalResources,
                            final InjectionFuture<JobServerDriver> jobServerDriverFuture) {
-    this.numAvailableResources = new AtomicInteger(numTotalResources);
+    this.numAvailableResources = numTotalResources;
     this.jobServerDriverFuture = jobServerDriverFuture;
   }
 
+  /**
+   * Execute a new job immediately, if there're enough free resources.
+   * Otherwise, put it into a queue so it can be executed when resources become available.
+   */
   @Override
   public synchronized void onJobArrival(final JobEntity jobEntity) {
     final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
-    if (numAvailableResources.get() >= numResourcesToUse) {
+    if (numAvailableResources >= numResourcesToUse) {
       LOG.log(Level.INFO, "Start job {0} with {1} resources. Remaining free resources: {2}",
-          new Object[]{jobEntity.getJobId(), numAvailableResources.get(),
-              numAvailableResources.get() - numResourcesToUse});
+          new Object[]{jobEntity.getJobId(), numAvailableResources, numAvailableResources - numResourcesToUse});
 
-      numAvailableResources.getAndAdd(-numResourcesToUse);
+      numAvailableResources -= numResourcesToUse;
       jobServerDriverFuture.get().executeJob(jobEntity);
 
     } else {
@@ -62,26 +64,28 @@ public final class FIFOJobScheduler implements JobScheduler {
     }
   }
 
+  /**
+   * Executes waiting jobs if the enough amount of resources become available for them.
+   */
   @Override
   public synchronized void onJobFinish(final int numReleasedResources) {
-    numAvailableResources.getAndAdd(numReleasedResources);
+    numAvailableResources += numReleasedResources;
 
-    // start waiting jobs, if resources become available
+    // start waiting jobs, if enough resources become available
     while (!jobWaitingQueue.isEmpty()) {
       final JobEntity jobEntity = jobWaitingQueue.peek();
       final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
 
-      if (numAvailableResources.get() >= numResourcesToUse) {
+      if (numAvailableResources >= numResourcesToUse) {
         LOG.log(Level.INFO, "Start job {0} with {1} resources. Remaining free resources: {2}",
-            new Object[]{jobEntity.getJobId(), numAvailableResources.get(),
-                numAvailableResources.get() - numResourcesToUse});
+            new Object[]{jobEntity.getJobId(), numAvailableResources, numAvailableResources - numResourcesToUse});
 
-        numAvailableResources.getAndAdd(-numResourcesToUse);
+        numAvailableResources -= numResourcesToUse;
         jobServerDriverFuture.get().executeJob(jobEntity);
 
         jobWaitingQueue.poll();
       } else {
-        break;
+        break; // FIFO.
       }
     }
   }
