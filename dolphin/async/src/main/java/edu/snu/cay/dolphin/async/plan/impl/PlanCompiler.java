@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.plan.impl;
 
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -61,6 +62,53 @@ public final class PlanCompiler {
 
   /**
    * Translate given collections of add/del operations into transferstep list, by pairing each add and del operations.
+   * When paring, it finds add/del ops that have the same evaluator id.
+   * It generates a list of transferstep to apply change in this translation.
+   * @param evalsToDel a list of del
+   * @param evalsToAdd a list of add
+   * @param transferSteps a list of transferstep
+   * @return a pair of executor Ids to switch and transfersteps that match with switch
+   */
+  private Pair<List<String>, List<TransferStep>> translateToSwitch(final List<String> evalsToDel,
+                                                                   final List<String> evalsToAdd,
+                                                                   final List<TransferStep> transferSteps) {
+    final Map<String, String> addIdToDelId = new HashMap<>();
+    final List<String> delSublist = new LinkedList<>();
+    
+    // Find machines that will be switched.
+    for (final String evalId : evalsToDel) {
+      if (evalsToAdd.contains(evalId)) {
+        addIdToDelId.put(evalId, evalId);
+        evalsToAdd.remove(evalId);
+        delSublist.add(evalId);
+      }
+    }
+    evalsToDel.removeAll(delSublist);
+  
+    final List<String> executorIdsToSwitch = new ArrayList<>(delSublist);
+    delSublist.clear();
+    
+    final List<TransferStep> transferStepForSwitch = new ArrayList<>(transferSteps.size());
+    for (final TransferStep transferStep : transferSteps) {
+      // Change the destination of TransferSteps to the executors that will be switched,
+      // if the TransferSteps were planned to move data to the executors that will be added.
+      if (addIdToDelId.containsKey(transferStep.getDstId())) {
+        transferStepForSwitch.add(
+            new TransferStepImpl(transferStep.getSrcId(),
+                addIdToDelId.get(transferStep.getDstId()),
+                transferStep.getDataInfo()));
+      } else {
+        transferStepForSwitch.add(transferStep);
+      }
+    }
+
+    return Pair.of(executorIdsToSwitch, transferStepForSwitch);
+  }
+
+
+  /**
+   * Translate given collections of add/del operations into transferstep list, by pairing each add and del operations.
+   * When paring, it does not care the evaluator id of add/del ops, and only considers the {@code numEvalsToSwitch}.
    * It generates a list of transferstep to apply change in this translation.
    * @param evalsToDel a list of del
    * @param evalsToAdd a list of add
@@ -116,24 +164,53 @@ public final class PlanCompiler {
     List<TransferStep> serverTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
     List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
 
-    // we assume that only one-side switch exists.
-    final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
-    final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
+    /*
+    We have two switch translations here.
+    The first is for a pair of add/del that has the same target eval id.
+    It's for {@link HeterogeneousOptimizer}, which already knows that add/del op will be translated into switch op.
 
-    // translate add/del for different namespace into switch
-    if (numSwitchesFromServerToWorker > 0) { // server -> worker
-      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
-          translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
+    The second translation does not care about the eval id of each add/del operation.
+    It just picks add/del ops randomly to eliminate all pairs of add/del in different namespace.
+    It's for all other existing optimizers.
+    Actually in this case, optimizers do not specify meaningful eval id for add op,
+    because they think add op is for acquiring a 'new' resource and
+    the newly allocated eval's id will be assigned by RM or REEF.
+     */
+  
+    // First switch translation.
+    if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
+      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
+          translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
+  
+      srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch0.getLeft());
+      workerTransferSteps = evalIdsToTransfersForSwitch0.getRight();
+  
+      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch1 =
+          translateToSwitch(workersToDel, serversToAdd, serverTransferSteps); // worker -> server
+  
+      srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch1.getLeft());
+      serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
 
-      srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch.getLeft());
-      workerTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      // Second switch translation.
+    } else if (dolphinPlan.getOptimizerType() == OptimizerType.HOMOGENEOUS) {
+      final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
+      final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
 
-    } else if (numSwitchesFromWorkerToServer > 0) { // worker -> server
-      final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
-          translateToSwitch(workersToDel, serversToAdd, serverTransferSteps, numSwitchesFromWorkerToServer);
-
-      srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch.getLeft());
-      serverTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      if (numSwitchesFromServerToWorker > 0) { // server -> worker
+        final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
+            translateToSwitch(serversToDel, workersToAdd, workerTransferSteps, numSwitchesFromServerToWorker);
+    
+        srcNamespaceToEvalsToSwitch.put(NAMESPACE_SERVER, evalIdsToTransfersForSwitch.getLeft());
+        workerTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      } else { // worker -> server
+        final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch =
+            translateToSwitch(workersToDel, serversToAdd, serverTransferSteps, numSwitchesFromWorkerToServer);
+    
+        srcNamespaceToEvalsToSwitch.put(NAMESPACE_WORKER, evalIdsToTransfersForSwitch.getLeft());
+        serverTransferSteps = evalIdsToTransfersForSwitch.getRight();
+      }
+    } else {
+      throw new RuntimeException("Unknown optimizer type!");
     }
 
     final Map<String, Collection<String>> namespaceToEvalsToAdd = new HashMap<>();

@@ -85,7 +85,6 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
-                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
                      final NMFModelGenerator modelGenerator,
                      final TrainingDataProvider<NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
@@ -105,9 +104,10 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.modelGenerator = modelGenerator;
     this.trainingDataProvider = trainingDataProvider;
 
-    this.numTrainerThreads = numTrainerThreads;
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
+    // Note that this number of trainer threads does not consider hyper-thread.
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);

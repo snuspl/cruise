@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.plan.api;
 
+import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
+
 import java.util.Collection;
 
 /**
@@ -40,4 +42,9 @@ public interface Plan {
    * @return src, dst, and information about data to be transferred
    */
   Collection<TransferStep> getTransferSteps(String namespace);
+  
+  /**
+   * @return which optimizer is used.
+   */
+  OptimizerType getOptimizerType();
 }
