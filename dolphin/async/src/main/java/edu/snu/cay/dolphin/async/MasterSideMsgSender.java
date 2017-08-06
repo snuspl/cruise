@@ -54,7 +54,7 @@ final class MasterSideMsgSender {
     try {
       networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
+      LOG.log(Level.INFO, String.format("Fail to send release msg to worker %s.", workerId), e);
     }
   }
 }

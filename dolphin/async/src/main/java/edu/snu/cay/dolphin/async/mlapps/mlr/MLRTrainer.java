@@ -119,8 +119,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(NumTotalMiniBatches.class) final int numTotalMiniBatches,
-                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;
@@ -144,7 +143,7 @@ final class MLRTrainer implements Trainer<MLRData> {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
 
-    this.numTrainerThreads = numTrainerThreads;
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
@@ -156,7 +155,8 @@ final class MLRTrainer implements Trainer<MLRData> {
         classPartitionIndices.add(classIndex * numPartitionsPerClass + partitionIndex);
       }
     }
-
+  
+    // Note that this number of trainer threads does not consider hyper-thread.
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of total mini-batches in an epoch = {0}", numTotalMiniBatches);

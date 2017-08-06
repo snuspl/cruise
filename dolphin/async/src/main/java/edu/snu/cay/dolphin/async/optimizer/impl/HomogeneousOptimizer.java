@@ -15,10 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
-import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
-import edu.snu.cay.common.dataloader.HdfsSplitInfo;
-import edu.snu.cay.common.dataloader.HdfsSplitManager;
-import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.ServerMetrics;
@@ -31,13 +27,9 @@ import edu.snu.cay.dolphin.async.plan.impl.EmptyPlan;
 import edu.snu.cay.dolphin.async.plan.impl.PlanImpl;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.impl.TransferStepImpl;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
@@ -46,12 +38,18 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This optimizer consider hardware capability of each resource, and distribute more workload to faster one.
- * This optimizer does not consider role change of existing container,
- * i.e. changing certain type of resource to act in a different role.
+ * This optimizer minimizes epoch(mini-batch) time,
+ * by finding optimal the worker/server ratio and workload distribution within each group.
+ * This optimizer does not consider heterogeneity of resources.
+ *
+ * It uses heuristic solution to find the optimal configuration.
+ *
+ * This optimizer
+ * 1) supports change of total amount of resources.
+ * 2) is not aware of switch operation. (so it uses a virtual Id for evaluator to be added)
  */
-public final class HeterogeneousOptimizer implements Optimizer {
-  private static final Logger LOG = Logger.getLogger(HeterogeneousOptimizer.class.getName());
+public final class HomogeneousOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(HomogeneousOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
@@ -62,16 +60,15 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
-  private HeterogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
-                                 @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
-                                 @Parameter(Parameters.HostToBandwidthFilePath.class)
-                                   final String hostBandwidthFilePath,
-                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
-                                 final double optBenefitThreshold) {
+  private HomogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
+                               @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
+                               @Parameter(Parameters.OptimizationBenefitThreshold.class)
+                                   final double optBenefitThreshold,
+                               final BandwidthInfoParser bandwidthInfoParser) {
     this.numTotalMiniBatches = numTotalMiniBatches;
     this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
-    this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
+    this.hostnameToBandwidth = bandwidthInfoParser.parseBandwidthInfo();
     LOG.log(Level.INFO, "Hostname to bandwidth (bps): {0}", hostnameToBandwidth);
   }
 
@@ -207,7 +204,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
-        new EmptyPlan() : generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
+        new EmptyPlan(OptimizerType.HOMOGENEOUS) :
+        generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
           serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
   }
 
@@ -241,7 +239,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final double currMeasuredCommCost = currAvgNumBatches * (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
     final double currMeasuredCost = currMeasuredCompCost + currMeasuredCommCost;
-
     final double currEstimatedCost = numWorkersCostMap.getOrDefault(currentNumWorkers, -1D);
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
@@ -525,40 +522,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
     }
   }
 
-  /**
-   * @param hostnameToBandwidthFilePath path of the file that consists of (hostname, bandwidth) information.
-   * @return the mapping between the hostname and bandwidth of machines
-   */
-  private Map<String, Double> parseBandwidthInfo(final String hostnameToBandwidthFilePath) {
-    if (hostnameToBandwidthFilePath.equals(Parameters.HostToBandwidthFilePath.NONE)) {
-      return Collections.emptyMap();
-    }
-
-    final Map<String, Double> mapping = new HashMap<>();
-
-    final HdfsSplitInfo[] infoArr =
-        HdfsSplitManager.getSplits(hostnameToBandwidthFilePath, TextInputFormat.class.getName(), 1);
-
-    assert infoArr.length == 1; // infoArr's length is always 1(NUM_SPLIT == 1).
-    final HdfsSplitInfo info = infoArr[0];
-    try {
-      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
-      while (iterator.hasNext()) {
-        final String text = iterator.next().getValue().toString().trim();
-        if (!text.startsWith("#") && text.length() != 0) { // comments and empty lines
-          final String[] split = text.split("\\s+");
-          assert split.length == 2;
-          final String hostname = split[0];
-          final double bandwidth = Double.parseDouble(split[1]);
-          mapping.put(hostname, bandwidth);
-        }
-      }
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return mapping;
-  }
 
   /**
    * @param param EvaluatorParameter that consists of metrics

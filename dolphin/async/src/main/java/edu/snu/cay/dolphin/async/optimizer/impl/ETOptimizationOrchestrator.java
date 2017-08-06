@@ -222,7 +222,6 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerMiniBatchMetrics);
-
     final int numRunningServers = modelTable.getPartitionInfo().size();
     final int numRunningWorkers = inputTable.getPartitionInfo().size();
 
@@ -265,6 +264,9 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       return emptyResult;
     }
 
+    final int numModelBlocks = getNumBlocks(modelTable);
+    final int numDataBlocks = getNumBlocks(inputTable);
+
     // Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
@@ -274,6 +276,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     final Map<String, Double> optimizerModelParams = new HashMap<>();
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
+    optimizerModelParams.put(Constants.NUM_MODEL_BLOCKS, (double) numModelBlocks);
+    optimizerModelParams.put(Constants.NUM_DATA_BLOCKS, (double) numDataBlocks);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -297,14 +301,12 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     metricManager.stopMetricCollection();
 
     final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
-
     final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
     final Set<String> serversBeforeOpt = getRunningExecutors(modelTable);
 
     // 7) Execute the obtained plan.
     try {
       LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
-
       try {
         planExecutor.execute(etPlan).get();
         LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
@@ -333,10 +335,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);
       }
-
     } catch (PlanAlreadyExecutingException e) {
       throw new RuntimeException(e);
-
     } finally {
       // 8) Once the execution is complete, restart metric collection.
       metricManager.loadMetricValidationInfo(
@@ -356,6 +356,14 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
 
   private Set<String> getRunningExecutors(final AllocatedTable table) {
     return new HashSet<>(table.getPartitionInfo().keySet());
+  }
+
+  private int getNumBlocks(final AllocatedTable table) {
+    int numBlocks = 0;
+    for (final Set<Integer> blockIds : table.getPartitionInfo().values()) {
+      numBlocks += blockIds.size();
+    }
+    return numBlocks;
   }
 
   private Map<String, Integer> getValidationInfo(final Map<String, Set<Integer>> executorToBlocks) {
