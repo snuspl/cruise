@@ -36,4 +36,15 @@ final class Parameters {
   final class AppIdentifier implements Name<String> {
 
   }
+
+  @NamedParameter(doc = "The number of total available resources in a cluster",
+      short_name = "num_total_resources")
+  final class NumTotalResources implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "A class of the scheduler",
+      short_name = "scheduler",
+      default_value = "edu.snu.cay.dolphin.async.jobserver.FIFOJobScheduler")
+  public final class SchedulerClass implements Name<String> {
+  }
 }
