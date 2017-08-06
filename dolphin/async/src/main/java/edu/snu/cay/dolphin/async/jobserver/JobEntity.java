@@ -91,4 +91,3 @@ public final class JobEntity {
     return inputPath;
   }
 }
-
