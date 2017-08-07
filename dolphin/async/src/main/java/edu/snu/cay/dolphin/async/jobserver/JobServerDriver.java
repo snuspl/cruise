@@ -386,8 +386,8 @@ public final class JobServerDriver {
           final boolean isAccepted = jobScheduler.onJobArrival(jobEntity);
 
           final String jobAcceptMsg = isAccepted ?
-              String.format("Job is accepted. JobId: %s", jobEntity.getJobId()) :
-              String.format("Job is rejected. JobId: %s", jobEntity.getJobId());
+              String.format("Accept. JobId: %s", jobEntity.getJobId()) :
+              String.format("Reject. JobId: %s", jobEntity.getJobId());
           sendMessageToClient(jobAcceptMsg);
           LOG.log(Level.INFO, jobAcceptMsg);
 
