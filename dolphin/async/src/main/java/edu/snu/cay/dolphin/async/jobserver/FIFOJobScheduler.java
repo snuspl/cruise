@@ -80,6 +80,11 @@ public final class FIFOJobScheduler implements JobScheduler {
     throw new UnsupportedOperationException("Resource availability is not supported for now");
   }
 
+  /**
+   * Try executing a job, which requires certain amount of resources.
+   * @param jobEntity {@link JobEntity}
+   * @return True it succeed to execute a job
+   */
   private boolean tryExecute(final JobEntity jobEntity) {
     final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
 
