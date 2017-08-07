@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./start_jobserver.sh -max_num_eval_local 10 -local true -timeout 300000
+# ./start_jobserver.sh -num_total_resources 10 -max_num_eval_local 10 -local true -timeout 300000 -scheduler edu.snu.cay.dolphin.async.jobserver.FIFOJobScheduler
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
