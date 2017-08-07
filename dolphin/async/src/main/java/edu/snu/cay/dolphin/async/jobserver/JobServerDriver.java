@@ -265,10 +265,6 @@ public final class JobServerDriver {
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
 
-    final String jobAcceptMsg = String.format("Job has been accepted and will be scheduled. JobId: %s", dolphinJobId);
-    sendMessageToClient(jobAcceptMsg);
-    LOG.log(Level.INFO, jobAcceptMsg);
-
     jobInjector.bindVolatileParameter(DolphinJobId.class, dolphinJobId);
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
@@ -387,7 +383,13 @@ public final class JobServerDriver {
           final Configuration jobConf = ConfigurationUtils.fromString(serializedConf);
           final JobEntity jobEntity = getJobEntity(jobConf);
 
-          jobScheduler.onJobArrival(jobEntity);
+          final boolean isAccepted = jobScheduler.onJobArrival(jobEntity);
+
+          final String jobAcceptMsg = isAccepted ?
+              String.format("Job is accepted. JobId: %s", jobEntity.getJobId()) :
+              String.format("Job is rejected. JobId: %s", jobEntity.getJobId());
+          sendMessageToClient(jobAcceptMsg);
+          LOG.log(Level.INFO, jobAcceptMsg);
 
         } catch (InjectionException | IOException e) {
           throw new RuntimeException("The given job configuration is incomplete", e);

@@ -35,11 +35,13 @@ public final class FIFOJobScheduler implements JobScheduler {
 
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 
+  private final int numTotalResources;
   private int numAvailableResources;
 
   @Inject
   private FIFOJobScheduler(@Parameter(Parameters.NumTotalResources.class) final int numTotalResources,
                            final InjectionFuture<JobServerDriver> jobServerDriverFuture) {
+    this.numTotalResources = numTotalResources;
     this.numAvailableResources = numTotalResources;
     this.jobServerDriverFuture = jobServerDriverFuture;
   }
@@ -49,11 +51,17 @@ public final class FIFOJobScheduler implements JobScheduler {
    * Otherwise, put it into a queue so it can be executed when resources become available.
    */
   @Override
-  public synchronized void onJobArrival(final JobEntity jobEntity) {
+  public synchronized boolean onJobArrival(final JobEntity jobEntity) {
+    // reject a job if it's larger than the total resource size
+    if (numTotalResources < jobEntity.getNumServers() + jobEntity.getNumWorkers()) {
+      return false;
+    }
+
     if (!tryExecute(jobEntity)) {
       LOG.log(Level.INFO, "Put job {0} into queue", jobEntity.getJobId());
       jobWaitingQueue.add(jobEntity);
     }
+    return true;
   }
 
   /**

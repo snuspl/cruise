@@ -25,8 +25,9 @@ public interface JobScheduler {
    * Invoke when a new job is submitted from client-side.
    * The job will be scheduled immediately or later, depending of the scheduler policy.
    * @param jobEntity a {@link JobEntity}
+   * @return True if a job is accepted
    */
-  void onJobArrival(JobEntity jobEntity);
+  boolean onJobArrival(JobEntity jobEntity);
 
   /**
    * Invoke when a running job finishes, which means resources become available for other jobs.
