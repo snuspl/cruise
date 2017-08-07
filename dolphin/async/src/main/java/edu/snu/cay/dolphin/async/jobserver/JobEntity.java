@@ -95,7 +95,7 @@ public final class JobEntity {
     return new Builder();
   }
 
-  public static class Builder implements org.apache.reef.util.Builder<JobEntity> {
+  public static final class Builder implements org.apache.reef.util.Builder<JobEntity> {
 
     private Injector jobInjector;
     private String jobId;
