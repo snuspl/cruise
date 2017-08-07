@@ -45,6 +45,6 @@ final class Parameters {
   @NamedParameter(doc = "A class of the scheduler",
       short_name = "scheduler",
       default_value = "edu.snu.cay.dolphin.async.jobserver.FIFOJobScheduler")
-  public final class SchedulerClass implements Name<String> {
+  final class SchedulerClass implements Name<String> {
   }
 }
