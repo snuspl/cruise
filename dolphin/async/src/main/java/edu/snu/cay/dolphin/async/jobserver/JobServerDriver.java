@@ -331,8 +331,17 @@ public final class JobServerDriver {
         workerInjector, numWorkerBlocks, userParamConf);
     final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
 
-    return new JobEntity(jobInjector, dolphinJobId, numServers, serverExecutorConf, serverTableConf,
-        numWorkers, workerExecutorConf, workerTableConf, inputPath);
+    return JobEntity.newBuilder()
+        .setJobInjector(jobInjector)
+        .setJobId(dolphinJobId)
+        .setNumServers(numServers)
+        .setServerExecutorConf(serverExecutorConf)
+        .setServerTableConf(serverTableConf)
+        .setNumWorkers(numWorkers)
+        .setWorkerExecutorConf(workerExecutorConf)
+        .setWorkerTableConf(workerTableConf)
+        .setInputPath(inputPath)
+        .build();
   }
 
   /**

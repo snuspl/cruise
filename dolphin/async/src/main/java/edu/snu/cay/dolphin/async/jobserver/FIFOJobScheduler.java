@@ -50,15 +50,7 @@ public final class FIFOJobScheduler implements JobScheduler {
    */
   @Override
   public synchronized void onJobArrival(final JobEntity jobEntity) {
-    final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
-    if (numAvailableResources >= numResourcesToUse) {
-      LOG.log(Level.INFO, "Start job {0} with {1} resources. Remaining free resources: {2}",
-          new Object[]{jobEntity.getJobId(), numAvailableResources, numAvailableResources - numResourcesToUse});
-
-      numAvailableResources -= numResourcesToUse;
-      jobServerDriverFuture.get().executeJob(jobEntity);
-
-    } else {
+    if (!tryExecute(jobEntity)) {
       LOG.log(Level.INFO, "Put job {0} into queue", jobEntity.getJobId());
       jobWaitingQueue.add(jobEntity);
     }
@@ -74,18 +66,11 @@ public final class FIFOJobScheduler implements JobScheduler {
     // start waiting jobs, if enough resources become available
     while (!jobWaitingQueue.isEmpty()) {
       final JobEntity jobEntity = jobWaitingQueue.peek();
-      final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
 
-      if (numAvailableResources >= numResourcesToUse) {
-        LOG.log(Level.INFO, "Start job {0} with {1} resources. Remaining free resources: {2}",
-            new Object[]{jobEntity.getJobId(), numAvailableResources, numAvailableResources - numResourcesToUse});
-
-        numAvailableResources -= numResourcesToUse;
-        jobServerDriverFuture.get().executeJob(jobEntity);
-
+      if (tryExecute(jobEntity)) {
         jobWaitingQueue.poll();
       } else {
-        break; // FIFO.
+        break; // FIFO; jobs in the queue must wait until necessary resources become available
       }
     }
   }
@@ -93,5 +78,21 @@ public final class FIFOJobScheduler implements JobScheduler {
   @Override
   public synchronized void onResourceChange(final int delta) {
     throw new UnsupportedOperationException("Resource availability is not supported for now");
+  }
+
+  private boolean tryExecute(final JobEntity jobEntity) {
+    final int numResourcesToUse = jobEntity.getNumWorkers() + jobEntity.getNumServers();
+
+    final boolean execute = numAvailableResources >= numResourcesToUse;
+
+    if (execute) {
+      LOG.log(Level.INFO, "Start job {0} with {1} resources. Remaining free resources: {2}",
+          new Object[]{jobEntity.getJobId(), numAvailableResources, numAvailableResources - numResourcesToUse});
+
+      numAvailableResources -= numResourcesToUse;
+      jobServerDriverFuture.get().executeJob(jobEntity);
+    }
+
+    return execute;
   }
 }

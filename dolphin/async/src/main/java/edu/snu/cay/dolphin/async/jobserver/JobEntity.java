@@ -35,15 +35,15 @@ public final class JobEntity {
   private final TableConfiguration workerTableConf;
   private final String inputPath;
 
-  public JobEntity(final Injector jobInjector,
-                    final String jobId,
-                    final int numServers,
-                    final ExecutorConfiguration serverExecutorConf,
-                    final TableConfiguration serverTableConf,
-                    final int numWorkers,
-                    final ExecutorConfiguration workerExecutorConf,
-                    final TableConfiguration workerTableConf,
-                    final String inputPath) {
+  private JobEntity(final Injector jobInjector,
+                   final String jobId,
+                   final int numServers,
+                   final ExecutorConfiguration serverExecutorConf,
+                   final TableConfiguration serverTableConf,
+                   final int numWorkers,
+                   final ExecutorConfiguration workerExecutorConf,
+                   final TableConfiguration workerTableConf,
+                   final String inputPath) {
     this.jobInjector = jobInjector;
     this.jobId = jobId;
     this.numServers = numServers;
@@ -89,5 +89,78 @@ public final class JobEntity {
 
   public String getInputPath() {
     return inputPath;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
+  public static class Builder implements org.apache.reef.util.Builder<JobEntity> {
+
+    private Injector jobInjector;
+    private String jobId;
+
+    private int numServers;
+    private ExecutorConfiguration serverExecutorConf;
+    private TableConfiguration serverTableConf;
+
+    private int numWorkers;
+    private ExecutorConfiguration workerExecutorConf;
+    private TableConfiguration workerTableConf;
+    private String inputPath;
+
+    private Builder() {
+    }
+
+    public Builder setJobInjector(final Injector jobInjector) {
+      this.jobInjector = jobInjector;
+      return this;
+    }
+
+    public Builder setJobId(final String jobId) {
+      this.jobId = jobId;
+      return this;
+    }
+
+    public Builder setNumServers(final int numServers) {
+      this.numServers = numServers;
+      return this;
+    }
+
+    public Builder setServerExecutorConf(final ExecutorConfiguration serverExecutorConf) {
+      this.serverExecutorConf = serverExecutorConf;
+      return this;
+    }
+
+    public Builder setServerTableConf(final TableConfiguration serverTableConf) {
+      this.serverTableConf = serverTableConf;
+      return this;
+    }
+
+    public Builder setNumWorkers(final int numWorkers) {
+      this.numWorkers = numWorkers;
+      return this;
+    }
+
+    public Builder setWorkerExecutorConf(final ExecutorConfiguration workerExecutorConf) {
+      this.workerExecutorConf = workerExecutorConf;
+      return this;
+    }
+
+    public Builder setWorkerTableConf(final TableConfiguration workerTableConf) {
+      this.workerTableConf = workerTableConf;
+      return this;
+    }
+
+    public Builder setInputPath(final String inputPath) {
+      this.inputPath = inputPath;
+      return this;
+    }
+
+    @Override
+    public JobEntity build() {
+      return new JobEntity(jobInjector, jobId, numServers, serverExecutorConf, serverTableConf,
+          numWorkers, workerExecutorConf, workerTableConf, inputPath);
+    }
   }
 }
