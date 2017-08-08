@@ -117,7 +117,8 @@ public final class JobServerClient {
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, Timeout.class);
 
     // parameters for driver (job server)
-    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(DriverMemory.class);
+    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(DriverMemory.class,
+        Parameters.NumTotalResources.class, Parameters.SchedulerClass.class);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
@@ -145,7 +146,8 @@ public final class JobServerClient {
   /**
    * @return a configuration for job server driver
    */
-  private static Configuration getDriverConfiguration(final Configuration driverParamConf) throws InjectionException {
+  private static Configuration getDriverConfiguration(final Configuration driverParamConf)
+      throws InjectionException, ClassNotFoundException {
 
     final Injector driverParamInjector = Tang.Factory.getTang().newInjector(driverParamConf);
 
@@ -162,6 +164,8 @@ public final class JobServerClient {
 
     final Configuration jobServerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
+        .bindImplementation(JobScheduler.class, (Class<? extends JobScheduler>)
+            Class.forName(driverParamInjector.getNamedInstance(Parameters.SchedulerClass.class)))
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
