@@ -54,6 +54,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private final Map<String, Double> hostToBandwidth;
   private final Map<String, Integer> hostToCoreNum;
   private final ILPSolver ilpSolver;
+  private final Map<String, Double> cWProcInfo;
 
   @Inject
   private HeterogeneousOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
@@ -66,6 +67,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
     this.hostToCoreNum = coreInfoParser.parseCoreInfo();
     this.ilpSolver = ilpSolver;
+    this.cWProcInfo = new HashMap<>();
   }
 
   @Override
@@ -110,7 +112,12 @@ public final class HeterogeneousOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      cWProc[idx] = avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
+      if (cWProcInfo.containsKey(serverDescriptor.getHostName())) {
+        cWProc[idx] = cWProcInfo.get(serverDescriptor.getHostName());
+      } else {
+        cWProc[idx] =
+            avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
+      }
       idx++;
     }
 
@@ -169,9 +176,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
-      final double wProc = workerEvalParams.getMetrics().getTotalCompTime();
+      final double cWProc = workerEvalParams.getMetrics().getTotalCompTime();
+      cWProcInfo.put(hostname, cWProc);
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, numDataBlocks, wProc, NUM_EMPTY_BLOCK, hostname));
+          new MachineDescriptor(id, bandwidth, numDataBlocks, cWProc, NUM_EMPTY_BLOCK, hostname));
     }
     return machineDescriptors;
   }
