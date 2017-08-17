@@ -132,7 +132,7 @@ final class ETWorkerTask<V> implements Task {
 
       final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
       final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+      sendEpochMetrics(epochResult, epochIdx, numBatchesPerEpoch, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers
@@ -192,13 +192,13 @@ final class ETWorkerTask<V> implements Task {
   /**
    * @param epochResult Encapsulates the result of an epoch.
    * @param epochIdx Index of the epoch
-   * @param miniBatchIdx Index of the mini-batch
+   * @param numBatchesPerEpoch Index of the mini-batch
    * @param processedDataItemCount The number of items processed in the epoch
    * @param epochElapsedTime The elapsed time in the epoch in total, including time for computing the objective value.
    * @param perOpTimeInEpoch The elapsed time per operation in the epoch (i.e., computation, pull and push)
    */
   private void sendEpochMetrics(final EpochResult epochResult,
-                                final int epochIdx, final int miniBatchIdx,
+                                final int epochIdx, final int numBatchesPerEpoch,
                                 final int processedDataItemCount,
                                 final double epochElapsedTime,
                                 final PerOpTimeInEpoch perOpTimeInEpoch) {
@@ -215,7 +215,7 @@ final class ETWorkerTask<V> implements Task {
         .setEpochPullTimeSec(perOpTimeInEpoch.getTotalPullTime())
         .setEpochPushTimeSec(perOpTimeInEpoch.getTotalPushTime())
         .setEpochTimeSec(epochElapsedTime)
-        .setNumBatchesPerEpoch(miniBatchIdx)
+        .setNumBatchesPerEpoch(numBatchesPerEpoch)
         .setNumEpochDataInstances(processedDataItemCount)
         .build();
 
