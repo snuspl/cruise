@@ -80,13 +80,6 @@ public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> 
   
   @Override
   public int getNumBatchesPerEpoch() {
-    final Tablet tablet = trainingDataTable.getLocalTablet();
-    final Iterator<Block<?, V, ?>> blockIteratorForBatchNumCnt = tablet.getBlockIterator();
-    int numDataBlocks = 0;
-    while (blockIteratorForBatchNumCnt.hasNext()) {
-      blockIteratorForBatchNumCnt.next();
-      numDataBlocks++;
-    }
-    return numDataBlocks;
+    return trainingDataTable.getLocalTablet().getNumBlocks();
   }
 }
