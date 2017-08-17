@@ -92,8 +92,6 @@ final class ETWorkerTask<V> implements Task {
     // to avoid meaningless computation by the workers who started earlier
     workerGlobalBarrier.await();
     
-    final int numBatchesPerEpoch = trainingDataProvider.getNumBatchesPerEpoch();
-
     for (int epochIdx = startingEpoch; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       progressReporter.report(epochIdx);
@@ -117,7 +115,8 @@ final class ETWorkerTask<V> implements Task {
         final long miniBatchStartTime = System.currentTimeMillis();
         trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-        
+  
+        final int numBatchesPerEpoch = trainingDataProvider.getNumBatchesPerEpoch();
         sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch,
             epochIdx, miniBatchIdx, miniBatchData.size(), miniBatchElapsedTime, numBatchesPerEpoch);
         
@@ -132,7 +131,8 @@ final class ETWorkerTask<V> implements Task {
 
       final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
       final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-      sendEpochMetrics(epochResult, epochIdx, numBatchesPerEpoch, epochData.size(), epochElapsedTimeSec,
+      
+      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec,
           perOpTimeInEpoch);
     }
 
