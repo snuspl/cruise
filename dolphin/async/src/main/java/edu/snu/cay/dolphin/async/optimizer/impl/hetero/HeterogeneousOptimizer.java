@@ -48,13 +48,14 @@ public final class HeterogeneousOptimizer implements Optimizer {
    */
   private static final double UNKNOWN_CWPROC = -1.0;
   private static final int NUM_EMPTY_BLOCK = 0;
+  private static final double EMA_ALPHA = 0.9;
   
   private final double defNetworkBandwidth;
   private final int defCoreNum;
   private final Map<String, Double> hostToBandwidth;
   private final Map<String, Integer> hostToCoreNum;
   private final ILPSolver ilpSolver;
-  private final Map<String, Double> cWProcInfo;
+  private final Map<String, Double> hostToCWProc;
 
   @Inject
   private HeterogeneousOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
@@ -67,7 +68,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
     this.hostToCoreNum = coreInfoParser.parseCoreInfo();
     this.ilpSolver = ilpSolver;
-    this.cWProcInfo = new HashMap<>();
+    this.hostToCWProc = new HashMap<>();
   }
 
   @Override
@@ -103,7 +104,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       sumCWProc += workerDescriptor.getcWProc();
       totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    final double avgCWProcPerCore = sumCWProc / totalHarmonicCoreSum;
+    final double avgCWProcPerRecipCore = sumCWProc / totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -112,12 +113,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      if (cWProcInfo.containsKey(serverDescriptor.getHostName())) {
-        cWProc[idx] = cWProcInfo.get(serverDescriptor.getHostName());
-      } else {
-        cWProc[idx] =
-            avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
-      }
+      cWProc[idx] = hostToCWProc.computeIfAbsent(serverDescriptor.getHostName(),
+          x -> avgCWProcPerRecipCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum));
       idx++;
     }
 
@@ -176,8 +173,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
-      final double cWProc = workerEvalParams.getMetrics().getTotalCompTime();
-      cWProcInfo.put(hostname, cWProc);
+      // EMA is used to prevent fluctuation of cWProc value.
+      final double presentCWProc = workerEvalParams.getMetrics().getTotalCompTime();
+      final double cWProc = hostToCWProc.containsKey(hostname) ?
+          presentCWProc * EMA_ALPHA + hostToCWProc.get(hostname) * (1 - EMA_ALPHA) : presentCWProc;
       machineDescriptors.add(
           new MachineDescriptor(id, bandwidth, numDataBlocks, cWProc, NUM_EMPTY_BLOCK, hostname));
     }
