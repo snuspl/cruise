@@ -116,9 +116,8 @@ final class ETWorkerTask<V> implements Task {
         trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
   
-        final int numBatchesPerEpoch = trainingDataProvider.getNumBatchesPerEpoch();
-        sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch,
-            epochIdx, miniBatchIdx, miniBatchData.size(), miniBatchElapsedTime, numBatchesPerEpoch);
+        sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch, epochIdx, miniBatchIdx, miniBatchData.size(),
+            miniBatchElapsedTime, trainingDataProvider.getNumBatchesPerEpoch());
         
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
