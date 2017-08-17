@@ -190,7 +190,10 @@
     {"name": "batchPushTimeSec", "type": "double"},
 
     // number of data instances processed in the batch
-    {"name": "numBatchDataInstances", "type": "int"}
+    {"name": "numBatchDataInstances", "type": "int"},
+
+    // number of batches per epoch
+    {"name": "numBatchesPerEpoch", "type": "int"}
   ]
 },
 
@@ -221,7 +224,7 @@
     {"name": "epochPushTimeSec", "type": "double"},
 
     // number of mini-batches for this epoch
-    {"name": "numBatchesForEpoch", "type": "int"},
+    {"name": "numBatchesPerEpoch", "type": "int"},
 
     // number of data instances processed in the epoch
     {"name": "numEpochDataInstances", "type": "int"}

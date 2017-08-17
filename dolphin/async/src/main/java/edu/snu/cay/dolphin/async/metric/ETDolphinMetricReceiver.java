@@ -119,7 +119,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
                                             final EpochMetrics epochMetrics) {
     return WorkerMetrics.newBuilder()
               .setEpochIdx(epochMetrics.getEpochIdx())
-              .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
+              .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesPerEpoch())
               .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
               .setNumDataBlocks(metricReportMsg.getTableToNumBlocks().get(inputTableId))
               .setTotalTime(epochMetrics.getEpochTimeSec())
