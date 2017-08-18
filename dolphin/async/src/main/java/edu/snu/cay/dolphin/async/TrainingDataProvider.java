@@ -41,6 +41,8 @@ public interface TrainingDataProvider<V> {
   Collection<V> getEpochData();
   
   /**
+   * Gets the number of mini-batches for current epoch.
+   * It might change during epoch, because data migration is done in background.
    * @return number of batches per epoch
    */
   int getNumBatchesPerEpoch();

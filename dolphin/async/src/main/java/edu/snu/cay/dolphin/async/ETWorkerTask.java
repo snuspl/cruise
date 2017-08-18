@@ -91,7 +91,7 @@ final class ETWorkerTask<V> implements Task {
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
     workerGlobalBarrier.await();
-    
+
     for (int epochIdx = startingEpoch; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       progressReporter.report(epochIdx);
@@ -130,9 +130,8 @@ final class ETWorkerTask<V> implements Task {
 
       final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
       final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-      
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec,
-          perOpTimeInEpoch);
+
+      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers
