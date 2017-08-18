@@ -25,7 +25,7 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.dolphin.async.plan.impl.PlanCompiler;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;

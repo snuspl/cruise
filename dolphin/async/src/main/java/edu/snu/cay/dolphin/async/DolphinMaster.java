@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
