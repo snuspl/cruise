@@ -33,8 +33,8 @@ public final class StreamingSerializableCodec<T extends Serializable> implements
 
   @Override
   public void encodeToStream(final T obj, final DataOutputStream dataOutputStream) {
-    try (ObjectOutputStream out = new ObjectOutputStream(dataOutputStream)) {
-      out.writeObject(obj);
+    try {
+      new ObjectOutputStream(dataOutputStream).writeObject(obj);
     } catch (IOException e) {
       throw new RuntimeException("Unable to encode: " + obj, e);
     }
@@ -42,8 +42,8 @@ public final class StreamingSerializableCodec<T extends Serializable> implements
 
   @Override
   public T decodeFromStream(final DataInputStream dataInputStream) {
-    try (ObjectInputStream in = new ObjectInputStream(dataInputStream)) {
-      return (T) in.readObject();
+    try {
+      return (T) new ObjectInputStream(dataInputStream).readObject();
     } catch (IOException | ClassNotFoundException e) {
       throw new RuntimeException("Unable to decode.", e);
     }
