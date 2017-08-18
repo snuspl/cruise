@@ -23,7 +23,7 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;

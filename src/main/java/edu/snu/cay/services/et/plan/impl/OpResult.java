@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.plan.impl;
 
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.plan.api.Op;

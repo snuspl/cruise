@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.avro.TableAccessMsg;
 import edu.snu.cay.services.et.avro.TableAccessReqMsg;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;

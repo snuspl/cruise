@@ -18,7 +18,6 @@ package edu.snu.cay.services.et.driver.api;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;

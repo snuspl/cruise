@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;

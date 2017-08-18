@@ -19,7 +19,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;

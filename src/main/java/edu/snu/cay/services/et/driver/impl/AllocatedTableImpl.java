@@ -20,9 +20,11 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -31,16 +33,13 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Represents a state where the table is completely allocated into executors.
- * Now the executors that associate this table have the actual reference of it, and the executors subscribing it
- * receive the ownership information whenever there is any change.
- *
- * Even the table is distributed to executors already, more executors are allowed to subscribe or associate with it,
- * then the changes will be applied to executors immediately.
+ * An implementation of {@link AllocatedTable}.
+ * {@link #init(TableConfiguration, List)} should be called only once after instantiating this object.
  */
 @DriverSide
-public final class AllocatedTable {
-  private static final Logger LOG = Logger.getLogger(AllocatedTable.class.getName());
+@Private
+public final class AllocatedTableImpl implements AllocatedTable {
+  private static final Logger LOG = Logger.getLogger(AllocatedTableImpl.class.getName());
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
@@ -59,7 +58,7 @@ public final class AllocatedTable {
   }
 
   @Inject
-  private AllocatedTable(final BlockManager blockManager,
+  private AllocatedTableImpl(final BlockManager blockManager,
                          final MigrationManager migrationManager,
                          final SubscriptionManager subscriptionManager,
                          final TableControlAgent tableControlAgent,
@@ -112,11 +111,7 @@ public final class AllocatedTable {
     return initResultFuture;
   }
 
-  /**
-   * Loads an input data into a table with executors. Note that this method must be called after table init.
-   * @param executors a list of executors which will load data
-   * @param inputPath a data file path
-   */
+  @Override
   public synchronized ListenableFuture<?> load(final List<AllocatedExecutor> executors, final String inputPath) {
 
     stateMachine.checkState(State.INITIALIZED);
@@ -126,10 +121,7 @@ public final class AllocatedTable {
     return tableControlAgent.load(tableConf.getId(), executorIdSet, inputPath);
   }
 
-  /**
-   * Subscribes the table. The executors will receive the updates in ownership information for this table.
-   * @param executors a list of executors
-   */
+  @Override
   public synchronized ListenableFuture<?> subscribe(final List<AllocatedExecutor> executors) {
     stateMachine.checkState(State.INITIALIZED);
 
@@ -145,10 +137,7 @@ public final class AllocatedTable {
     return future;
   }
 
-  /**
-   * Unsubscribes the table. The executor will not receive ownership update of table anymore.
-   * @param executorId an executor id
-   */
+  @Override
   public synchronized ListenableFuture<?> unsubscribe(final String executorId) {
     stateMachine.checkState(State.INITIALIZED);
 
@@ -159,10 +148,7 @@ public final class AllocatedTable {
     return future;
   }
 
-  /**
-   * Associates with the table. The executors will take some blocks of this table.
-   * @param executors a list of executors
-   */
+  @Override
   public synchronized ListenableFuture<?> associate(final List<AllocatedExecutor> executors) {
     final Set<String> executorIdSet = new HashSet<>(executors.size());
     executors.forEach(executor -> executorIdSet.add(executor.getId()));
@@ -193,13 +179,7 @@ public final class AllocatedTable {
     return associate(executorIdSet);
   }
 
-  /**
-   * Decouples the table from the executor. As a result, the executor will not have any blocks nor receive any updates
-   * of ownership information.
-   * Also, it should confirm that ownership cache of other executors does not have entry of the unassociated executor.
-   * Note that all blocks of the table should be emptied out first, before this method is called.
-   * @param executorId id of the executor to un-associate with the table
-   */
+  @Override
   public synchronized ListenableFuture<?> unassociate(final String executorId) {
     stateMachine.checkState(State.INITIALIZED);
 
@@ -221,12 +201,7 @@ public final class AllocatedTable {
     return resultFuture;
   }
 
-  /**
-   * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
-   * @param srcExecutorId an id of src executor
-   * @param dstExecutorId an id of dst executor
-   * @param numBlocks the number of blocks to move
-   */
+  @Override
   public synchronized ListenableFuture<MigrationResult> moveBlocks(final String srcExecutorId,
                                                                    final String dstExecutorId,
                                                                    final int numBlocks) throws NotAssociatedException {
@@ -252,27 +227,17 @@ public final class AllocatedTable {
     return migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks);
   }
 
-  /**
-   * Returns a partition information of this table.
-   * @return a map between an executor id and a set of block ids
-   */
+  @Override
   public Map<String, Set<Integer>> getPartitionInfo() {
     return blockManager.getPartitionInfo();
   }
 
-  /**
-   * @param blockId id of the block to resolve its owner
-   * @return the owner's id of the block
-   */
-  String getOwnerId(final int blockId) {
+  @Override
+  public String getOwnerId(final int blockId) {
     return blockManager.getOwnerId(blockId);
   }
 
-  /**
-   * Drops {@link this} table by removing tablets and table metadata from all executors.
-   * This method should be called after initialized.
-   * After this method, the table is completely removed from the system (e.g., master and executors).
-   */
+  @Override
   public synchronized ListenableFuture<?> drop() {
     stateMachine.checkState(State.INITIALIZED);
 
@@ -291,24 +256,18 @@ public final class AllocatedTable {
     return dropResultFuture;
   }
 
-  /**
-   * @return an identifier of the table
-   */
+  @Override
   public String getId() {
     return tableConf.getId();
   }
 
-  /**
-   * @return a configuration of the table
-   */
-  TableConfiguration getTableConfiguration() {
+  @Override
+  public TableConfiguration getTableConfiguration() {
     return tableConf;
   }
 
-  /**
-   * @return a set of executors associated with the table
-   */
-  Set<String> getAssociatedExecutorIds() {
+  @Override
+  public Set<String> getAssociatedExecutorIds() {
     return blockManager.getAssociatorIds();
   }
 }

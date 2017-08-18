@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.examples.plan;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.impl.ETPlan;

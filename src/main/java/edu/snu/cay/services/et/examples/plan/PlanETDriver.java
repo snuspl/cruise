@@ -20,7 +20,7 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.examples.tableaccess.PrefixUpdateFunction;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;

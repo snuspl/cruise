@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.plan.impl.op;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.metric.MetricManager;

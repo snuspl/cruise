@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
@@ -78,14 +79,14 @@ final class TableManager {
     }
 
     final Injector tableInjector = baseTableInjector.forkInjector(tableConf.getConfiguration());
-    final AllocatedTable allocatedTable = tableInjector.getInstance(AllocatedTable.class);
+    final AllocatedTableImpl allocatedTableImpl = tableInjector.getInstance(AllocatedTableImpl.class);
 
     final ResultFuture<AllocatedTable> resultFuture = new ResultFuture<>();
 
-    allocatedTable.init(tableConf, initialAssociators)
-        .addListener(o -> resultFuture.onCompleted(allocatedTable));
+    allocatedTableImpl.init(tableConf, initialAssociators)
+        .addListener(o -> resultFuture.onCompleted(allocatedTableImpl));
 
-    allocatedTableMap.put(tableId, allocatedTable);
+    allocatedTableMap.put(tableId, allocatedTableImpl);
     return resultFuture;
   }
 
