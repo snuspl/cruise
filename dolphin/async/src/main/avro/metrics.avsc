@@ -223,11 +223,11 @@
     // total pull time for this epoch
     {"name": "epochPushTimeSec", "type": "double"},
 
-    // number of mini-batches for this epoch
-    {"name": "numBatchesPerEpoch", "type": "int"},
-
     // number of data instances processed in the epoch
-    {"name": "numEpochDataInstances", "type": "int"}
+    {"name": "numEpochDataInstances", "type": "int"},
+
+    // number of mini-batches for this epoch
+    {"name": "numBatchesPerEpoch", "type": "int"}
   ]
 },
 
