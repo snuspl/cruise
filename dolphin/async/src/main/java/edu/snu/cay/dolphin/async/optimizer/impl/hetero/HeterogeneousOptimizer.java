@@ -48,12 +48,14 @@ public final class HeterogeneousOptimizer implements Optimizer {
    */
   private static final double UNKNOWN_CWPROC = -1.0;
   private static final int NUM_EMPTY_BLOCK = 0;
+  private static final double EMA_ALPHA = 0.9;
   
   private final double defNetworkBandwidth;
   private final int defCoreNum;
   private final Map<String, Double> hostToBandwidth;
   private final Map<String, Integer> hostToCoreNum;
   private final ILPSolver ilpSolver;
+  private final Map<String, Double> hostToCWProc;
 
   @Inject
   private HeterogeneousOptimizer(@Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
@@ -66,6 +68,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     this.hostToBandwidth = bandwitdthInfoParser.parseBandwidthInfo();
     this.hostToCoreNum = coreInfoParser.parseCoreInfo();
     this.ilpSolver = ilpSolver;
+    this.hostToCWProc = new HashMap<>();
   }
 
   @Override
@@ -95,13 +98,25 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final double[] bandwidth = new double[n];
     final String[] evalIds = new String[n];
 
+    /*
+     * We predict CWProc(computation time to process one data block with one machine using all the cores in it) value
+     * for CWProc-unknown machines for the following steps:
+     * 1. Assume all the cores' computation power are the same each other and it takes T times to process one data block
+     *    with one core.
+     * 2. Assume each machine has n[i] number of cores and measured computation time of each machine is CWProc[i].
+     * 3. Then, for each machine,  the following equation holds: T / n[i] = CWProc[i].
+     * 4. Add LHS and RHS of the upper equation for all the machines, and compute T. Then, T can be expressed as
+     *    the follow: T = Sum(CWProc[i]) / Sum(1 / n[i])
+     * 5. With the computed T value, now we can predict CWProc for CWProc-unknown machine with m cores.
+     *    CWProc = T / m
+     */
     double sumCWProc = 0.0;
     double totalHarmonicCoreSum = 0.0;
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
       sumCWProc += workerDescriptor.getcWProc();
       totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    final double avgCWProcPerCore = sumCWProc / totalHarmonicCoreSum;
+    final double cWProcWithOneCore = sumCWProc / totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -110,7 +125,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      cWProc[idx] = avgCWProcPerCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
+      cWProc[idx] = hostToCWProc.containsKey(serverDescriptor.getHostName()) ?
+          hostToCWProc.get(serverDescriptor.getHostName()) :
+          cWProcWithOneCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
       idx++;
     }
 
@@ -169,9 +186,13 @@ public final class HeterogeneousOptimizer implements Optimizer {
       final int numDataBlocks = workerEvalParams.getDataInfo().getNumBlocks();
       final String hostname = workerEvalParams.getMetrics().getHostname().toString();
       final double bandwidth = hostToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
-      final double wProc = workerEvalParams.getMetrics().getTotalCompTime();
+      // EMA is used to prevent fluctuation of cWProc value.
+      final double presentCWProc = workerEvalParams.getMetrics().getTotalCompTime();
+      final double cWProc = hostToCWProc.containsKey(hostname) ?
+          presentCWProc * EMA_ALPHA + hostToCWProc.get(hostname) * (1.0 - EMA_ALPHA) : presentCWProc;
+      hostToCWProc.put(hostname, cWProc);
       machineDescriptors.add(
-          new MachineDescriptor(id, bandwidth, numDataBlocks, wProc, NUM_EMPTY_BLOCK, hostname));
+          new MachineDescriptor(id, bandwidth, numDataBlocks, cWProc, NUM_EMPTY_BLOCK, hostname));
     }
     return machineDescriptors;
   }
