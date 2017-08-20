@@ -125,8 +125,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
       mOld[idx] = serverDescriptor.getNumModelBlocks();
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
-      cWProc[idx] = hostToCWProc.computeIfAbsent(serverDescriptor.getHostName(),
-          x -> cWProcWithOneCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum));
+      cWProc[idx] = hostToCWProc.containsKey(serverDescriptor.getHostName()) ?
+          hostToCWProc.get(serverDescriptor.getHostName()) :
+          cWProcWithOneCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum);
       idx++;
     }
 
@@ -188,7 +189,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
       // EMA is used to prevent fluctuation of cWProc value.
       final double presentCWProc = workerEvalParams.getMetrics().getTotalCompTime();
       final double cWProc = hostToCWProc.containsKey(hostname) ?
-          presentCWProc * EMA_ALPHA + hostToCWProc.get(hostname) * (1 - EMA_ALPHA) : presentCWProc;
+          presentCWProc * EMA_ALPHA + hostToCWProc.get(hostname) * (1.0 - EMA_ALPHA) : presentCWProc;
+      hostToCWProc.put(hostname, cWProc);
       machineDescriptors.add(
           new MachineDescriptor(id, bandwidth, numDataBlocks, cWProc, NUM_EMPTY_BLOCK, hostname));
     }
