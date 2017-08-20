@@ -98,13 +98,25 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final double[] bandwidth = new double[n];
     final String[] evalIds = new String[n];
 
+    /*
+     * We predict CWProc(computation time to process one data block with one machine using all the cores in it) value
+     * for CWProc-unknown machines for the following steps:
+     * 1. Assume all the cores' computation power are the same each other and it takes T times to process one data block
+     *    with one core.
+     * 2. Assume each machine has n[i] number of cores and measured computation time of each machine is CWProc[i].
+     * 3. Then, for each machine,  the following equation holds: T / n[i] = CWProc[i].
+     * 4. Add LHS and RHS of the upper equation for all the machines, and compute T. Then, T can be expressed as
+     *    the follow: T = Sum(CWProc[i]) / Sum(1 / n[i])
+     * 5. With the computed T value, now we can predict CWProc for CWProc-unknown machine with m cores.
+     *    CWProc = T / m
+     */
     double sumCWProc = 0.0;
     double totalHarmonicCoreSum = 0.0;
     for (final MachineDescriptor workerDescriptor : workerDescriptors) {
       sumCWProc += workerDescriptor.getcWProc();
       totalHarmonicCoreSum += 1.0 / hostToCoreNum.getOrDefault(workerDescriptor.getHostName(), defCoreNum);
     }
-    final double avgCWProcPerRecipCore = sumCWProc / totalHarmonicCoreSum;
+    final double cWProcWithOneCore = sumCWProc / totalHarmonicCoreSum;
 
     int idx = 0;
     for (final MachineDescriptor serverDescriptor : serverDescriptors) {
@@ -114,7 +126,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       bandwidth[idx] = serverDescriptor.getBandwidth();
       evalIds[idx] = serverDescriptor.getId();
       cWProc[idx] = hostToCWProc.computeIfAbsent(serverDescriptor.getHostName(),
-          x -> avgCWProcPerRecipCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum));
+          x -> cWProcWithOneCore / (double) hostToCoreNum.getOrDefault(serverDescriptor.getHostName(), defCoreNum));
       idx++;
     }
 
