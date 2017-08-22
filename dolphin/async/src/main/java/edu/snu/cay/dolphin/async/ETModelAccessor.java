@@ -85,8 +85,17 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   public List<V> pull(final List<K> keys) {
     pullTracer.startTimer();
 
+    final List<V> resultValues = pull(keys, modelTable);
+
+    pullTracer.recordTime(keys.size());
+    LOG.log(Level.INFO, "{0} keys have been pulled. Used memory: {1} MB",
+        new Object[] {keys.size(), MemoryUtils.getUsedMemoryMB()});
+    return resultValues;
+  }
+
+  public List<V> pull(final List<K> keys, final Table aModelTable) {
     final List<Future<V>> resultList = new ArrayList<>(keys.size());
-    keys.forEach(key -> resultList.add(modelTable.getOrInit(key)));
+    keys.forEach(key -> resultList.add(aModelTable.getOrInit(key)));
 
     final List<V> resultValues = new ArrayList<>(keys.size());
     for (final Future<V> opResult : resultList) {
@@ -105,11 +114,9 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
       resultValues.add(result);
     }
 
-    pullTracer.recordTime(keys.size());
-    LOG.log(Level.INFO, "{0} keys have been pulled. Used memory: {1} MB",
-        new Object[] {keys.size(), MemoryUtils.getUsedMemoryMB()});
     return resultValues;
   }
+
 
   @Override
   public Map<String, Double> getAndResetMetrics() {

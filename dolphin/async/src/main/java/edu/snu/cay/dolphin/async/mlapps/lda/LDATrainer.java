@@ -128,7 +128,17 @@ final class LDATrainer implements Trainer<Document> {
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<Document> epochTrainingData,
                                                  final edu.snu.cay.services.et.evaluator.api.Table modelTable) {
-    return Collections.emptyMap();
+
+    LOG.log(Level.INFO, "Pull model to compute log likelihood");
+    final List<int[]> wordTopicCounts = ((ETModelAccessor)modelAccessor).pull(vocabList, modelTable);
+    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
+
+    LOG.log(Level.INFO, "Start computing log likelihood");
+    final Map<CharSequence, Double> map = new HashMap<>();
+    map.put("docLLH", statCalculator.computeDocLLH(epochTrainingData));
+    map.put("wordLLH", statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
+
+    return map;
   }
 
   private void pullModels(final List<Integer> words) {

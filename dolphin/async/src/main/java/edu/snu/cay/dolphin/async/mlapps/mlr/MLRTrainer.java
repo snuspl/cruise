@@ -249,7 +249,35 @@ final class MLRTrainer implements Trainer<MLRData> {
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> epochTrainingData, final Table modelTable) {
-    return Collections.emptyMap();
+    final MLRModel mlrModel = pullModelsToEvaluate(classPartitionIndices, modelTable);
+    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy =
+        computeLoss(epochTrainingData, mlrModel.getParams());
+
+    final Map<CharSequence, Double> map = new HashMap<>();
+    map.put("loss", (double) trainingLossRegLossAvgAccuracy.getFirst());
+    map.put("regLoss", (double) trainingLossRegLossAvgAccuracy.getSecond());
+    map.put("avgAccuracy", (double) trainingLossRegLossAvgAccuracy.getThird());
+    return map;
+  }
+
+  private MLRModel pullModelsToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
+    final List<Vector> partitions = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+
+    final MLRModel mlrModel = new MLRModel(new Vector[numClasses]);
+    final Vector[] params = mlrModel.getParams();
+
+    for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
+      // 0 ~ (numPartitionsPerClass - 1) is for class 0
+      // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
+      // and so on
+      final List<Vector> partialModelsForThisClass =
+          partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
+
+      // concat partitions into one long vector
+      params[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
+    }
+
+    return mlrModel;
   }
 
   /**

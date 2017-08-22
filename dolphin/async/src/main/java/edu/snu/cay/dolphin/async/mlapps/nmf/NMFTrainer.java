@@ -194,10 +194,21 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> epochTrainingData, final Table modelTable) {
+    final NMFModel model = pullModelToEvaluate(getKeys(epochTrainingData), modelTable);
+
     final Map<CharSequence, Double> map = new HashMap<>();
-    map.put("0", 0.1);
-    map.put("1", 0.2);
+    map.put("loss", (double) computeLoss(epochTrainingData, model));
+
     return map;
+  }
+
+  private NMFModel pullModelToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
+    final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
+    final List<Vector> vectors = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+    for (int i = 0; i < keys.size(); ++i) {
+      rMatrix.put(keys.get(i), vectors.get(i));
+    }
+    return new NMFModel(rMatrix);
   }
 
   @Override

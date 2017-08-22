@@ -153,7 +153,7 @@ final class ModelChkpManager {
   /**
    * Waits all checkpoints requested by {@link #createCheckpoint()} to be done.
    */
-  void waitChkpsToBeDone() {
+  private void waitChkpsToBeDone() {
     checkpointIdFutures.forEach(future -> {
       try {
         future.get();
