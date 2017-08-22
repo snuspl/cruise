@@ -32,6 +32,8 @@ import java.util.logging.Logger;
 final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 
+  private final String dolphinJobId;
+
   private final DolphinMsg releaseMsg;
   private final NetworkConnection<DolphinMsg> networkConnection;
 
@@ -40,6 +42,7 @@ final class MasterSideMsgSender {
                               final NetworkConnection<DolphinMsg> networkConnection) {
     LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
     this.networkConnection = networkConnection;
+    this.dolphinJobId = dolphinJobId;
     this.releaseMsg = DolphinMsg.newBuilder()
         .setJobId(dolphinJobId)
         .setType(dolphinMsgType.ReleaseMsg)
@@ -55,6 +58,21 @@ final class MasterSideMsgSender {
       networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send release msg to worker %s.", workerId), e);
+    }
+  }
+
+  void sendModelEvalAnsMsg(final String workerId, final boolean doNext) {
+    final DolphinMsg msg = DolphinMsg.newBuilder()
+        .setJobId(dolphinJobId)
+        .setType(dolphinMsgType.ModelEvalAnsMsg)
+        .setModelEvalAnsMsg(ModelEvalAnsMsg.newBuilder()
+            .setDoNext(doNext).build())
+        .build();
+
+    try {
+      networkConnection.send(workerId, msg);
+    } catch (NetworkException e) {
+      LOG.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
     }
   }
 }

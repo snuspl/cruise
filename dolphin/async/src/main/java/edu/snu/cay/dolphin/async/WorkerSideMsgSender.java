@@ -92,4 +92,16 @@ final class WorkerSideMsgSender {
 
     networkConnection.send(driverId, dolphinMsg);
   }
+
+  /**
+   *
+   */
+  void sendModelEvalAskMsg() throws NetworkException {
+    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+        .setJobId(dolphinJobId)
+        .setType(dolphinMsgType.ModelEvalAskMsg)
+        .build();
+
+    networkConnection.send(driverId, dolphinMsg);
+  }
 }

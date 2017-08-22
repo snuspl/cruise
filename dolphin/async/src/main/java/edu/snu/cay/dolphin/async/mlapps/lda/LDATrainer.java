@@ -125,6 +125,12 @@ final class LDATrainer implements Trainer<Document> {
     return buildEpochResult(docLLH, wordLLH);
   }
 
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<Document> epochTrainingData,
+                                                 final edu.snu.cay.services.et.evaluator.api.Table modelTable) {
+    return Collections.emptyMap();
+  }
+
   private void pullModels(final List<Integer> words) {
     // pull model and use it after translating it into sparse form
     final List<int[]> denseTopicVectors = modelAccessor.pull(words);

@@ -29,10 +29,13 @@ import javax.inject.Inject;
 @EvaluatorSide
 public final class WorkerSideMsgHandler implements MessageHandler {
   private final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture;
+  private final InjectionFuture<ModelEvaluator> modelEvaluatorFuture;
 
   @Inject
-  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture) {
+  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture,
+                               final InjectionFuture<ModelEvaluator> modelEvaluatorFuture) {
     this.workerGlobalBarrierFuture = workerGlobalBarrierFuture;
+    this.modelEvaluatorFuture = modelEvaluatorFuture;
   }
 
   @Override
@@ -43,6 +46,10 @@ public final class WorkerSideMsgHandler implements MessageHandler {
     switch (dolphinMsg.getType()) {
     case ReleaseMsg:
       workerGlobalBarrierFuture.get().onReleaseMsg();
+      break;
+
+    case ModelEvalAnsMsg:
+      modelEvaluatorFuture.get().onMasterMsg(dolphinMsg.getModelEvalAnsMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());

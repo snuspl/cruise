@@ -160,4 +160,12 @@ public final class ETTaskRunner {
     LOG.log(Level.INFO, "Task finished");
     return taskResultList;
   }
+
+  List<AllocatedExecutor> getServerExecutors() {
+    return new ArrayList<>(serverExecutors.values());
+  }
+
+  List<AllocatedExecutor> getWorkerExecutors() {
+    return new ArrayList<>(workerExecutors.values());
+  }
 }

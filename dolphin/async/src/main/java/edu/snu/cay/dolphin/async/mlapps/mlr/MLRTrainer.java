@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.MemoryUtils;
 import edu.snu.cay.utils.ThreadUtils;
@@ -244,6 +245,11 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
 
     return buildEpochResult(trainingLossRegLossAvgAccuracy, testLossRegLossAvgAccuracy);
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> epochTrainingData, final Table modelTable) {
+    return Collections.emptyMap();
   }
 
   /**

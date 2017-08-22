@@ -18,14 +18,13 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -124,6 +123,11 @@ final class AddVectorTrainer implements Trainer {
   public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
                                      final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection epochTrainingData, final Table modelTable) {
+    return Collections.emptyMap();
   }
 
   @Override

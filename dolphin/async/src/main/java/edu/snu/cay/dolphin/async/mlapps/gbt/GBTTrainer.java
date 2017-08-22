@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.Tuple3;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
@@ -214,6 +215,11 @@ final class GBTTrainer implements Trainer<GBTData> {
     }
 
     return EpochResult.EMPTY_RESULT;
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<GBTData> epochTrainingData, final Table modelTable) {
+    return Collections.emptyMap();
   }
 
   /**

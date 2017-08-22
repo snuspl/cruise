@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
@@ -189,6 +190,14 @@ final class NMFTrainer implements Trainer<NMFData> {
     }
 
     return buildEpochResult(trainingLoss);
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> epochTrainingData, final Table modelTable) {
+    final Map<CharSequence, Double> map = new HashMap<>();
+    map.put("0", 0.1);
+    map.put("1", 0.2);
+    return map;
   }
 
   @Override

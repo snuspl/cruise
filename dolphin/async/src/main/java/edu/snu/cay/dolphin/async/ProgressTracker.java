@@ -47,6 +47,8 @@ public final class ProgressTracker implements ProgressProvider {
 
   private final JobMessageObserver jobMessageObserver;
 
+  private final ModelChkpManager modelChkpManager;
+
   private final StateMachine stateMachine;
 
   private final Map<String, Integer> workerIdToEpochIdx = new ConcurrentHashMap<>();
@@ -55,10 +57,12 @@ public final class ProgressTracker implements ProgressProvider {
 
   @Inject
   private ProgressTracker(final JobMessageObserver jobMessageObserver,
+                          final ModelChkpManager modelChkpManager,
                           @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                           @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                           @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.jobMessageObserver = jobMessageObserver;
+    this.modelChkpManager = modelChkpManager;
     this.dolphinJobId = dolphinJobId;
     this.maxNumEpochs = maxNumEpochs;
     this.numWorkers = numWorkers;
@@ -108,6 +112,7 @@ public final class ProgressTracker implements ProgressProvider {
     final String msgToClient = String.format("Epoch progress: [%d / %d], JobId: %s",
         newMinEpochIdx, maxNumEpochs, dolphinJobId);
     jobMessageObserver.sendMessageToClient(msgToClient.getBytes(StandardCharsets.UTF_8));
+    modelChkpManager.createCheckpoint();
   }
 
   /**

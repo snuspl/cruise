@@ -39,6 +39,7 @@ final class ETWorkerTask<V> implements Task {
   private final int startingEpoch;
   private final int maxNumEpochs;
 
+  private final ModelEvaluator modelEvaluator;
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<V> trainingDataProvider;
@@ -57,6 +58,7 @@ final class ETWorkerTask<V> implements Task {
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                       final ModelEvaluator modelEvaluator,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<V> trainingDataProvider,
@@ -67,6 +69,7 @@ final class ETWorkerTask<V> implements Task {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
+    this.modelEvaluator = modelEvaluator;
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
@@ -137,6 +140,8 @@ final class ETWorkerTask<V> implements Task {
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
     workerGlobalBarrier.await();
+
+    modelEvaluator.evaluate(trainer, trainingDataProvider.getEpochData());
 
     trainer.cleanup();
     return null;

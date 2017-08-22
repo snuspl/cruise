@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.services.et.evaluator.api.Table;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * A trainer of a {@code dolphin-async} application.
@@ -61,6 +63,14 @@ public interface Trainer<D> {
    * @return a result of the epoch
    */
   EpochResult onEpochFinished(Collection<D> epochTrainingData, Collection<D> testData, int epochIdx);
+
+  /**
+   *
+   * @param epochTrainingData
+   * @param modelTable
+   * @return
+   */
+  Map<CharSequence, Double> evaluateModel(Collection<D> epochTrainingData, Table modelTable);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

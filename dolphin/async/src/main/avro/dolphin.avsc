@@ -36,6 +36,16 @@
   ]
 },
 
+{
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "ModelEvalAnsMsg",
+  "fields":
+  [
+    {"name": "doNext", "type": "boolean"}
+  ]
+},
+
 /**
  * A message format for dolphin app.
  * With different job id, users can run multiple dolphin jobs concurrently.
@@ -48,9 +58,10 @@
   [
     {"name": "jobId", "type": "string"},
     {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
-        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
+        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg", "ModelEvalAskMsg", "ModelEvalAnsMsg"]}},
     {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
-    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null}
+    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null},
+    {"name": "modelEvalAnsMsg", "type": ["null", "ModelEvalAnsMsg"], "default": null}
   ]
 }
 ]

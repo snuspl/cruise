@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -193,6 +194,12 @@ final class LassoTrainer implements Trainer<LassoData> {
     }
 
     return buildEpochResult(trainingLoss, testLoss);
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<LassoData> epochTrainingData,
+                                                 final Table modelTable) {
+    return Collections.emptyMap();
   }
 
   /**
