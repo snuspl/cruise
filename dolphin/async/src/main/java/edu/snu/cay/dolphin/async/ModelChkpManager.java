@@ -73,13 +73,6 @@ final class ModelChkpManager {
   }
 
   /**
-   * @return {@code True} if there are remaining checkpoints to consume.
-   */
-  boolean hasCheckpoints() {
-    return !checkpointIdFutures.isEmpty();
-  }
-
-  /**
    *
    */
   void onWorkerMsg() {
@@ -95,7 +88,7 @@ final class ModelChkpManager {
   }
 
   /**
-   * Restores tables with the oldest checkpoint. This method is called only when {@link #hasCheckpoints()} is true.
+   * Restores tables with the oldest checkpoint.
    */
   private boolean restoreOldestCheckpoint() {
     if (!restoreStarted.getAndSet(true)) {
