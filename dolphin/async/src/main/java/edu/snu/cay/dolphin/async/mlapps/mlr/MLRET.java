@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
@@ -37,10 +37,10 @@ public final class MLRET {
     ETDolphinLauncher.launch("MLRET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(MLRTrainer.class)
         .setInputParserClass(MLRETDataParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(MLRDataCodec.class)
         .setModelUpdateFunctionClass(MLRETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(NumClasses.class)

@@ -114,10 +114,10 @@ final class ModelChkpManager {
       checkpointId = checkpointIdFutures.pop().get();
 
       final List<AllocatedExecutor> runningServers = new ArrayList<>(etTaskRunnerFuture.get().getServerExecutors());
-      final List<AllocatedExecutor> runningWorvers = new ArrayList<>(etTaskRunnerFuture.get().getWorkerExecutors());
+      final List<AllocatedExecutor> runningWorkers = new ArrayList<>(etTaskRunnerFuture.get().getWorkerExecutors());
 
       final AllocatedTable restoredTable = etMasterFuture.get().createTable(checkpointId, runningServers).get();
-      restoredTable.subscribe(runningWorvers).get();
+      restoredTable.subscribe(runningWorkers).get();
       LOG.log(Level.INFO, "Table {0} is restored from checkpoint.", restoredTable.getId());
 
     } catch (InterruptedException | ExecutionException e) {
