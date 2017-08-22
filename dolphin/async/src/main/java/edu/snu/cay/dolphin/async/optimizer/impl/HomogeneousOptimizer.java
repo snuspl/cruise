@@ -326,17 +326,18 @@ public final class HomogeneousOptimizer implements Optimizer {
 
     for (int serverIndex = 0; serverIndex < optimalNumServers; ++serverIndex) {
       final EvaluatorSummary server = serverSummaries.get(serverIndex);
-
-      // the last evaluator takes all remaining blocks
-      if (serverIndex == optimalNumServers - 1) {
-        server.setNumOptimalBlocks(totalBlocksInServers - numAssignedBlocks);
-
-      } else {
-        final int numOptimalBlocks =
-            (int) Math.round(totalBlocksInServers * server.bandwidth / serverBandwidthSum);
-        numAssignedBlocks += numOptimalBlocks;
-        server.setNumOptimalBlocks(numOptimalBlocks);
-      }
+      final int numOptimalBlocks =
+            (int) Math.floor(totalBlocksInServers * server.bandwidth / serverBandwidthSum);
+      numAssignedBlocks += numOptimalBlocks;
+      server.setNumOptimalBlocks(numOptimalBlocks);
+    }
+  
+    int numUnassignedBlocks = totalBlocksInServers - numAssignedBlocks;
+    int serverIdx = 0;
+    while (numUnassignedBlocks-- != 0) {
+      final EvaluatorSummary server = serverSummaries.get(serverIdx++);
+      server.setNumOptimalBlocks(server.getNumOptimalBlocks() + 1);
+      serverIdx %= optimalNumServers;
     }
 
     if (activeNumServers > optimalNumServers) {
@@ -387,17 +388,18 @@ public final class HomogeneousOptimizer implements Optimizer {
 
     for (int workerIndex = 0; workerIndex < optimalNumWorkers; ++workerIndex) {
       final EvaluatorSummary worker = workerSummaries.get(workerIndex);
-
-      // the last evaluator takes all remaining blocks
-      if (workerIndex == optimalNumWorkers - 1) {
-        worker.setNumOptimalBlocks(totalBlocksInWorkers - numAssignedBlocks);
-
-      } else {
-        final int numOptimalBlocks =
-            (int) Math.round(totalBlocksInWorkers * inverseTerms[workerIndex] / termInverseSum);
-        numAssignedBlocks += numOptimalBlocks;
-        worker.setNumOptimalBlocks(numOptimalBlocks);
-      }
+      final int numOptimalBlocks =
+            (int) Math.floor(totalBlocksInWorkers * inverseTerms[workerIndex] / termInverseSum);
+      numAssignedBlocks += numOptimalBlocks;
+      worker.setNumOptimalBlocks(numOptimalBlocks);
+    }
+    
+    int numUnassignedBlocks = totalBlocksInWorkers - numAssignedBlocks;
+    int workerIdx = 0;
+    while (numUnassignedBlocks-- != 0) {
+      final EvaluatorSummary worker = workerSummaries.get(workerIdx++);
+      worker.setNumOptimalBlocks(worker.getNumOptimalBlocks() + 1);
+      workerIdx %= optimalNumWorkers;
     }
 
     if (activeNumWorkers > optimalNumWorkers) {
