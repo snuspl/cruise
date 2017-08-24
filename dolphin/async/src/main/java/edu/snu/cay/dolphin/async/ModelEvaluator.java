@@ -44,6 +44,7 @@ final class ModelEvaluator {
   private final InjectionFuture<WorkerSideMsgSender> msgSenderFuture;
 
   private final String modelTableId;
+  private final String inputTableId;
 
   private final ResettingCountDownLatch latch = new ResettingCountDownLatch(1);
   private volatile boolean doNext = true;
@@ -52,9 +53,11 @@ final class ModelEvaluator {
   private ModelEvaluator(final InjectionFuture<TableAccessor> tableAccessorFuture,
                          final InjectionFuture<WorkerSideMsgSender> msgSenderFuture,
                          final InjectionFuture<MetricCollector> metricCollectorFuture,
-                         @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId) {
+                         @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+                         @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.tableAccessorFuture = tableAccessorFuture;
     this.modelTableId = modelTableId;
+    this.inputTableId = inputTableId;
     this.metricCollectorFuture = metricCollectorFuture;
     this.msgSenderFuture = msgSenderFuture;
   }
@@ -62,17 +65,21 @@ final class ModelEvaluator {
   /**
    * Evaluate all checkpointed models.
    */
-  void evaluate(final Trainer trainer, final Collection trainingData) {
+  void evaluate(final Trainer trainer) {
     int modelCount = 0;
     while (askMasterForCheckpointedModel()) {
 
       LOG.log(Level.INFO, "Evaluate a {0}th model", modelCount++);
       final Table modelTable;
+      final Table inputTable;
       try {
         modelTable = tableAccessorFuture.get().getTable(modelTableId);
+        inputTable = tableAccessorFuture.get().getTable(inputTableId);
       } catch (TableNotExistException e) {
         throw new RuntimeException(e);
       }
+
+      final Collection trainingData = inputTable.getLocalTablet().getDataMap().values();
 
       final Map<CharSequence, Double> objValue = trainer.evaluateModel(trainingData, modelTable);
 
