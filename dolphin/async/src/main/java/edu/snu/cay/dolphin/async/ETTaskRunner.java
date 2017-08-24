@@ -161,10 +161,16 @@ public final class ETTaskRunner {
     return taskResultList;
   }
 
+  /**
+   * @return a list of running server executors
+   */
   List<AllocatedExecutor> getServerExecutors() {
     return new ArrayList<>(serverExecutors.values());
   }
 
+  /**
+   * @return a list of running worker executors
+   */
   List<AllocatedExecutor> getWorkerExecutors() {
     return new ArrayList<>(workerExecutors.values());
   }

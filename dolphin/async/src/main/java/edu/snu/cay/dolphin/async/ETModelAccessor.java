@@ -117,7 +117,6 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
     return resultValues;
   }
 
-
   @Override
   public Map<String, Double> getAndResetMetrics() {
     final Map<String, Double> metrics = new HashMap<>();

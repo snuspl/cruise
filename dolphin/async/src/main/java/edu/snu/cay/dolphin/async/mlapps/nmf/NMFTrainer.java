@@ -193,11 +193,11 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> epochTrainingData, final Table modelTable) {
-    final NMFModel model = pullModelToEvaluate(getKeys(epochTrainingData), modelTable);
+  public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> inputData, final Table modelTable) {
+    final NMFModel model = pullModelToEvaluate(getKeys(inputData), modelTable);
 
     final Map<CharSequence, Double> map = new HashMap<>();
-    map.put("loss", (double) computeLoss(epochTrainingData, model));
+    map.put("loss", (double) computeLoss(inputData, model));
 
     return map;
   }

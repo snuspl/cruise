@@ -38,7 +38,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Tracks and maintains checkpoints of model table(s).
+ * Tracks and maintains checkpoints of model table(s) during training.
+ * It's for restoring model snapshots from checkpoints and evaluating it after training.
  * Since this class is not thread-safe, be careful to access it concurrently (okay for the current use case).
  */
 @NotThreadSafe
@@ -73,26 +74,30 @@ final class ModelChkpManager {
   }
 
   /**
-   *
+   * On a message from worker.
    */
   void onWorkerMsg() {
-    LOG.log(Level.INFO, "Msg from a worker");
-    final List<AllocatedExecutor> workers = etTaskRunnerFuture.get().getWorkerExecutors();
-    if (workerCount.incrementAndGet() == workers.size()) {
+    final int numWorkersSentMsg = workerCount.incrementAndGet();
+    final List<AllocatedExecutor> runningWorkers = etTaskRunnerFuture.get().getWorkerExecutors();
+
+    LOG.log(Level.INFO, "Msg from a worker. [{0} / {1}]", new Object[]{numWorkersSentMsg, runningWorkers.size()});
+
+    if (numWorkersSentMsg == runningWorkers.size()) {
       workerCount.set(0); // reset
       executor.submit(() -> {
         final boolean doNext = restoreOldestCheckpoint();
-        workers.forEach(worker -> msgSender.get().sendModelEvalAnsMsg(worker.getId(), doNext));
+        runningWorkers.forEach(worker -> msgSender.get().sendModelEvalAnsMsg(worker.getId(), doNext));
       });
     }
   }
 
   /**
    * Restores tables with the oldest checkpoint.
+   * It waits until the restoration finishes.
    */
   private boolean restoreOldestCheckpoint() {
+    // if it's the first restore wait until all chkps to be done
     if (!restoreStarted.getAndSet(true)) {
-      // if it's the first restore
       waitChkpsToBeDone();
     }
 

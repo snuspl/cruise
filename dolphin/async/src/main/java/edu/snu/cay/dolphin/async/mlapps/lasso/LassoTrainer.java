@@ -197,7 +197,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<LassoData> epochTrainingData,
+  public Map<CharSequence, Double> evaluateModel(final Collection<LassoData> inputData,
                                                  final Table modelTable) {
     return Collections.emptyMap();
   }

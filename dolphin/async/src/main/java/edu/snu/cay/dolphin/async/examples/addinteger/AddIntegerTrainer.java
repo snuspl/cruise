@@ -118,7 +118,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection epochTrainingData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection inputData, final Table modelTable) {
     return Collections.emptyMap();
   }
 

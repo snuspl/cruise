@@ -94,7 +94,7 @@ final class WorkerSideMsgSender {
   }
 
   /**
-   *
+   * Send a msg to master for asking model evaluation.
    */
   void sendModelEvalAskMsg() throws NetworkException {
     final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()

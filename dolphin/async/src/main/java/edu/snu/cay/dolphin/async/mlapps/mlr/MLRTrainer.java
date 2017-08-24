@@ -248,10 +248,10 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> epochTrainingData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> inputData, final Table modelTable) {
     final MLRModel mlrModel = pullModelsToEvaluate(classPartitionIndices, modelTable);
     final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy =
-        computeLoss(epochTrainingData, mlrModel.getParams());
+        computeLoss(inputData, mlrModel.getParams());
 
     final Map<CharSequence, Double> map = new HashMap<>();
     map.put("loss", (double) trainingLossRegLossAvgAccuracy.getFirst());

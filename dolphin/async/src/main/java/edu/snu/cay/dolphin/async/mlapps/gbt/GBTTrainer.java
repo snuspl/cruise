@@ -218,7 +218,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<GBTData> epochTrainingData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection<GBTData> inputData, final Table modelTable) {
     return Collections.emptyMap();
   }
 

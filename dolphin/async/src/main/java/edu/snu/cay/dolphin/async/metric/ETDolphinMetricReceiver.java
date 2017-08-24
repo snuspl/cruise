@@ -104,7 +104,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         break;
       case ModelEvalMetrics:
         final Metrics modelEvalMetrics = workerMetrics.getObjValue();
-        printObjValue(modelEvalMetrics.getData());
+        // don't store it, printing a log is enough
         break;
       default:
         throw new RuntimeException("Unknown message type");
@@ -112,11 +112,6 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
       LOG.log(Level.INFO, "Received a worker metric from {0}: {1}", new Object[] {srcId, workerMetrics});
     }
-  }
-
-  // TODO #00: print it
-  private void printObjValue(final Map<CharSequence, Double> objValueMap) {
-
   }
 
   /**

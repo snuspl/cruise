@@ -34,7 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Created by xyzi on 22/08/2017.
+ * A component for evaluating a trained model.
  */
 final class ModelEvaluator {
   private static final Logger LOG = Logger.getLogger(ModelEvaluator.class.getName());
@@ -44,6 +44,9 @@ final class ModelEvaluator {
   private final InjectionFuture<WorkerSideMsgSender> msgSenderFuture;
 
   private final String modelTableId;
+
+  private final ResettingCountDownLatch latch = new ResettingCountDownLatch(1);
+  private volatile boolean doNext = true;
 
   @Inject
   private ModelEvaluator(final InjectionFuture<TableAccessor> tableAccessorFuture,
@@ -86,13 +89,10 @@ final class ModelEvaluator {
     LOG.log(Level.INFO, "Finish evaluating models");
   }
 
-  private final ResettingCountDownLatch latch = new ResettingCountDownLatch(1);
-  private volatile boolean doNext = true;
-
   /**
    * Tell master that it's ready to evaluate the next model.
    * And wait master's response.
-   * @return
+   * @return True if there exists a model table to evaluate
    */
   private boolean askMasterForCheckpointedModel() {
     LOG.log(Level.INFO, "Ask master.");

@@ -141,6 +141,7 @@ final class ETWorkerTask<V> implements Task {
     // to finish with the globally equivalent view of trained model
     workerGlobalBarrier.await();
 
+    // evaluate all check-pointed models
     modelEvaluator.evaluate(trainer, trainingDataProvider.getEpochData());
 
     trainer.cleanup();

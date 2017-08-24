@@ -126,7 +126,7 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<Document> epochTrainingData,
+  public Map<CharSequence, Double> evaluateModel(final Collection<Document> inputData,
                                                  final edu.snu.cay.services.et.evaluator.api.Table modelTable) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
@@ -135,7 +135,7 @@ final class LDATrainer implements Trainer<Document> {
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final Map<CharSequence, Double> map = new HashMap<>();
-    map.put("docLLH", statCalculator.computeDocLLH(epochTrainingData));
+    map.put("docLLH", statCalculator.computeDocLLH(inputData));
     map.put("wordLLH", statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
 
     return map;
