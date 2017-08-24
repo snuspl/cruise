@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutorService;
 
 /**
  * A master-side message handler that routes messages to an appropriate component corresponding to the msg type.
@@ -28,6 +30,14 @@ public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
   private final InjectionFuture<ModelChkpManager> modelChkpManagerFuture;
+
+  private static final int NUM_PROGRESS_MSG_THREADS = 8;
+  private static final int NUM_SYNC_MSG_THREADS = 8;
+  private static final int NUM_MODEL_EV_MSG_THREADS = 8;
+
+  private final ExecutorService progressMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_PROGRESS_MSG_THREADS);
+  private final ExecutorService syncMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_SYNC_MSG_THREADS);
+  private final ExecutorService modelEvalMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MODEL_EV_MSG_THREADS);
 
   @Inject
   private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
@@ -44,13 +54,13 @@ public final class MasterSideMsgHandler {
   public void onDolphinMsg(final String srcId, final DolphinMsg dolphinMsg) {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
-      progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg());
+      progressMsgExecutor.submit(() -> progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg()));
       break;
     case SyncMsg:
-      workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg());
+      syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg()));
       break;
     case ModelEvalAskMsg:
-      modelChkpManagerFuture.get().onWorkerMsg();
+      modelEvalMsgExecutor.submit(() -> modelChkpManagerFuture.get().onWorkerMsg());
       break;
     default:
       throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());
