@@ -94,16 +94,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
       final Map<String, Integer> tableToNumBlocks = metricReportMsg.getTableToNumBlocks();
       final String hostname = metricReportMsg.getHostname();
-      int numWorkers = 0;
-
+      
       switch (workerMetrics.getType()) {
       case BatchMetrics:
         final BatchMetrics batchMetrics = workerMetrics.getBatchMetrics();
-        try {
-          numWorkers = etMaster.getTable(inputTableId).getPartitionInfo().size();
-        } catch (TableNotExistException e) {
-          throw new RuntimeException(e);
-        }
         final WorkerMetrics convertedBatchMetrics =
             convertBatchMetrics(metricReportMsg, tableToNumBlocks, hostname, batchMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedBatchMetrics);
@@ -116,9 +110,14 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       default:
         throw new RuntimeException("Unknown message type");
       }
-
-      LOG.log(Level.INFO, "Received a worker metric from {0} (num running workers: {1}): {2}",
-          new Object[] {srcId, numWorkers, workerMetrics});
+      
+      try {
+        final int numWorkers = etMaster.getTable(inputTableId).getPartitionInfo().size();
+        LOG.log(Level.INFO, "Received a worker metric from {0} (num running workers: {1}): {2}",
+            new Object[] {srcId, numWorkers, workerMetrics});
+      } catch (TableNotExistException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
