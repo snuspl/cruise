@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
+import edu.snu.cay.services.et.exceptions.ChkpNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
@@ -31,6 +32,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 /**
  * A manager class of Tables, which creates and manages allocated tables.
@@ -43,17 +45,22 @@ import java.util.concurrent.ConcurrentHashMap;
 final class TableManager {
   private final Injector baseTableInjector;
 
+  private final ChkpManagerMaster chkpManagerMaster;
   private final Map<String, AllocatedTable> allocatedTableMap = new ConcurrentHashMap<>();
 
   @Inject
   private TableManager(final MigrationManager migrationManager,
                        final SubscriptionManager subscriptionManager,
-                       final TableControlAgent tableControlAgent) throws InjectionException {
+                       final TableControlAgent tableControlAgent,
+                       final ChkpManagerMaster chkpManagerMaster) throws InjectionException {
     this.baseTableInjector = Tang.Factory.getTang().newInjector();
     baseTableInjector.bindVolatileInstance(MigrationManager.class, migrationManager);
     baseTableInjector.bindVolatileInstance(SubscriptionManager.class, subscriptionManager);
     baseTableInjector.bindVolatileInstance(TableControlAgent.class, tableControlAgent);
+    baseTableInjector.bindVolatileInstance(ChkpManagerMaster.class, chkpManagerMaster);
     baseTableInjector.bindVolatileInstance(TableManager.class, this);
+
+    this.chkpManagerMaster = chkpManagerMaster;
 
     // MigrationManager and TableControlAgent should be instantiated although they are not actually accessed.
     // This is intentional. Otherwise MigrationManager and TableControlAgent are created per Table, which we want
@@ -87,6 +94,50 @@ final class TableManager {
         .addListener(o -> resultFuture.onCompleted(allocatedTableImpl));
 
     allocatedTableMap.put(tableId, allocatedTableImpl);
+    return resultFuture;
+  }
+
+  /**
+   * Creates a table from a checkpoint.
+   * It creates a new empty table and loads check-pointed blocks into the table.
+   * @param checkpointId a checkpoint Id
+   * @return an {@link AllocatedTable}, which represents table in driver-side
+   * @throws ChkpNotExistException
+   */
+  synchronized ListenableFuture<AllocatedTable> createTable(final String checkpointId,
+                                                            final List<AllocatedExecutor> initialAssociators)
+      throws ChkpNotExistException {
+    if (initialAssociators.isEmpty()) {
+      throw new RuntimeException("Table requires at least one associator");
+    }
+
+    final TableConfiguration tableConf = chkpManagerMaster.getTableConf(checkpointId);
+    final String tableId = tableConf.getId();
+    if (allocatedTableMap.containsKey(tableId)) {
+      throw new RuntimeException(String.format("Table %s already exists", tableId));
+    }
+
+    final Injector tableInjector = baseTableInjector.forkInjector(tableConf.getConfiguration());
+    final AllocatedTable allocatedTable;
+    try {
+      allocatedTable = tableInjector.getInstance(AllocatedTable.class);
+    } catch (InjectionException e) {
+      throw new RuntimeException(e);
+    }
+
+    // load checkpointed blocks into the table
+    final ResultFuture<AllocatedTable> resultFuture = new ResultFuture<>();
+    allocatedTable.init(tableConf, initialAssociators)
+        .addListener(o -> {
+          try {
+            chkpManagerMaster.load(checkpointId).get();
+            resultFuture.onCompleted(allocatedTable);
+          } catch (ChkpNotExistException | InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+        });
+
+    allocatedTableMap.put(tableId, allocatedTable);
     return resultFuture;
   }
 

@@ -230,6 +230,67 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendChkpDoneMsg(final String chkpId, final List<Integer> blockIds) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableChkpMsg.newBuilder()
+            .setType(TableChkpMsgType.ChkpDoneMsg)
+            .setChkpId(chkpId)
+            .setChkpDoneMsg(
+                ChkpDoneMsg.newBuilder()
+                .setExecutorId(executorId)
+                .setBlockIds(blockIds)
+                .build())
+        .build(), TableChkpMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableChkpMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
+  public void sendChkpCommitMsg(final String chkpId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableChkpMsg.newBuilder()
+            .setType(TableChkpMsgType.ChkpCommitMsg)
+            .setChkpId(chkpId)
+            .setChkpCommitMsg(
+                ChkpCommitMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .build())
+            .build(), TableChkpMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableChkpMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
+  public void sendChkpLoadDoneMsg(final String chkpId) throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableChkpMsg.newBuilder()
+            .setType(TableChkpMsgType.ChkpLoadDoneMsg)
+            .setChkpId(chkpId)
+            .setChkpLoadDoneMsg(
+                ChkpLoadDoneMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .build())
+            .build(), TableChkpMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableChkpMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
   public void sendOwnershipReqMsg(final String tableId, final int blockId) throws NetworkException {
     final byte[] innerMsg = AvroUtils.toBytes(
         TableControlMsg.newBuilder()

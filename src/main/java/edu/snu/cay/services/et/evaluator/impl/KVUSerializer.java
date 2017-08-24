@@ -28,7 +28,7 @@ import javax.inject.Inject;
  * @param <K> a key type in table
  * @param <V> a value type in table
  */
-public final class KVUSerializer<K, V, U> {
+final class KVUSerializer<K, V, U> {
 
   private final Codec<K> keyCodec;
   private final Codec<V> valueCodec;

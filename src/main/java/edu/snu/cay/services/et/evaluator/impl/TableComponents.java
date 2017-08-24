@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
 
@@ -25,6 +26,11 @@ import javax.inject.Inject;
  * A private component for allowing access to internal components of a table.
  */
 final class TableComponents<K, V, U> {
+
+  /**
+   * A table conifiguration.
+   */
+  private Configuration tableConf;
 
   /**
    * A metadata of table.
@@ -101,5 +107,17 @@ final class TableComponents<K, V, U> {
 
   BulkDataLoader getBulkDataLoader() {
     return bulkDataLoader;
+  }
+
+  Configuration getTableConf() {
+    return tableConf;
+  }
+
+  /**
+   * It should be called only once when instantiating a table.
+   * @param tableConf a table configuration.
+   */
+  void setTableConf(final Configuration tableConf) {
+    this.tableConf = tableConf;
   }
 }

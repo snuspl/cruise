@@ -25,6 +25,12 @@ import java.util.Map.Entry;
  */
 @Private
 public interface Block<K, V, U> extends Iterable<Entry<K, V>> {
+
+  /**
+   * @return a block Id
+   */
+  int getId();
+
   /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated

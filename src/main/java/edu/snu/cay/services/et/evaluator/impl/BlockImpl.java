@@ -30,14 +30,21 @@ import java.util.concurrent.ConcurrentMap;
  * Data migration between executors takes place with granularity of a block.
  */
 final class BlockImpl<K, V, U> implements Block<K, V, U> {
+  private final int blockId;
   private final UpdateFunction<K, V, U> updateFunction;
   /**
    * This map serves as a collection of data in a block.
    */
   private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
 
-  BlockImpl(final UpdateFunction<K, V, U> updateFunction) {
+  BlockImpl(final int blockId, final UpdateFunction<K, V, U> updateFunction) {
+    this.blockId = blockId;
     this.updateFunction = updateFunction;
+  }
+
+  @Override
+  public int getId() {
+    return blockId;
   }
 
   @Override

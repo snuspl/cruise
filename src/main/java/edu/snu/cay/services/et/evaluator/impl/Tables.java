@@ -21,11 +21,13 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
@@ -49,9 +51,9 @@ public final class Tables implements TableAccessor {
   private final String executorId;
 
   /**
-   * A mapping with tableIds and the corresponding {@link TableImpl}s.
+   * A mapping with tableIds and the corresponding {@link Table}, {@link TableComponents}, and table configuration.
    */
-  private final Map<String, Pair<Table, TableComponents>> tables = new ConcurrentHashMap<>();
+  private final Map<String, Tuple3<Table, TableComponents, Configuration>> tables = new ConcurrentHashMap<>();
 
   @Inject
   private Tables(final Injector tableBaseInjector,
@@ -76,25 +78,41 @@ public final class Tables implements TableAccessor {
    */
   public synchronized String initTable(final Configuration tableConf,
                                        final List<String> blockOwners) throws InjectionException {
-    final Injector tableInjector = tableBaseInjector.forkInjector(tableConf);
-    final String tableId = tableInjector.getNamedInstance(TableIdentifier.class);
+    final String tableId = Tang.Factory.getTang().newInjector(tableConf).getNamedInstance(TableIdentifier.class);
     if (tables.containsKey(tableId)) {
       throw new RuntimeException("Table has already been initialized. tableId: " + tableId);
     }
 
     // Initialize a table
     LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
+    final Pair<Table, TableComponents> tablePair = instantiateTable(tableConf, blockOwners);
+    final Table table = tablePair.getLeft();
+    final TableComponents tableComponents = tablePair.getRight();
+
+    tables.put(tableId, new Tuple3<>(table, tableComponents, tableConf));
+    return tableId;
+  }
+
+  /**
+   * Instantiates a table.
+   * Note that the table instantiated by this method is not added to table entry maintained by ET.
+   * @param tableConf Tang configuration for this table
+   * @param blockOwners a blockId-to-executorId map for remote operation routing
+   * @return a pair of {@link Table} and {@link TableComponents}
+   * @throws InjectionException Table configuration is incomplete to initialize a table
+   */
+  public Pair<Table, TableComponents> instantiateTable(final Configuration tableConf,
+                                                       final List<String> blockOwners) throws InjectionException {
+    final Injector tableInjector = tableBaseInjector.forkInjector(tableConf);
     final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
+    final Table table = tableInjector.getInstance(Table.class);
+    tableComponents.setTableConf(tableConf);
 
     // Initialize ownership cache
     tableComponents.getOwnershipCache().init(blockOwners);
-
     // Create local blocks
     initEmptyBlocks(tableComponents.getBlockStore(), blockOwners);
-
-    final Table table = tableInjector.getInstance(Table.class);
-    tables.put(tableId, Pair.of(table, tableComponents));
-    return tableId;
+    return Pair.of(table, tableComponents);
   }
 
   /**
@@ -125,20 +143,20 @@ public final class Tables implements TableAccessor {
 
     // remove table and clear contents in local tablet
     // it assumes that there's no ongoing migration
-    final Table removedTable = tables.remove(tableId).getLeft();
+    final Table removedTable = tables.remove(tableId).getFirst();
     removedTable.getLocalTablet().clear();
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public synchronized <K, V, U> Table<K, V, U> getTable(final String tableId) throws TableNotExistException {
-    final Pair<Table, TableComponents> tablePair = tables.get(tableId);
-    if (tablePair == null) {
+    final Tuple3<Table, TableComponents, Configuration> tableTuple = tables.get(tableId);
+    if (tableTuple == null) {
       // cannot access such table.
       throw new TableNotExistException(tableId + " does not exist or this executor did not associate or subscribe it");
     }
 
-    return tablePair.getLeft();
+    return tableTuple.getFirst();
   }
 
   /**
@@ -149,14 +167,14 @@ public final class Tables implements TableAccessor {
    * @throws TableNotExistException when there's no table with the specified id
    */
   @SuppressWarnings("unchecked")
-  synchronized <K, V, U> TableComponents<K, V, U> getTableComponents(final String tableId)
+  public synchronized <K, V, U> TableComponents<K, V, U> getTableComponents(final String tableId)
       throws TableNotExistException {
-    final Pair<Table, TableComponents> tablePair = tables.get(tableId);
-    if (tablePair == null) {
+    final Tuple3<Table, TableComponents, Configuration> tableTuple = tables.get(tableId);
+    if (tableTuple == null) {
       // cannot access such table.
       throw new TableNotExistException(tableId + " does not exist or this executor did not associate or subscribe it");
     }
-    return tablePair.getRight();
+    return tableTuple.getSecond();
   }
 
   /**
@@ -166,7 +184,7 @@ public final class Tables implements TableAccessor {
     final Map<String, Integer> tableIdToNumBlocks = new HashMap<>();
 
     tables.forEach((tableId, value) -> {
-      final TableComponents tableComponents = value.getRight();
+      final TableComponents tableComponents = value.getSecond();
 
       tableIdToNumBlocks.put(tableId, tableComponents.getBlockStore().getNumBlocks());
     });

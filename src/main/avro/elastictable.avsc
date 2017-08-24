@@ -303,6 +303,98 @@
 },
 
 /**
+ * An avro message format for master to start checkpointing a table in executors.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpStartMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send a reply msg for ChkpStartMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpDoneMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}}
+  ]
+},
+
+/**
+ * An avro message format for executors to notify master that it has committed local checkpoints.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpCommitMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to start loading a checkpoint in executors.
+ * {@code blockOwners} is null, when {@code committed} is true.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpLoadMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+    {"name": "committed", "type": "boolean"},
+    {"name": "blockOwners", "type": ["null", {"type": "array", "items": "string"}], "default": null}
+  ]
+},
+
+/**
+ * An avro message format for executors to send a reply msg for ChkpLoadMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpLoadDoneMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"}
+  ]
+},
+
+/**
+ * The message protocol used for checkpointing in Elastic Table.
+ * ChkpStartMsg, ChkpLoadMsg, and ChkpCommitMsg, etc. are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableChkpMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TableChkpMsgType",
+        "symbols": ["ChkpStartMsg", "ChkpDoneMsg", "ChkpLoadMsg", "ChkpLoadDoneMsg", "ChkpCommitMsg"]}},
+    {"name": "chkpId", "type": "string"},
+    {"name": "chkpStartMsg", "type": ["null", "ChkpStartMsg"], "default": null},
+    {"name": "chkpDoneMsg", "type": ["null", "ChkpDoneMsg"], "default": null},
+    {"name": "chkpLoadMsg", "type": ["null", "ChkpLoadMsg"], "default": null},
+    {"name": "chkpLoadDoneMsg", "type": ["null", "ChkpLoadDoneMsg"], "default": null},
+    {"name": "chkpCommitMsg", "type": ["null", "ChkpCommitMsg"], "default": null}
+  ]
+},
+
+/**
  * Request message from master to sender executor, which initiates data migration.
  * The message contains an array of block ids to migrate.
  */
@@ -500,8 +592,9 @@
  * Messages are categorized into following types:
  * (1) TableAccessMsg: Messages regarding remote table access.
  * (2) TableControlMsg: Messages to manage tables in executors.
- * (3) MigrationMsg: Messages used for data migration.
- * (4) MetricMsg: Messages for collecting metrics from executors.
+ * (3) TableChkpMsg: Messages regarding to talbe checkpoint.
+ * (4) MigrationMsg: Messages used for data migration.
+ * (5) MetricMsg: Messages for collecting metrics from executors.
  * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {
@@ -511,7 +604,7 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "ETMsgType",
-        "symbols": ["TableAccessMsg", "TableControlMsg", "MigrationMsg", "MetricMsg"]}},
+        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg"]}},
     {"name": "innerMsg", "type": "bytes"}
   ]
 }

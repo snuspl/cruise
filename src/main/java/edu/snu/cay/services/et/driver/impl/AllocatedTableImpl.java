@@ -28,6 +28,7 @@ import org.apache.reef.annotations.audience.Private;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -43,9 +44,13 @@ public final class AllocatedTableImpl implements AllocatedTable {
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
+  private final ChkpManagerMaster chkpManagerMaster;
   private final SubscriptionManager subscriptionManager;
   private final TableControlAgent tableControlAgent;
   private final TableManager tableManager;
+
+  private final AtomicInteger numOngoingMigrations = new AtomicInteger(0);
+  private final AtomicInteger numOngoingCheckpoints = new AtomicInteger(0);
 
   private StateMachine stateMachine;
 
@@ -59,12 +64,14 @@ public final class AllocatedTableImpl implements AllocatedTable {
 
   @Inject
   private AllocatedTableImpl(final BlockManager blockManager,
-                         final MigrationManager migrationManager,
-                         final SubscriptionManager subscriptionManager,
-                         final TableControlAgent tableControlAgent,
-                         final TableManager tableManager) {
+                             final MigrationManager migrationManager,
+                             final ChkpManagerMaster chkpManagerMaster,
+                             final SubscriptionManager subscriptionManager,
+                             final TableControlAgent tableControlAgent,
+                             final TableManager tableManager) {
     this.blockManager = blockManager;
     this.migrationManager = migrationManager;
+    this.chkpManagerMaster = chkpManagerMaster;
     this.subscriptionManager = subscriptionManager;
     this.tableControlAgent = tableControlAgent;
     this.tableManager = tableManager;
@@ -82,18 +89,10 @@ public final class AllocatedTableImpl implements AllocatedTable {
         .build();
   }
 
-  /**
-   * Initializes {@link this} by allocating a table
-   * with a given {@code tableConfiguration} to {@code initialAssociators}.
-   * This method should be called once before other methods.
-   * @param tableConfiguration a table configuration
-   * @param initialAssociators a list of initial executors to be associated to a table
-   * @return a {@link ListenableFuture} for notifying the completion
-   */
-  synchronized ListenableFuture<?> init(final TableConfiguration tableConfiguration,
-                                        final List<AllocatedExecutor> initialAssociators) {
+  @Override
+  public synchronized ListenableFuture<?> init(final TableConfiguration tableConfiguration,
+                                               final List<AllocatedExecutor> initialAssociators) {
     stateMachine.checkState(State.UNINITIALIZED);
-
     tableConf = tableConfiguration;
 
     final Set<String> executorIds = new HashSet<>(initialAssociators.size());
@@ -106,7 +105,8 @@ public final class AllocatedTableImpl implements AllocatedTable {
     blockManager.init(executorIds);
 
     final ListenableFuture<?> initResultFuture =
-        tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus());
+        tableControlAgent.initTable(tableConf, executorIds, blockManager.getOwnershipStatus());
+
     initResultFuture.addListener(result -> stateMachine.setState(State.INITIALIZED));
     return initResultFuture;
   }
@@ -224,12 +224,39 @@ public final class AllocatedTableImpl implements AllocatedTable {
       return new CompletedFuture<>(new MigrationResult(false, msg, Collections.emptyList()));
     }
 
-    return migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks);
+    // can proceed only when there's no ongoing checkpoints
+    while (numOngoingCheckpoints.get() > 0) {
+      try {
+        LOG.log(Level.INFO, "Wait until ongoing checkpoints are completed.");
+        wait();
+      } catch (InterruptedException e) {
+        // ignore
+      }
+    }
+
+    numOngoingMigrations.incrementAndGet();
+
+    final ListenableFuture<MigrationResult> future =
+        migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks);
+    future.addListener(o -> {
+      if (numOngoingMigrations.decrementAndGet() == 0) {
+        synchronized (this) {
+          notifyAll();
+        }
+      }
+    });
+
+    return future;
   }
 
   @Override
   public Map<String, Set<Integer>> getPartitionInfo() {
     return blockManager.getPartitionInfo();
+  }
+
+  @Override
+  public List<String> getOwnershipStatus() {
+    return blockManager.getOwnershipStatus();
   }
 
   @Override
@@ -247,13 +274,45 @@ public final class AllocatedTableImpl implements AllocatedTable {
     final Set<String> executorsToDeleteTable = new HashSet<>(associators);
     executorsToDeleteTable.addAll(subscribers);
 
+    final ResultFuture<?> future = new ResultFuture<>();
+
     final ListenableFuture<?> dropResultFuture =
         tableControlAgent.dropTable(tableConf.getId(), executorsToDeleteTable);
     dropResultFuture.addListener(result -> {
       stateMachine.setState(State.DROPPED);
       tableManager.onDropTable(tableConf.getId());
+      future.onCompleted(null);
     });
-    return dropResultFuture;
+
+    return future;
+  }
+
+  @Override
+  public synchronized ListenableFuture<String> checkpoint() {
+    stateMachine.checkState(State.INITIALIZED);
+
+    // can proceed only when there's no ongoing checkpoints
+    while (numOngoingMigrations.get() > 0) {
+      try {
+        LOG.log(Level.INFO, "Wait until ongoing migrations are completed.");
+        wait();
+      } catch (InterruptedException e) {
+        // ignore
+      }
+    }
+
+    numOngoingCheckpoints.incrementAndGet();
+
+    final ListenableFuture<String> future = chkpManagerMaster.checkpoint(tableConf, blockManager.getAssociatorIds());
+    future.addListener(o -> {
+      if (numOngoingCheckpoints.decrementAndGet() == 0) {
+        synchronized (this) {
+          notifyAll();
+        }
+      }
+    });
+
+    return future;
   }
 
   @Override

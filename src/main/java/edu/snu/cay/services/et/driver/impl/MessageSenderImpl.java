@@ -26,6 +26,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -120,6 +121,59 @@ public final class MessageSenderImpl implements MessageSender {
       networkConnection.send(executorId, msg);
     } catch (final NetworkException e) {
       throw new RuntimeException("NetworkException while sending TableDrop message", e);
+    }
+  }
+
+  @Override
+  public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId) {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableChkpMsg.newBuilder()
+            .setType(TableChkpMsgType.ChkpStartMsg)
+            .setChkpId(chkpId)
+            .setChkpStartMsg(
+                ChkpStartMsg.newBuilder()
+                .setTableId(tableId)
+                .build())
+            .build(), TableChkpMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableChkpMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending ChkpStart message", e);
+    }
+  }
+
+  @Override
+  public void sendChkpLoadMsg(final String chkpId, final String executorId, final String tableId,
+                              final List<Integer> blockIdsToLoad, final boolean committed,
+                              @Nullable final List<String> blockOwnerList) {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TableChkpMsg.newBuilder()
+            .setType(TableChkpMsgType.ChkpLoadMsg)
+            .setChkpId(chkpId)
+            .setChkpLoadMsg(
+                ChkpLoadMsg.newBuilder()
+                    .setTableId(tableId)
+                    .setBlockIds(blockIdsToLoad)
+                    .setCommitted(committed)
+                    .setBlockOwners(blockOwnerList)
+                    .build())
+            .build(), TableChkpMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableChkpMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg))
+        .build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending ChkpLoad message", e);
     }
   }
 

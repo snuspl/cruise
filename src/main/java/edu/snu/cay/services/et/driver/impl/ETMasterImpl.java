@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.exceptions.ChkpNotExistException;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -63,6 +64,16 @@ public final class ETMasterImpl implements ETMaster {
       return tableManager.createTable(tableConf, initialAssociators);
     } catch (final InjectionException e) {
       throw new RuntimeException("The given table configuration is incomplete", e);
+    }
+  }
+
+  @Override
+  public ListenableFuture<AllocatedTable> createTable(final String checkpointId,
+                                                      final List<AllocatedExecutor> initialAssociators) {
+    try {
+      return tableManager.createTable(checkpointId, initialAssociators);
+    } catch (ChkpNotExistException e) {
+      throw new RuntimeException(e);
     }
   }
 

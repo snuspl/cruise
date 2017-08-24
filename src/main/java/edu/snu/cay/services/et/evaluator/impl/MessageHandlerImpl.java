@@ -51,15 +51,18 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class MessageHandlerImpl implements MessageHandler {
   private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
-  private static final int NUM_TABLE_CONTROL_MSG_THREADS = 8;
+
+  private static final int NUM_TBL_CTR_MSG_THREADS = 8;
   private static final int NUM_MIGRATION_MSG_THREADS = 8;
   private static final int NUM_METRIC_MSG_THREADS = 4;
-  private static final int NUM_TABLE_ACCESS_MSG_THREADS = 8;
+  private static final int NUM_TBL_ACS_MSG_THREADS = 8;
+  private static final int NUM_CHKP_THREADS = 8;
 
-  private ExecutorService tableCtrMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_CONTROL_MSG_THREADS);
-  private ExecutorService migrationMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MIGRATION_MSG_THREADS);
-  private ExecutorService metricMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_METRIC_MSG_THREADS);
-  private ExecutorService tableAccessMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_ACCESS_MSG_THREADS);
+  private final ExecutorService tableCtrMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TBL_CTR_MSG_THREADS);
+  private final ExecutorService migrationMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MIGRATION_MSG_THREADS);
+  private final ExecutorService metricMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_METRIC_MSG_THREADS);
+  private final ExecutorService tableAccessMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TBL_ACS_MSG_THREADS);
+  private final ExecutorService chkpMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_CHKP_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
 
@@ -69,6 +72,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture;
   private final InjectionFuture<MigrationExecutor> migrationExecutorFuture;
   private final InjectionFuture<MetricCollector> metricCollectorFuture;
+  private final InjectionFuture<ChkpManagerSlave> chkpManagerSlaveFuture;
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
@@ -77,7 +81,8 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
                              final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture,
                              final InjectionFuture<MigrationExecutor> migrationExecutorFuture,
-                             final InjectionFuture<MetricCollector> metricCollectorFuture) {
+                             final InjectionFuture<MetricCollector> metricCollectorFuture,
+                             final InjectionFuture<ChkpManagerSlave> chkpManagerSlaveFuture) {
     this.tablesFuture = tablesFuture;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
@@ -85,6 +90,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     this.remoteAccessSenderFuture = remoteAccessSenderFuture;
     this.migrationExecutorFuture = migrationExecutorFuture;
     this.metricCollectorFuture = metricCollectorFuture;
+    this.chkpManagerSlaveFuture = chkpManagerSlaveFuture;
   }
 
   @Override
@@ -98,6 +104,10 @@ public final class MessageHandlerImpl implements MessageHandler {
 
     case TableControlMsg:
       onTableControlMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableControlMsg.class));
+      break;
+
+    case TableChkpMsg:
+      onTableChkpMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableChkpMsg.class));
       break;
 
     case MigrationMsg:
@@ -257,6 +267,32 @@ public final class MessageHandlerImpl implements MessageHandler {
         throw new RuntimeException(e1);
       }
     }
+  }
+
+  private void onTableChkpMsg(final TableChkpMsg msg) {
+    chkpMsgExecutor.submit(() -> {
+      switch (msg.getType()) {
+      case ChkpStartMsg:
+        try {
+          chkpManagerSlaveFuture.get().checkpoint(msg.getChkpId(), msg.getChkpStartMsg().getTableId());
+        } catch (IOException | TableNotExistException e) {
+          throw new RuntimeException(e);
+        }
+        break;
+      case ChkpLoadMsg:
+        final ChkpLoadMsg chkpLoadMsg = msg.getChkpLoadMsg();
+        try {
+          chkpManagerSlaveFuture.get().loadChkp(msg.getChkpId(), chkpLoadMsg.getTableId(),
+              chkpLoadMsg.getBlockOwners(), chkpLoadMsg.getCommitted(), chkpLoadMsg.getBlockIds());
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        break;
+      default:
+        throw new RuntimeException("Unexpected msg type");
+      }
+      return;
+    });
   }
 
   private void onMetricMsg(final MetricMsg msg) {

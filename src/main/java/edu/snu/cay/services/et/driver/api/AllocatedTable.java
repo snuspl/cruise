@@ -47,11 +47,21 @@ public interface AllocatedTable {
    */
   TableConfiguration getTableConfiguration();
 
-    /**
+  /**
+   * @return a set of executors associated with the table
+   */
+  Set<String> getAssociatedExecutorIds();
+
+  /**
    * Returns a partition information of this table.
    * @return a map between an executor id and a set of block ids
    */
   Map<String, Set<Integer>> getPartitionInfo();
+
+  /**
+   * @return a list that contains block ownership status. Index of list is block Id.
+   */
+  List<String> getOwnershipStatus();
 
   /**
    * @param blockId id of the block to resolve its owner
@@ -60,9 +70,15 @@ public interface AllocatedTable {
   String getOwnerId(int blockId);
 
   /**
-   * @return a set of executors associated with the table
+   * Initializes {@link this} by allocating a table
+   * with a given {@code tableConfiguration} to {@code initialAssociators}.
+   * This method should be called once before other methods.
+   * @param tableConfiguration a table configuration
+   * @param initialAssociators a list of initial executors to be associated to a table
+   * @return a {@link ListenableFuture} for notifying the completion
    */
-  Set<String> getAssociatedExecutorIds();
+  ListenableFuture<?> init(TableConfiguration tableConfiguration,
+                           List<AllocatedExecutor> initialAssociators);
 
   /**
    * Loads an input data into a table with executors. Note that this method must be called after table init.
@@ -100,9 +116,12 @@ public interface AllocatedTable {
 
   /**
    * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
+   * Cannot proceed when there're ongoing checkpoints by {@link #checkpoint()}.
+   * This call will wait until ongoing checkpoints are completed.
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
+   * @return a future with migration result
    */
   ListenableFuture<MigrationResult> moveBlocks(String srcExecutorId,
                                                String dstExecutorId,
@@ -114,4 +133,12 @@ public interface AllocatedTable {
    * After this method, the table is completely removed from the system (e.g., master and executors).
    */
   ListenableFuture<?> drop();
+
+  /**
+   * Save a snapshot of current status of table.
+   * Cannot proceed when there're ongoing migrations by {@link #moveBlocks}.
+   * This call will wait until ongoing migrations are completed.
+   * @return a future with a checkpoint Id
+   */
+  ListenableFuture<String> checkpoint();
 }

@@ -53,7 +53,7 @@ public final class BlockStore<K, V, U> implements Iterable<Block<K, V, U>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void createEmptyBlock(final int blockId) throws BlockAlreadyExistsException {
-    if (blocks.putIfAbsent(blockId, new BlockImpl<>(updateFunction)) != null) {
+    if (blocks.putIfAbsent(blockId, new BlockImpl<>(blockId, updateFunction)) != null) {
       throw new BlockAlreadyExistsException(blockId);
     }
   }
@@ -65,7 +65,7 @@ public final class BlockStore<K, V, U> implements Iterable<Block<K, V, U>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void putBlock(final int blockId, final Map<K, V> data) throws BlockAlreadyExistsException {
-    final Block<K, V, U> block = new BlockImpl<>(updateFunction);
+    final Block<K, V, U> block = new BlockImpl<>(blockId, updateFunction);
     block.putAll(data);
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new BlockAlreadyExistsException(blockId);

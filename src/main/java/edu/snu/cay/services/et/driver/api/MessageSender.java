@@ -23,6 +23,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -54,6 +55,18 @@ public interface MessageSender {
                         String tableId);
 
   /**
+   * Sends a ChkpStartMsg to an executor to checkpoint the local table blocks to a file in local file system.
+   */
+  void sendChkpStartMsg(String chkpId, String executorId, String tableId);
+
+  /**
+   * Sends a ChkpLoadMsg to an executor to load checkpoint to restore a table.
+   * With {@code committed} parameter, this method can do for both committed blocks or un-committed blocks.
+   * When dealing with committed blocks, {@code blockOwnerList} is null.
+   */
+  void sendChkpLoadMsg(String chkpId, String executorId, String tableId,
+                       List<Integer> blockIdsToLoad, boolean committed, @Nullable List<String> blockOwnerList);
+ /**
    * Sends a OwnershipUpdateMsg that notifies ownership update in other executors.
    */
   void sendOwnershipUpdateMsg(String executorId,

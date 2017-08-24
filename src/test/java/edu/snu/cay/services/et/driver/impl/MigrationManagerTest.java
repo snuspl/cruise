@@ -30,6 +30,7 @@ import org.apache.reef.wake.EventHandler;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
@@ -316,6 +317,18 @@ public final class MigrationManagerTest {
 
     @Override
     public void sendTableDropMsg(final long opId, final String executorId, final String tableId) {
+
+    }
+
+    @Override
+    public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId) {
+
+    }
+
+    @Override
+    public void sendChkpLoadMsg(final String chkpId, final String executorId, final String tableId,
+                                final List<Integer> blockIdsToLoad, final boolean committed,
+                                @Nullable final List<String> blockOwnerList) {
 
     }
 

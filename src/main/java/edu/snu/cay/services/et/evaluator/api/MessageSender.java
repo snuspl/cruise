@@ -87,6 +87,21 @@ public interface MessageSender {
   void sendTableDropAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
+   * Sends a ChkpDoneMsg that responds to ChkpStartMsg.
+   */
+  void sendChkpDoneMsg(String chkpId, List<Integer> blockIds) throws NetworkException;
+
+  /**
+   * Sends a ChkpCommitMsg that notify master that the checkpoint has been moved to final location.
+   */
+  void sendChkpCommitMsg(String chkpId) throws NetworkException;
+
+  /**
+   * Sends a ChkpLoadDoneMsg that responds to ChkpLoadMsg.
+   */
+  void sendChkpLoadDoneMsg(String chkpId) throws NetworkException;
+
+  /**
    * Sends a OwnershipReqMsg that requests up-to-date owner of a block.
    */
   void sendOwnershipReqMsg(String tableId, int blockId) throws NetworkException;

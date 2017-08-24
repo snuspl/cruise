@@ -54,6 +54,18 @@ public interface ETMaster {
                                                List<AllocatedExecutor> initialAssociators);
 
   /**
+   * Creates a table from a checkpoint with id {@code checkpointId}.
+   * It evenly partitions table blocks to {@code initialAssociators}.
+   * So it requires at least one executor to be associated with the table.
+   * @param checkpointId a checkpoint Id
+   * @param initialAssociators a list of executors to be associated to a table
+   * @return a {@link ListenableFuture} for a {@link AllocatedTable},
+   *         which is a master-side representation of Table allocated in the associated executors
+   */
+  ListenableFuture<AllocatedTable> createTable(String checkpointId,
+                                               List<AllocatedExecutor> initialAssociators);
+
+  /**
    * Return an existing executor whose id is {@code executorId}.
    * @param executorId an executor id
    * @return {@link AllocatedExecutor} whose id is {@code executorId}
