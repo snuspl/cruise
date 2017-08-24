@@ -129,10 +129,10 @@ final class ModelChkpManager {
       final List<AllocatedExecutor> runningWorkers = new ArrayList<>(etTaskRunnerFuture.get().getWorkerExecutors());
       final List<AllocatedExecutor> runningServers = new ArrayList<>(etTaskRunnerFuture.get().getServerExecutors());
 
+      final Future<AllocatedTable> inputTableFuture = etMasterFuture.get().createTable(inputChkpId, runningWorkers);
       final Future<AllocatedTable> modelTableFuture = etMasterFuture.get().createTable(modelChkpId, runningServers);
       final AllocatedTable restoredModelTable = modelTableFuture.get();
       restoredModelTable.subscribe(runningWorkers).get();
-      final Future<AllocatedTable> inputTableFuture = etMasterFuture.get().createTable(inputChkpId, runningWorkers);
       final AllocatedTable restoredInputTable = inputTableFuture.get();
 
 
