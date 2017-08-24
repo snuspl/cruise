@@ -83,7 +83,7 @@ final class TableControlAgent {
    * @param tableId a table id
    * @param executorId an executor id
    */
-  synchronized void onTableInitAck(final long opId, final String tableId, final String executorId) {
+  void onTableInitAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.",
         new Object[]{tableId, executorId});
     final AggregateFuture<Void> resultFuture = pendingInit.get(opId);
@@ -93,9 +93,8 @@ final class TableControlAgent {
       throw new RuntimeException("The init operation was already handled. opId: " + opId);
     }
 
-    resultFuture.onCompleted(null);
-
-    if (resultFuture.isDone()) {
+    final boolean isDone = resultFuture.onCompleted(null);
+    if (isDone) {
       pendingInit.remove(opId);
     }
   }
@@ -135,7 +134,7 @@ final class TableControlAgent {
    * @param tableId an identifier of table
    * @param executorId and identifier of executor
    */
-  synchronized void onTableLoadAck(final long opId, final String tableId, final String executorId) {
+  void onTableLoadAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} loaded data.",
         new Object[]{tableId, executorId});
     final AggregateFuture<Void> resultFuture = pendingLoad.get(opId);
@@ -145,9 +144,8 @@ final class TableControlAgent {
       throw new RuntimeException("The load operation was already handled. opId: " + opId);
     }
 
-    resultFuture.onCompleted(null);
-
-    if (resultFuture.isDone()) {
+    final boolean isDone = resultFuture.onCompleted(null);
+    if (isDone) {
       pendingLoad.remove(opId);
     }
   }
@@ -177,7 +175,7 @@ final class TableControlAgent {
    * @param tableId a table id
    * @param executorId an executor id
    */
-  synchronized void onTableDropAck(final long opId, final String tableId, final String executorId) {
+  void onTableDropAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is dropped.", new Object[]{tableId, executorId});
     final AggregateFuture<Void> resultFuture = pendingDrop.get(opId);
     if (resultFuture == null) {
@@ -186,9 +184,8 @@ final class TableControlAgent {
       throw new RuntimeException("The drop operation was already handled. opId: " + opId);
     }
 
-    resultFuture.onCompleted(null);
-
-    if (resultFuture.isDone()) {
+    final boolean isDone = resultFuture.onCompleted(null);
+    if (isDone) {
       pendingDrop.remove(opId);
     }
   }
@@ -220,7 +217,7 @@ final class TableControlAgent {
    * @param tableId a table id
    * @param executorId an executor id
    */
-  synchronized void onOwnershipSyncAck(final long opId, final String tableId, final String executorId) {
+  void onOwnershipSyncAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Ownership sync of table {0} in {1} is finished. opId: {2}",
         new Object[]{tableId, executorId, opId});
     final AggregateFuture<Void> resultFuture = pendingSync.get(opId);
@@ -230,9 +227,8 @@ final class TableControlAgent {
       throw new RuntimeException("The sync operation was already handled. opId: " + opId);
     }
 
-    resultFuture.onCompleted(null);
-
-    if (resultFuture.isDone()) {
+    final boolean isDone = resultFuture.onCompleted(null);
+    if (isDone) {
       pendingSync.remove(opId);
     }
   }

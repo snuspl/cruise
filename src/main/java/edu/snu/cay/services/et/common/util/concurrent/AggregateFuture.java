@@ -47,7 +47,7 @@ public class AggregateFuture<V> implements ListenableFuture<List<V>> {
   /**
    * Sets the result of the completed operation.
    */
-  public synchronized void onCompleted(final V result) {
+  public boolean onCompleted(final V result) {
     if (isDone()) {
       throw new IllegalStateException("The operation associated with this Future was already complete");
     }
@@ -58,11 +58,13 @@ public class AggregateFuture<V> implements ListenableFuture<List<V>> {
     if (isDone()) {
       listeners.forEach(listener -> listener.onNext(results));
       listeners.clear();
+      return true;
     }
+    return false;
   }
 
   @Override
-  public synchronized void addListener(final EventHandler<List<V>> listener) {
+  public void addListener(final EventHandler<List<V>> listener) {
     if (isDone()) {
       listener.onNext(results);
     } else {

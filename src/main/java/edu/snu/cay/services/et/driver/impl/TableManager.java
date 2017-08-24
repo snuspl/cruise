@@ -95,11 +95,10 @@ final class TableManager {
    * It should be called only by {@link AllocatedTable#drop()}.
    * @param tableId an identifier of a table
    */
-  synchronized void onDropTable(final String tableId) {
-    if (!allocatedTableMap.containsKey(tableId)) {
+  void onDropTable(final String tableId) {
+    if (allocatedTableMap.remove(tableId) == null) {
       throw new RuntimeException(String.format("Table %s does not exist.", tableId));
     }
-    allocatedTableMap.remove(tableId);
   }
 
   /**
@@ -107,7 +106,7 @@ final class TableManager {
    * @return {@link AllocatedTable} whose id is {@code tableId}
    * @throws TableNotExistException
    */
-  synchronized AllocatedTable getAllocatedTable(final String tableId) throws TableNotExistException {
+  AllocatedTable getAllocatedTable(final String tableId) throws TableNotExistException {
     final AllocatedTable table = allocatedTableMap.get(tableId);
     if (table == null) {
       throw new TableNotExistException(tableId + " does not exist.");

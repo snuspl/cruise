@@ -51,14 +51,15 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class MessageHandlerImpl implements MessageHandler {
   private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
-  private static final int NUM_OWNERSHIP_UPDATE_THREADS = 4;
-  private static final int NUM_TABLE_DROP_THREADS = 4;
-  private static final int NUM_TABLE_LOAD_THREADS = 2;
+  private static final int NUM_TABLE_CONTROL_MSG_THREADS = 8;
+  private static final int NUM_MIGRATION_MSG_THREADS = 8;
+  private static final int NUM_METRIC_MSG_THREADS = 4;
+  private static final int NUM_TABLE_ACCESS_MSG_THREADS = 8;
 
-  private final ExecutorService ownershipUpdateExecutor =
-      CatchableExecutors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
-  private final ExecutorService tableDropExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_DROP_THREADS);
-  private final ExecutorService tableLoadExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_LOAD_THREADS);
+  private ExecutorService tableCtrMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_CONTROL_MSG_THREADS);
+  private ExecutorService migrationMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MIGRATION_MSG_THREADS);
+  private ExecutorService metricMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_METRIC_MSG_THREADS);
+  private ExecutorService tableAccessMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_ACCESS_MSG_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
 
@@ -100,7 +101,7 @@ public final class MessageHandlerImpl implements MessageHandler {
       break;
 
     case MigrationMsg:
-      migrationExecutorFuture.get().onNext(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MigrationMsg.class));
+      onMigrationMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MigrationMsg.class));
       break;
 
     case MetricMsg:
@@ -112,48 +113,58 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
+  private void onMigrationMsg(final MigrationMsg msg) {
+    migrationMsgExecutor.submit(() -> migrationExecutorFuture.get().onNext(msg));
+  }
+
   private void onTableAccessMsg(final TableAccessMsg msg) {
-    final Long opId = msg.getOperationId();
-    switch (msg.getType()) {
-    case TableAccessReqMsg:
-      remoteAccessHandlerFuture.get().onTableAccessReqMsg(opId, msg.getTableAccessReqMsg());
-      break;
+    tableAccessMsgExecutor.submit(() -> {
+      final Long opId = msg.getOperationId();
+      switch (msg.getType()) {
+      case TableAccessReqMsg:
+        remoteAccessHandlerFuture.get().onTableAccessReqMsg(opId, msg.getTableAccessReqMsg());
+        break;
 
-    case TableAccessResMsg:
-      remoteAccessSenderFuture.get().onTableAccessResMsg(opId, msg.getTableAccessResMsg());
-      break;
+      case TableAccessResMsg:
+        remoteAccessSenderFuture.get().onTableAccessResMsg(opId, msg.getTableAccessResMsg());
+        break;
 
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
+      default:
+        throw new RuntimeException("Unexpected message: " + msg);
+      }
+      return;
+    });
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {
-    final Long opId = msg.getOperationId();
-    switch (msg.getType()) {
-    case TableInitMsg:
-      onTableInitMsg(opId, msg.getTableInitMsg());
-      break;
+    tableCtrMsgExecutor.submit(() -> {
+      final Long opId = msg.getOperationId();
+      switch (msg.getType()) {
+      case TableInitMsg:
+        onTableInitMsg(opId, msg.getTableInitMsg());
+        break;
 
-    case TableLoadMsg:
-      onTableLoadMsg(opId, msg.getTableLoadMsg());
-      break;
+      case TableLoadMsg:
+        onTableLoadMsg(opId, msg.getTableLoadMsg());
+        break;
 
-    case TableDropMsg:
-      onTableDropMsg(opId, msg.getTableDropMsg());
-      break;
+      case TableDropMsg:
+        onTableDropMsg(opId, msg.getTableDropMsg());
+        break;
 
-    case OwnershipUpdateMsg:
-      onOwnershipUpdateMsg(msg.getOwnershipUpdateMsg());
-      break;
+      case OwnershipUpdateMsg:
+        onOwnershipUpdateMsg(msg.getOwnershipUpdateMsg());
+        break;
 
-    case OwnershipSyncMsg:
-      onOwnershipSyncMsg(opId, msg.getOwnershipSyncMsg());
-      break;
+      case OwnershipSyncMsg:
+        onOwnershipSyncMsg(opId, msg.getOwnershipSyncMsg());
+        break;
 
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
+      default:
+        throw new RuntimeException("Unexpected message: " + msg);
+      }
+      return;
+    });
   }
 
   private void onTableInitMsg(final long opId, final TableInitMsg msg) {
@@ -181,18 +192,16 @@ public final class MessageHandlerImpl implements MessageHandler {
       final String serializedHdfsSplitInfo = msg.getFileSplit();
       final String tableId = msg.getTableId();
       final BulkDataLoader bulkDataLoader = tablesFuture.get().getTableComponents(tableId).getBulkDataLoader();
-      tableLoadExecutor.submit(() -> {
-        try {
-          bulkDataLoader.load(tableId, serializedHdfsSplitInfo);
-          LOG.log(Level.INFO, "Bulk-loading for Table {0} has been done. opId: {1}", new Object[]{tableId, opId});
+      try {
+        bulkDataLoader.load(tableId, serializedHdfsSplitInfo);
+        LOG.log(Level.INFO, "Bulk-loading for Table {0} has been done. opId: {1}", new Object[]{tableId, opId});
 
-          msgSenderFuture.get().sendTableLoadAckMsg(opId, tableId);
-        } catch (IOException e) {
-          throw new RuntimeException("IOException while loading data", e);
-        } catch (NetworkException | TableNotExistException | KeyGenerationException e) {
-          throw new RuntimeException(e);
-        }
-      });
+        msgSenderFuture.get().sendTableLoadAckMsg(opId, tableId);
+      } catch (IOException e) {
+        throw new RuntimeException("IOException while loading data", e);
+      } catch (NetworkException | TableNotExistException | KeyGenerationException e) {
+        throw new RuntimeException(e);
+      }
 
     } catch (TableNotExistException e) {
       throw new RuntimeException(e);
@@ -201,42 +210,38 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableDropMsg(final long opId, final TableDropMsg msg) {
     // remove a table after flushing out all operations for the table in sender and handler
-    tableDropExecutor.submit(() -> {
-      final String tableId = msg.getTableId();
+    final String tableId = msg.getTableId();
 
-      try {
-        final TableComponents tableComponents = tablesFuture.get().getTableComponents(tableId);
+    try {
+      final TableComponents tableComponents = tablesFuture.get().getTableComponents(tableId);
 
-        // op processing is impossible without table metadata and ownership cache
-        remoteAccessSenderFuture.get().waitOpsTobeFlushed(tableId);
-        remoteAccessHandlerFuture.get().waitOpsTobeFlushed(tableId);
+      // op processing is impossible without table metadata and ownership cache
+      remoteAccessSenderFuture.get().waitOpsTobeFlushed(tableId);
+      remoteAccessHandlerFuture.get().waitOpsTobeFlushed(tableId);
 
-        tableComponents.getOwnershipCache().completeAllOngoingSync();
-        tablesFuture.get().remove(tableId);
+      tableComponents.getOwnershipCache().completeAllOngoingSync();
+      tablesFuture.get().remove(tableId);
 
-      } catch (TableNotExistException e) {
-        LOG.log(Level.WARNING, String.format("Table %s does not exist", tableId), e);
-        // send a response message despite there's no table to drop
-      }
+    } catch (TableNotExistException e) {
+      LOG.log(Level.WARNING, String.format("Table %s does not exist", tableId), e);
+      // send a response message despite there's no table to drop
+    }
 
-      try {
-        msgSenderFuture.get().sendTableDropAckMsg(opId, tableId);
-      } catch (NetworkException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    try {
+      msgSenderFuture.get().sendTableDropAckMsg(opId, tableId);
+    } catch (NetworkException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {
-    ownershipUpdateExecutor.submit(() -> {
-      try {
-        final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId())
-            .getOwnershipCache();
-        ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
-      } catch (final TableNotExistException e) {
-        // ignore. It may happen when dropping table, because unsubscription is done after drop is completed.
-      }
-    });
+    try {
+      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId())
+          .getOwnershipCache();
+      ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
+    } catch (final TableNotExistException e) {
+      // ignore. It may happen when dropping table, because unsubscription is done after drop is completed.
+    }
   }
 
   private void onOwnershipSyncMsg(final long opId, final OwnershipSyncMsg msg) {
@@ -255,30 +260,32 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onMetricMsg(final MetricMsg msg) {
-    if (msg.getType().equals(MetricMsgType.MetricControlMsg)) {
-      final MetricControlMsg controlMsg = msg.getMetricControlMsg();
+    metricMsgExecutor.submit(() -> {
+      if (msg.getType().equals(MetricMsgType.MetricControlMsg)) {
+        final MetricControlMsg controlMsg = msg.getMetricControlMsg();
 
-      if (controlMsg.getType().equals(MetricControlType.Start)) {
-        final long metricSendingPeriodMs;
-        final Codec metricCodec;
+        if (controlMsg.getType().equals(MetricControlType.Start)) {
+          final long metricSendingPeriodMs;
+          final Codec metricCodec;
 
-        try {
-          final Configuration metricConf = confSerializer.fromString(controlMsg.getSerializedMetricConf());
-          final Injector injector = Tang.Factory.getTang().newInjector(metricConf);
+          try {
+            final Configuration metricConf = confSerializer.fromString(controlMsg.getSerializedMetricConf());
+            final Injector injector = Tang.Factory.getTang().newInjector(metricConf);
 
-          metricSendingPeriodMs = injector.getNamedInstance(MetricFlushPeriodMs.class);
-          metricCodec = injector.getNamedInstance(CustomMetricCodec.class);
-        } catch (IOException | InjectionException e) {
-          throw new RuntimeException("Exception while processing a given serialized metric conf", e);
+            metricSendingPeriodMs = injector.getNamedInstance(MetricFlushPeriodMs.class);
+            metricCodec = injector.getNamedInstance(CustomMetricCodec.class);
+          } catch (IOException | InjectionException e) {
+            throw new RuntimeException("Exception while processing a given serialized metric conf", e);
+          }
+
+          metricCollectorFuture.get().start(metricSendingPeriodMs, metricCodec);
+
+        } else { // MetricControlType.Stop
+          metricCollectorFuture.get().stop();
         }
-
-        metricCollectorFuture.get().start(metricSendingPeriodMs, metricCodec);
-
-      } else { // MetricControlType.Stop
-        metricCollectorFuture.get().stop();
+      } else {
+        throw new RuntimeException("Unexpected msg type");
       }
-    } else {
-      throw new RuntimeException("Unexpected msg type");
-    }
+    });
   }
 }

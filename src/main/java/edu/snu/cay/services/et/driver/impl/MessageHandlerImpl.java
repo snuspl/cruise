@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -33,6 +34,7 @@ import javax.inject.Inject;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,6 +44,15 @@ import java.util.logging.Logger;
 @DriverSide
 public final class MessageHandlerImpl implements MessageHandler {
   private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
+  private static final int NUM_TABLE_CONTROL_MSG_THREADS = 8;
+  private static final int NUM_MIGRATION_MSG_THREADS = 8;
+  private static final int NUM_METRIC_MSG_THREADS = 4;
+  private static final int NUM_TABLE_ACCESS_MSG_THREADS = 8;
+
+  private ExecutorService tableCtrMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_CONTROL_MSG_THREADS);
+  private ExecutorService migrationMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MIGRATION_MSG_THREADS);
+  private ExecutorService metricMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_METRIC_MSG_THREADS);
+  private ExecutorService tableAccessMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TABLE_ACCESS_MSG_THREADS);
 
   private final String driverId;
 
@@ -104,34 +115,37 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableAccessMsg(final String srcId, final TableAccessMsg tableAccessMsg) {
-    fallbackManagerFuture.get().onTableAccessReqMessage(srcId, tableAccessMsg);
+    tableAccessMsgExecutor.submit(() -> fallbackManagerFuture.get().onTableAccessReqMessage(srcId, tableAccessMsg));
   }
 
   private void onMetricMsg(final String srcId, final MetricMsg metricMsg) {
-    metricReceiver.get().onMetricMsg(srcId, metricMsg);
+    metricMsgExecutor.submit(() -> metricReceiver.get().onMetricMsg(srcId, metricMsg));
   }
 
   private void onTableControlMsg(final String srcId, final TableControlMsg msg) {
-    final Long opId = msg.getOperationId();
-    switch (msg.getType()) {
-    case TableInitAckMsg:
-      onTableInitAckMsg(opId, msg.getTableInitAckMsg());
-      break;
-    case TableLoadAckMsg:
-      onTableLoadAckMsg(opId, msg.getTableLoadAckMsg());
-      break;
-    case TableDropAckMsg:
-      onTableDropAckMsg(opId, msg.getTableDropAckMsg());
-      break;
-    case OwnershipSyncAckMsg:
-      onOwnershipSyncAckMsg(opId, msg.getOwnershipSyncAckMsg());
-      break;
-    case OwnershipReqMsg:
-      onOwnershipReqMsg(srcId, msg.getOwnershipReqMsg());
-      break;
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
+    tableCtrMsgExecutor.submit(() -> {
+      final Long opId = msg.getOperationId();
+      switch (msg.getType()) {
+      case TableInitAckMsg:
+        onTableInitAckMsg(opId, msg.getTableInitAckMsg());
+        break;
+      case TableLoadAckMsg:
+        onTableLoadAckMsg(opId, msg.getTableLoadAckMsg());
+        break;
+      case TableDropAckMsg:
+        onTableDropAckMsg(opId, msg.getTableDropAckMsg());
+        break;
+      case OwnershipSyncAckMsg:
+        onOwnershipSyncAckMsg(opId, msg.getOwnershipSyncAckMsg());
+        break;
+      case OwnershipReqMsg:
+        onOwnershipReqMsg(srcId, msg.getOwnershipReqMsg());
+        break;
+      default:
+        throw new RuntimeException("Unexpected message: " + msg);
+      }
+      return;
+    });
   }
 
   private void onTableInitAckMsg(final long opId, final TableInitAckMsg msg) {
@@ -173,62 +187,65 @@ public final class MessageHandlerImpl implements MessageHandler {
    * @param msg a migration msg
    */
   private void onMigrationMsg(final MigrationMsg msg) {
-    final long opId = msg.getOperationId();
-    final int blockId;
-    final boolean ownershipMovedMsgArrivedFirst;
+    migrationMsgExecutor.submit(() -> {
+      final long opId = msg.getOperationId();
+      final int blockId;
+      final boolean ownershipMovedMsgArrivedFirst;
 
-    switch (msg.getType()) {
-    case OwnershipMovedMsg:
-      blockId = msg.getOwnershipMovedMsg().getBlockId();
+      switch (msg.getType()) {
+      case OwnershipMovedMsg:
+        blockId = msg.getOwnershipMovedMsg().getBlockId();
 
-      // Handles the OwnershipAckMsg from the sender that reports an update of a block's ownership.
-      migrationManagerFuture.get().ownershipMoved(opId, blockId);
+        // Handles the OwnershipAckMsg from the sender that reports an update of a block's ownership.
+        migrationManagerFuture.get().ownershipMoved(opId, blockId);
 
-      synchronized (migrationMsgArrivedBlockIds) {
-        if (migrationMsgArrivedBlockIds.contains(blockId)) {
-          migrationMsgArrivedBlockIds.remove(blockId);
-          ownershipMovedMsgArrivedFirst = false;
-        } else {
-          migrationMsgArrivedBlockIds.add(blockId);
-          ownershipMovedMsgArrivedFirst = true;
-        }
-      }
-
-      if (!ownershipMovedMsgArrivedFirst) {
-        // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully.
-        migrationManagerFuture.get().dataMoved(opId, blockId);
-      }
-      break;
-
-    case DataMovedMsg:
-      blockId = msg.getDataMovedMsg().getBlockId();
-      final boolean moveDataAndOwnershipTogether = msg.getDataMovedMsg().getMoveOwnershipTogether();
-
-      if (moveDataAndOwnershipTogether) {
-        // for immutable tables, ET migrates data and ownership of block together
-        migrationManagerFuture.get().dataAndOwnershipMoved(opId, blockId);
-
-      } else {
         synchronized (migrationMsgArrivedBlockIds) {
           if (migrationMsgArrivedBlockIds.contains(blockId)) {
             migrationMsgArrivedBlockIds.remove(blockId);
-            ownershipMovedMsgArrivedFirst = true;
+            ownershipMovedMsgArrivedFirst = false;
           } else {
             migrationMsgArrivedBlockIds.add(blockId);
-            ownershipMovedMsgArrivedFirst = false;
+            ownershipMovedMsgArrivedFirst = true;
           }
         }
 
-        if (ownershipMovedMsgArrivedFirst) {
-          // Handles DataMovedMsg from the sender
-          // that reports data migration for a block has been finished successfully.
+        if (!ownershipMovedMsgArrivedFirst) {
+          // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully
           migrationManagerFuture.get().dataMoved(opId, blockId);
         }
-      }
-      break;
+        break;
 
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
+      case DataMovedMsg:
+        blockId = msg.getDataMovedMsg().getBlockId();
+        final boolean moveDataAndOwnershipTogether = msg.getDataMovedMsg().getMoveOwnershipTogether();
+
+        if (moveDataAndOwnershipTogether) {
+          // for immutable tables, ET migrates data and ownership of block together
+          migrationManagerFuture.get().dataAndOwnershipMoved(opId, blockId);
+
+        } else {
+          synchronized (migrationMsgArrivedBlockIds) {
+            if (migrationMsgArrivedBlockIds.contains(blockId)) {
+              migrationMsgArrivedBlockIds.remove(blockId);
+              ownershipMovedMsgArrivedFirst = true;
+            } else {
+              migrationMsgArrivedBlockIds.add(blockId);
+              ownershipMovedMsgArrivedFirst = false;
+            }
+          }
+
+          if (ownershipMovedMsgArrivedFirst) {
+            // Handles DataMovedMsg from the sender
+            // that reports data migration for a block has been finished successfully.
+            migrationManagerFuture.get().dataMoved(opId, blockId);
+          }
+        }
+        break;
+
+      default:
+        throw new RuntimeException("Unexpected message: " + msg);
+      }
+      return;
+    });
   }
 }
