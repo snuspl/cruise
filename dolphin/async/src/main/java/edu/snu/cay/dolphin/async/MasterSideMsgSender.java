@@ -61,6 +61,11 @@ final class MasterSideMsgSender {
     }
   }
 
+  /**
+   * Send a response msg for model evaluation request from a worker.
+   * @param workerId a worker id
+   * @param doNext a boolean indicating whether a worker do one more evaluation or not
+   */
   void sendModelEvalAnsMsg(final String workerId, final boolean doNext) {
     final DolphinMsg msg = DolphinMsg.newBuilder()
         .setJobId(dolphinJobId)
