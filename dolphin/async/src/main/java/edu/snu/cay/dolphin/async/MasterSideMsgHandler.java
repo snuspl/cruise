@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;
+  private final InjectionFuture<BatchProgressTracker> batchProgressTrackerFuture;
   private final InjectionFuture<ModelChkpManager> modelChkpManagerFuture;
 
   private static final int NUM_PROGRESS_MSG_THREADS = 8;
@@ -42,9 +43,11 @@ public final class MasterSideMsgHandler {
   @Inject
   private MasterSideMsgHandler(final InjectionFuture<WorkerStateManager> workerStateManagerFuture,
                                final InjectionFuture<ProgressTracker> progressTrackerFuture,
+                               final InjectionFuture<BatchProgressTracker> batchProgressTrackerFuture,
                                final InjectionFuture<ModelChkpManager> modelChkpManagerFuture) {
     this.workerStateManagerFuture = workerStateManagerFuture;
     this.progressTrackerFuture = progressTrackerFuture;
+    this.batchProgressTrackerFuture = batchProgressTrackerFuture;
     this.modelChkpManagerFuture = modelChkpManagerFuture;
   }
 
@@ -54,7 +57,17 @@ public final class MasterSideMsgHandler {
   public void onDolphinMsg(final String srcId, final DolphinMsg dolphinMsg) {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
-      progressMsgExecutor.submit(() -> progressTrackerFuture.get().onProgressMsg(dolphinMsg.getProgressMsg()));
+      final ProgressMsg progressMsg = dolphinMsg.getProgressMsg();
+      switch (progressMsg.getType()) {
+      case Batch:
+        progressMsgExecutor.submit(() -> batchProgressTrackerFuture.get().onProgressMsg(progressMsg));
+        break;
+      case Epoch:
+        progressMsgExecutor.submit(() -> progressTrackerFuture.get().onProgressMsg(progressMsg));
+        break;
+      default:
+        throw new RuntimeException("Unexpected msg type");
+      }
       break;
     case SyncMsg:
       syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg()));
