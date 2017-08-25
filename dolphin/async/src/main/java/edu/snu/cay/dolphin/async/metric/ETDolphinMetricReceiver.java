@@ -20,7 +20,9 @@ import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.avro.MetricMsgType;
 import edu.snu.cay.services.et.avro.MetricReportMsg;
+import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -39,16 +41,20 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
 
   private final MetricManager metricManager;
 
+  private final ETMaster etMaster;
+
   private final String modelTableId;
   private final String inputTableId;
 
   @Inject
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
+                          final ETMaster etMaster,
                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                           @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
+    this.etMaster = etMaster;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
   }
@@ -88,7 +94,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
       final Map<String, Integer> tableToNumBlocks = metricReportMsg.getTableToNumBlocks();
       final String hostname = metricReportMsg.getHostname();
-
+      
       switch (workerMetrics.getType()) {
       case BatchMetrics:
         final BatchMetrics batchMetrics = workerMetrics.getBatchMetrics();
@@ -104,8 +110,14 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       default:
         throw new RuntimeException("Unknown message type");
       }
-
-      LOG.log(Level.INFO, "Received a worker metric from {0}: {1}", new Object[] {srcId, workerMetrics});
+      
+      try {
+        final int numWorkers = etMaster.getTable(inputTableId).getPartitionInfo().size();
+        LOG.log(Level.INFO, "Received a worker metric from {0} (num running workers: {1}): {2}",
+            new Object[] {srcId, numWorkers, workerMetrics});
+      } catch (TableNotExistException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
