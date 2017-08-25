@@ -54,7 +54,7 @@ public final class StreamingSerializableCodec<T extends Serializable> implements
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
          DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(obj, daos);
-      return baos.toByteArray();
+      return baos.getByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }

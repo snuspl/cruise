@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.utils.ByteArrayOutputStream;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -36,7 +37,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(array));
          DataOutputStream dos = new DataOutputStream(baos)) {
       encodeToStream(array, dos);
-      return baos.toByteArray();
+      return baos.getByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
