@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.serialization;
 
+import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -42,7 +43,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
          DataOutputStream dos = new DataOutputStream(baos)) {
       encodeToStream(vector, dos);
-      return baos.toByteArray();
+      return baos.getByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
