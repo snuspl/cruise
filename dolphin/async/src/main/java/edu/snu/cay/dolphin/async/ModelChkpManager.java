@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.metric.MetricManager;
+import edu.snu.cay.services.et.common.util.concurrent.AggregateFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -57,6 +59,8 @@ final class ModelChkpManager {
 
   private final InjectionFuture<MasterSideMsgSender> msgSender;
 
+  private final InjectionFuture<MetricManager> metricManagerFuture;
+
   private final AtomicInteger workerCount = new AtomicInteger(0);
   private final AtomicInteger chkpCounter = new AtomicInteger(0);
   private final AtomicBoolean restoreStarted = new AtomicBoolean(false);
@@ -67,11 +71,13 @@ final class ModelChkpManager {
   private ModelChkpManager(final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<ETTaskRunner> etTaskRunnerFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
+                           final InjectionFuture<MetricManager> metricManagerFuture,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.etMasterFuture = etMasterFuture;
     this.etTaskRunnerFuture = etTaskRunnerFuture;
     this.msgSender = msgSender;
+    this.metricManagerFuture = metricManagerFuture;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
   }
@@ -151,15 +157,24 @@ final class ModelChkpManager {
    */
   void createCheckpoint() {
     try {
+      metricManagerFuture.get().pauseMetricCollection();
+
       final ListenableFuture<String> inputChkpIdFuture = etMasterFuture.get().getTable(inputTableId).checkpoint();
       final ListenableFuture<String> modelChkpIdFuture = etMasterFuture.get().getTable(modelTableId).checkpoint();
 
       final int idx = chkpCounter.getAndIncrement();
 
-      inputChkpIdFuture.addListener(chkpId ->
-          LOG.log(Level.INFO, "{0}-th input checkpoint is created. Checkpoint Ids: {1}", new Object[] {idx, chkpId}));
-      modelChkpIdFuture.addListener(chkpId ->
-          LOG.log(Level.INFO, "{0}-th model checkpoint is created. Checkpoint Ids: {1}", new Object[] {idx, chkpId}));
+      final AggregateFuture<Void> future = new AggregateFuture<>(2);
+      future.addListener(o -> metricManagerFuture.get().resumeMetricCollection());
+
+      inputChkpIdFuture.addListener(chkpId -> {
+        LOG.log(Level.INFO, "{0}-th input checkpoint is created. Checkpoint Ids: {1}", new Object[] {idx, chkpId});
+        future.onCompleted(null);
+      });
+      modelChkpIdFuture.addListener(chkpId -> {
+        LOG.log(Level.INFO, "{0}-th model checkpoint is created. Checkpoint Ids: {1}", new Object[]{idx, chkpId});
+        future.onCompleted(null);
+      });
 
       final Future[] chkpFuture = {inputChkpIdFuture, modelChkpIdFuture};
       checkpointIdFutures.add(chkpFuture);

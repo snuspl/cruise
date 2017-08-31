@@ -30,6 +30,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -76,6 +78,8 @@ public final class MetricManager {
    */
   private final Map<String, Integer> evalIdToMiniBatchCounter = new ConcurrentHashMap<>();
 
+  private final Set<String> skippedEvalIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
   /**
    * Constructor of MetricManager.
    */
@@ -98,7 +102,7 @@ public final class MetricManager {
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
   void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
-    if (metricCollectionEnabled) {
+    if (metricCollectionEnabled && metricCollectionPauseCount.get() == 0) {
       if (isValidSource(workerId, numBlockByEvalIdForWorker)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
@@ -126,7 +130,7 @@ public final class MetricManager {
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
   void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
-    if (metricCollectionEnabled) {
+    if (metricCollectionEnabled && metricCollectionPauseCount.get() == 0) {
       if (isValidSource(serverId, numBlockByEvalIdForServer)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
@@ -203,6 +207,19 @@ public final class MetricManager {
     metricCollectionEnabled = true;
   }
 
+  private final AtomicInteger metricCollectionPauseCount = new AtomicInteger(0);
+
+  public void pauseMetricCollection() {
+    final int count = metricCollectionPauseCount.incrementAndGet();
+    LOG.log(Level.INFO, "Pause metric collection. Pause count: {0}", count);
+  }
+
+  public void resumeMetricCollection() {
+    skippedEvalIds.clear();
+    final int count = metricCollectionPauseCount.decrementAndGet();
+    LOG.log(Level.INFO, "Pause metric collection. Pause count: {0}", count);
+  }
+
   /**
    * Loads information required for metric validation.
    * Any information to be used for metric validation may be added here
@@ -251,7 +268,7 @@ public final class MetricManager {
 
     private void storeWorkerMiniBatchMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
       synchronized (workerEvalMiniBatchParams) {
-        if (!initialMetricsToSkip(evalParams) &&
+        if (!initialMetricsToSkip(evalParams) && !isCorruptedMetricsToSkip(evalParams) &&
             isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
           workerEvalMiniBatchParams.computeIfAbsent(workerId, x -> new ArrayList<>()).add(evalParams);
         }
@@ -283,6 +300,14 @@ public final class MetricManager {
             new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numBlocks});
         return false;
       }
+    }
+
+    private boolean isCorruptedMetricsToSkip(final WorkerEvaluatorParameters evalParams) {
+      final boolean toSkip = skippedEvalIds.add(evalParams.getId());
+      if (toSkip) {
+        LOG.log(Level.INFO, "Skip corrupted metrics from {0}", evalParams.getId());
+      }
+      return toSkip;
     }
 
     private boolean initialMetricsToSkip(final WorkerEvaluatorParameters evalParams) {
