@@ -17,10 +17,10 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.primitives.Ints;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Representation of a document in a corpus. This has words and corresponding topic assignment
@@ -42,7 +42,7 @@ final class Document {
   Document(final int[] words, final int numTopics) {
     this.words = Ints.asList(words);
     this.assignments = new int[words.length];
-    this.topicCounts = new ConcurrentHashMap<>(words.length); // the number of assigned topics is bound to the document's words
+    this.topicCounts = new HashMap<>(words.length); // the number of assigned topics is bound to the document's words
     this.numTopics = numTopics;
 
     initialize();
