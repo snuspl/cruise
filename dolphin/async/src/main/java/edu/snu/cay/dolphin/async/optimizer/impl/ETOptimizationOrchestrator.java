@@ -298,7 +298,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     }
 
     // 6) Pause metric collection.
-    metricManager.stopMetricCollection();
+    metricManager.pauseMetricCollection();
+    metricManager.clearMetric();
 
     final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
     final Set<String> workersBeforeOpt = getRunningExecutors(inputTable);
@@ -341,7 +342,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
       // 8) Once the execution is complete, restart metric collection.
       metricManager.loadMetricValidationInfo(
           getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
-      metricManager.startMetricCollection();
+      metricManager.resumeMetricCollection();
     }
   }
 

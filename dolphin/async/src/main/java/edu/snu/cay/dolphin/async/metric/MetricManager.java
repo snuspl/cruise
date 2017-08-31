@@ -30,7 +30,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -195,8 +194,7 @@ public final class MetricManager {
   public void stopMetricCollection() {
     LOG.log(Level.INFO, "Metric collection stopped!");
     metricCollectionEnabled = false;
-    metricStore.clearServerMetrics();
-    metricStore.clearWorkerMetrics();
+    clearMetric();
   }
 
   /**
@@ -208,6 +206,11 @@ public final class MetricManager {
   }
 
   private final AtomicInteger metricCollectionPauseCount = new AtomicInteger(0);
+
+  public void clearMetric() {
+    metricStore.clearServerMetrics();
+    metricStore.clearWorkerMetrics();
+  }
 
   public void pauseMetricCollection() {
     final int count = metricCollectionPauseCount.incrementAndGet();
