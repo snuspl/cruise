@@ -70,7 +70,7 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       for (int wordIdx = 0; wordIdx < words.size(); wordIdx++) {
         daos.writeInt(document.getAssignment(wordIdx));
       }
-      final Map<Integer, Integer> topicCounts = new HashMap<>(document.getTopicCounts());
+      final Map<Integer, Integer> topicCounts = document.getTopicCounts();
       daos.writeInt(topicCounts.size());
       topicCounts.forEach((topicIdx, topicCount) -> {
         try {

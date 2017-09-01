@@ -21,6 +21,7 @@ import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 import java.io.*;
+import java.util.Arrays;
 
 /**
  * Codec for sparse integer array.
@@ -53,13 +54,14 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
    */
   @Override
   public void encodeToStream(final int[] array, final DataOutputStream dos) {
+    final int[] copied = Arrays.copyOf(array, array.length);
     try {
-      dos.writeInt(array.length);
-      dos.writeInt(array[array.length - 1]);
-      for (int i = 0; i < array.length - 1; ++i) {
-        if (array[i] != 0) {
+      dos.writeInt(copied.length);
+      dos.writeInt(copied[copied.length - 1]);
+      for (int i = 0; i < copied.length - 1; ++i) {
+        if (copied[i] != 0) {
           dos.writeInt(i);
-          dos.writeInt(array[i]);
+          dos.writeInt(copied[i]);
         }
       }
     } catch (final IOException e) {
