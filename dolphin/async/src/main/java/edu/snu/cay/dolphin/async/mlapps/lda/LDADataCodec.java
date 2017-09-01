@@ -22,9 +22,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.*;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A codec for (de-)serializing data used in LDA application.
@@ -91,7 +91,7 @@ final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
       final int numWords = dais.readInt();
       final int[] words = new int[numWords];
       final int[] assignments = new int[numWords];
-      final Map<Integer, Integer> topicCounts = new HashMap<>(numWords);
+      final Map<Integer, Integer> topicCounts = new ConcurrentHashMap<>(numWords);
 
       for (int wordIdx = 0; wordIdx < numWords; wordIdx++) {
         words[wordIdx] = dais.readInt();
