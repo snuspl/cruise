@@ -21,6 +21,8 @@ import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Beta;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumVocabs;
+import edu.snu.cay.utils.IntegerCodec;
+import edu.snu.cay.utils.LongCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import javax.inject.Inject;
@@ -39,10 +41,10 @@ public final class LDAET {
     ETDolphinLauncher.launch("LDAET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setInputParserClass(LDAETDataParser.class)
-        .setInputKeyCodecClass(StreamingSerializableCodec.class)
+        .setInputKeyCodecClass(LongCodec.class)
         .setInputValueCodecClass(LDADataCodec.class)
         .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
-        .setModelKeyCodecClass(StreamingSerializableCodec.class)
+        .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(SparseArrayCodec.class)
         .setModelUpdateValueCodecClass(StreamingSerializableCodec.class)
         .addParameterClass(Alpha.class)

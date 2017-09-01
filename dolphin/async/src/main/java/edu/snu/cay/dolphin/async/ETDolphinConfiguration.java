@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -126,12 +127,12 @@ public final class ETDolphinConfiguration {
   public static class Builder implements org.apache.reef.util.Builder<ETDolphinConfiguration> {
     private Class<? extends Trainer> trainerClass;
     private Class<? extends DataParser> inputParserClass;
-    private Class<? extends Codec> inputKeyCodecClass = SerializableCodec.class;
-    private Class<? extends Codec> inputValueCodecClass = SerializableCodec.class;
+    private Class<? extends Codec> inputKeyCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends Codec> inputValueCodecClass = StreamingSerializableCodec.class;
 
     private Class<? extends UpdateFunction> modelUpdateFunctionClass;
-    private Class<? extends Codec> modelKeyCodecClass = SerializableCodec.class;
-    private Class<? extends Codec> modelValueCodecClass = SerializableCodec.class;
+    private Class<? extends Codec> modelKeyCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends Codec> modelValueCodecClass = StreamingSerializableCodec.class;
     private Class<? extends Codec> modelUpdateValueCodecClass = SerializableCodec.class;
 
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
