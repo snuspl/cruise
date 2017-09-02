@@ -49,10 +49,6 @@ import java.util.logging.Logger;
 public final class ChkpManagerMaster {
   private static final Logger LOG = Logger.getLogger(ChkpManagerMaster.class.getName());
 
-  public static final String COMMIT_PATH = "/tmp/chkp/commit/";
-  public static final String TEMP_PATH = "/tmp/chkp/";
-  public static final String CONF_FILE_NAME = "conf";
-
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final InjectionFuture<TableManager> tableManagerFuture;
 

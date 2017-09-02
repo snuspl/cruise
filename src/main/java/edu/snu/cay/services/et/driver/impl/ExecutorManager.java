@@ -22,6 +22,8 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ExecutorServiceConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.ContextStopHandler;
@@ -69,6 +71,8 @@ final class ExecutorManager {
   private final IdentifierFactory identifierFactory;
   private final String etIdentifier;
   private final String driverIdentifier;
+  private final String chkpTempPath;
+  private final String chkpCommitPath;
 
   private final double jvmHeapSlack;
   private final JVMProcessFactory jvmProcessFactory;
@@ -84,6 +88,8 @@ final class ExecutorManager {
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
                           final JVMProcessFactory jvmProcessFactory,
+                          @Parameter(ChkpCommitPath.class) final String chkpCommitPath,
+                          @Parameter(ChkpTempPath.class) final String chkpTempPath,
                           @Parameter(JVMHeapSlack.class) final double jvmHeapSlack,
                           @Parameter(ETIdentifier.class) final String etIdentifier,
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
@@ -96,6 +102,8 @@ final class ExecutorManager {
     this.driverIdentifier = driverIdentifier;
     this.jvmHeapSlack = jvmHeapSlack;
     this.jvmProcessFactory = jvmProcessFactory;
+    this.chkpTempPath = chkpTempPath;
+    this.chkpCommitPath = chkpCommitPath;
   }
 
   /**
@@ -203,6 +211,8 @@ final class ExecutorManager {
           .set(ExecutorServiceConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
           .set(ExecutorServiceConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())
           .set(ExecutorServiceConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
+          .set(ExecutorServiceConfiguration.CHKP_COMMIT_PATH, chkpCommitPath)
+          .set(ExecutorServiceConfiguration.CHKP_TEMP_PATH, chkpTempPath)
           .build();
 
       serviceConfiguration = Configurations.merge(executorConfiguration, serviceConf);

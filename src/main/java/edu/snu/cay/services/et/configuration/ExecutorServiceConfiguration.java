@@ -18,6 +18,8 @@ package edu.snu.cay.services.et.configuration;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -48,6 +50,12 @@ public final class ExecutorServiceConfiguration extends ConfigurationModuleBuild
   public static final RequiredParameter<String> DRIVER_IDENTIFIER = new RequiredParameter<>();
 
   /**
+   * Parameters required for checkpoint.
+   */
+  public static final RequiredParameter<String> CHKP_TEMP_PATH = new RequiredParameter<>();
+  public static final RequiredParameter<String> CHKP_COMMIT_PATH = new RequiredParameter<>();
+
+  /**
    * ConfigurationModule.
    */
   public static final ConfigurationModule CONF = new ExecutorServiceConfiguration()
@@ -58,5 +66,7 @@ public final class ExecutorServiceConfiguration extends ConfigurationModuleBuild
       .bindImplementation(IdentifierFactory.class, IDENTIFIER_FACTORY)
       .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
       .bindNamedParameter(DriverIdentifier.class, DRIVER_IDENTIFIER)
+      .bindNamedParameter(ChkpTempPath.class, CHKP_TEMP_PATH)
+      .bindNamedParameter(ChkpCommitPath.class, CHKP_COMMIT_PATH)
       .build();
 }

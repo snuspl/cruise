@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.impl.ChkpManagerMaster;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.Table;
@@ -44,8 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.driver.impl.ChkpManagerMaster.*;
-
 /**
  * A executor-side checkpoint manager.
  * Following the order from {@link ChkpManagerMaster}, it executes checkpoint
@@ -53,32 +52,38 @@ import static edu.snu.cay.services.et.driver.impl.ChkpManagerMaster.*;
  *
  * When doing checkpoint, at first, it stores each block to a file in local filesystem.
  * Each checkpoint has its own directory and each block is saved into a file under the directory.
- * [{@link ChkpManagerMaster#TEMP_PATH}/CheckpointID/BlockIdx]
+ * [{@link ChkpTempPath}/CheckpointID/BlockIdx]
  * Checkpoint is done when all associators finish this task.
  *
  * But this these checkpointed blocks can be lost, when this executor is closed by reconfiguration.
  * So executors commit them to a safe place (e.g., HDFS for Yarn runtime), when being closed.
- * [{@link ChkpManagerMaster#COMMIT_PATH}/CheckpointID/BlockIdx]
+ * [{@link ChkpCommitPath}/CheckpointID/BlockIdx]
  */
 public final class ChkpManagerSlave {
   private static final Logger LOG = Logger.getLogger(ChkpManagerSlave.class.getName());
+  private static final String CONF_FILE_NAME = "conf";
 
   private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final ConfigurationSerializer confSerializer;
-  private final boolean onLocal;
+  private final String tempPath;
+  private final String commitPath;
+  private final boolean commitToHdfs;
 
   private final Set<Checkpoint> localCheckpoint = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
   private ChkpManagerSlave(final InjectionFuture<Tables> tablesFuture,
                            final InjectionFuture<MessageSender> msgSenderFuture,
-                           @Parameter(Parameters.OnLocal.class) final boolean onLocal,
+                           @Parameter(ChkpTempPath.class) final String chkpTempPath,
+                           @Parameter(ChkpCommitPath.class) final String chkpCommitPath,
                            final ConfigurationSerializer confSerializer) {
     this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
     this.confSerializer = confSerializer;
-    this.onLocal = onLocal;
+    this.tempPath = chkpTempPath;
+    this.commitPath = chkpCommitPath;
+    this.commitToHdfs = chkpCommitPath.startsWith("hdfs://");
   }
 
   /**
@@ -103,7 +108,7 @@ public final class ChkpManagerSlave {
   }
 
   private org.apache.reef.tang.Configuration readTableConf(final String chkpId) throws IOException {
-    final Path baseDir = new Path(TEMP_PATH + chkpId);
+    final Path baseDir = new Path(tempPath, chkpId);
 
     try (FileSystem fs = FileSystem.getLocal(new Configuration())) {
       try (FSDataInputStream fis = fs.open(new Path(baseDir, CONF_FILE_NAME))) {
@@ -118,7 +123,7 @@ public final class ChkpManagerSlave {
 
   private void writeTableConf(final String chkpId,
                               final org.apache.reef.tang.Configuration tableConf) throws IOException {
-    final Path baseDir = new Path(TEMP_PATH + chkpId);
+    final Path baseDir = new Path(tempPath, chkpId);
     try (FileSystem fs = FileSystem.getLocal(new Configuration())) {
       fs.setWriteChecksum(false); // do not make crc file
       final byte[] serializedTableConf = confSerializer.toByteArray(tableConf);
@@ -140,7 +145,7 @@ public final class ChkpManagerSlave {
    * @throws TableNotExistException when the table does not exist in this executor
    */
   <K, V> void checkpoint(final String chkpId, final String tableId) throws IOException, TableNotExistException {
-    final Path baseDir = new Path(TEMP_PATH + chkpId);
+    final Path baseDir = new Path(tempPath, chkpId);
 
     LOG.log(Level.INFO, "Start checkpointing. chkpId: {0}, tableId: {1}, baseDir: {2}",
         new Object[]{chkpId, tableId, baseDir});
@@ -221,8 +226,8 @@ public final class ChkpManagerSlave {
     final Configuration hadoopConf = new Configuration();
     // read checkpoint files and put into a table
     try (FileSystem localFS = FileSystem.getLocal(hadoopConf);
-         FileSystem fsToCommit = onLocal ? localFS : FileSystem.get(hadoopConf)) {
-      final Path baseDir = new Path(TEMP_PATH + chkp.getCheckpointId());
+         FileSystem fsToCommit = commitToHdfs ? FileSystem.get(hadoopConf) : localFS) {
+      final Path baseDir = new Path(tempPath, chkp.getCheckpointId());
       for (final Integer blockId : chkp.getBlocks()) {
 
         final FSDataInputStream fis = localFS.open(new Path(baseDir, Integer.toString(blockId)));
@@ -255,7 +260,7 @@ public final class ChkpManagerSlave {
                                     final List<Pair<K, V>> kvList,
                                     final KVUSerializer<K, V, ?> kvuSerializer,
                                     final FileSystem fs) throws IOException {
-    try (FSDataOutputStream fos = fs.create(new Path(COMMIT_PATH, chkpId + "/" + Integer.toString(blockId)))) {
+    try (FSDataOutputStream fos = fs.create(new Path(commitPath, chkpId + "/" + Integer.toString(blockId)))) {
       fs.setWriteChecksum(false);
       fos.writeInt(kvList.size());
       kvList.iterator().forEachRemaining(kvEntry -> {
@@ -305,7 +310,7 @@ public final class ChkpManagerSlave {
                               final List<String> ownershipStatus,
                               final List<Integer> blockIdsToLoad) throws IOException {
 
-    final Path baseDir = new Path(TEMP_PATH + chkpId);
+    final Path baseDir = new Path(tempPath, chkpId);
 
     LOG.log(Level.INFO, "Start chkp(temp) loading. chkpId: {0}, tableId: {1}, baseDir: {2}",
         new Object[]{chkpId, tableId, baseDir});
@@ -327,7 +332,7 @@ public final class ChkpManagerSlave {
   private void loadChkpInCommit(final String chkpId, final String tableId,
                                 final List<Integer> blockIdsToLoad) throws IOException {
 
-    final Path baseDir = new Path(COMMIT_PATH + chkpId);
+    final Path baseDir = new Path(commitPath, chkpId);
 
     LOG.log(Level.INFO, "Start chkp(commit) loading. chkpId: {0}, tableId: {1}, baseDir: {2}",
         new Object[]{chkpId, tableId, baseDir});
@@ -341,7 +346,7 @@ public final class ChkpManagerSlave {
       throw new RuntimeException(e);
     }
 
-    final FileSystem fs = onLocal ? FileSystem.getLocal(new Configuration()) : FileSystem.get(new Configuration());
+    final FileSystem fs = commitToHdfs ? FileSystem.get(new Configuration()) : FileSystem.getLocal(new Configuration());
     final int numTotalItems = loadChkpIntoTable(table, tableComponents, blockIdsToLoad, baseDir, fs);
 
     LOG.log(Level.INFO, "Chkp(commit) load done. chkpId: {0}, tableId: {1}, numBlocks: {2}, numItems:{3}",

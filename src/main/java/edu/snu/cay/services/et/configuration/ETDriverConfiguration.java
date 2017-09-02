@@ -17,6 +17,8 @@ package edu.snu.cay.services.et.configuration;
 
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.impl.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -41,6 +43,8 @@ public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredImpl<EventHandler<CompletedTask>> ON_TASK_COMPLETED = new RequiredImpl<>();
   public static final RequiredImpl<EventHandler<FailedTask>> ON_TASK_FAILED = new RequiredImpl<>();
   public static final OptionalParameter<String> ET_IDENTIFIER = new OptionalParameter<>();
+  public static final OptionalParameter<String> CHKP_TEMP_PATH = new OptionalParameter<>();
+  public static final OptionalParameter<String> CHKP_COMMIT_PATH = new OptionalParameter<>();
 
   public static final ConfigurationModule CONF = new ETDriverConfiguration()
       .bindSetEntry(EvaluatorAllocatedHandlers.class, ON_EVALUATOR_ALLOCATED)
@@ -52,6 +56,8 @@ public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
       .bindSetEntry(TaskFailedHandlers.class, ON_TASK_FAILED)
       .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
       .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
+      .bindNamedParameter(ChkpTempPath.class, CHKP_TEMP_PATH)
+      .bindNamedParameter(ChkpCommitPath.class, CHKP_COMMIT_PATH)
       .build()
       .set(ON_EVALUATOR_ALLOCATED, EvaluatorAllocatedHandler.class)
       .set(ON_EVALUATOR_COMPLETED, EvaluatorCompletedHandler.class)
