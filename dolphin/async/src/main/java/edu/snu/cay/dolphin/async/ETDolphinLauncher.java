@@ -27,6 +27,8 @@ import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
@@ -146,6 +148,8 @@ public final class ETDolphinLauncher {
       // driver configuration
       final Configuration driverConf = getDriverConfiguration(jobName,
           clientParameterInjector.getNamedInstance(DriverMemory.class),
+          clientParameterInjector.getNamedInstance(ChkpCommitPath.class),
+          clientParameterInjector.getNamedInstance(ChkpTempPath.class),
           serverConf, workerConf, userParamConf);
 
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
@@ -186,7 +190,8 @@ public final class ETDolphinLauncher {
       throws ParseException, InjectionException, IOException, ClassNotFoundException {
 
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
-        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
+        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class,
+        ChkpCommitPath.class, ChkpTempPath.class);
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         // generic params
@@ -293,6 +298,8 @@ public final class ETDolphinLauncher {
 
   private static Configuration getDriverConfiguration(final String jobName,
                                                       final int driverMemSize,
+                                                      final String chkpCommitPath,
+                                                      final String chkpTempPath,
                                                       final Configuration serverConf,
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
@@ -307,7 +314,10 @@ public final class ETDolphinLauncher {
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
-    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF
+        .set(ETDriverConfiguration.CHKP_COMMIT_PATH, chkpCommitPath)
+        .set(ETDriverConfiguration.CHKP_TEMP_PATH, chkpTempPath)
+        .build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
         .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
