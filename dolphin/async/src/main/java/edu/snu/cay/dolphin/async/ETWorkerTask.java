@@ -38,6 +38,7 @@ final class ETWorkerTask<V> implements Task {
   private final String taskId;
   private final int startingEpoch;
   private final int maxNumEpochs;
+  private final boolean offlineModelEval;
 
   private final ModelEvaluator modelEvaluator;
   private final ProgressReporter progressReporter;
@@ -58,6 +59,7 @@ final class ETWorkerTask<V> implements Task {
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                       @Parameter(DolphinParameters.OfflineModelEvaluation.class) final boolean offlineModelEval,
                        final ModelEvaluator modelEvaluator,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
@@ -69,6 +71,7 @@ final class ETWorkerTask<V> implements Task {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
+    this.offlineModelEval = offlineModelEval;
     this.modelEvaluator = modelEvaluator;
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
@@ -132,18 +135,22 @@ final class ETWorkerTask<V> implements Task {
         }
       }
 
-      final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
+      if (!offlineModelEval) {
+        final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+        final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
 
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+        sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+      }
     }
 
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
     workerGlobalBarrier.await();
 
-    // evaluate all check-pointed models
-    modelEvaluator.evaluate(trainer);
+    if (offlineModelEval) {
+      // evaluate all check-pointed models
+      modelEvaluator.evaluate(trainer);
+    }
 
     trainer.cleanup();
     return null;

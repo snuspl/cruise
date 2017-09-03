@@ -53,6 +53,8 @@ final class ModelChkpManager {
   private final String modelTableId;
   private final String inputTableId;
 
+  private final boolean offlineModelEval;
+
   private final InjectionFuture<ETMaster> etMasterFuture;
 
   private final InjectionFuture<ETTaskRunner> etTaskRunnerFuture;
@@ -72,6 +74,7 @@ final class ModelChkpManager {
                            final InjectionFuture<ETTaskRunner> etTaskRunnerFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
                            final InjectionFuture<MetricManager> metricManagerFuture,
+                           @Parameter(DolphinParameters.OfflineModelEvaluation.class) final boolean offlineModelEval,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.etMasterFuture = etMasterFuture;
@@ -80,6 +83,8 @@ final class ModelChkpManager {
     this.metricManagerFuture = metricManagerFuture;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
+    this.offlineModelEval = offlineModelEval;
+    LOG.log(Level.INFO, "Offline model evaluation is turned" + (offlineModelEval ? "on" : "off"));
   }
 
   /**
@@ -156,6 +161,10 @@ final class ModelChkpManager {
    * Create a checkpoint of a current model table.
    */
   void createCheckpoint() {
+    if (!offlineModelEval) {
+      return;
+    }
+
     try {
       metricManagerFuture.get().pauseMetricCollection();
 
