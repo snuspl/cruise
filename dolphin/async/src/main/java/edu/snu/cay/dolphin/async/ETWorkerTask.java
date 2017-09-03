@@ -148,6 +148,9 @@ final class ETWorkerTask<V> implements Task {
     workerGlobalBarrier.await();
 
     if (offlineModelEval) {
+      // TODO #00: sleep before starting evaluation to wait for previous pushes are flushed
+      Thread.sleep(60000);
+
       // evaluate all check-pointed models
       modelEvaluator.evaluate(trainer);
     }
