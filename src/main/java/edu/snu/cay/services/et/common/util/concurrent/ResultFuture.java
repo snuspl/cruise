@@ -43,7 +43,7 @@ public class ResultFuture<V> implements ListenableFuture<V> {
   /**
    * Sets the result of the completed operation. Note that this method should be called only once.
    */
-  public void onCompleted(final V aResult) {
+  public synchronized void onCompleted(final V aResult) {
     if (isDone()) {
       throw new IllegalStateException("The operation associated with this Future was already complete");
     }
@@ -51,14 +51,12 @@ public class ResultFuture<V> implements ListenableFuture<V> {
     result = aResult;
     completedLatch.countDown();
 
-    if (isDone()) {
-      listeners.forEach(listener -> listener.onNext(result));
-      listeners.clear();
-    }
+    listeners.forEach(listener -> listener.onNext(result));
+    listeners.clear();
   }
 
   @Override
-  public void addListener(final EventHandler<V> listener) {
+  public synchronized void addListener(final EventHandler<V> listener) {
     if (isDone()) {
       listener.onNext(result);
     } else {
