@@ -220,7 +220,7 @@ public final class MetricManager {
   public void resumeMetricCollection() {
     skippedEvalIds.clear();
     final int count = metricCollectionPauseCount.decrementAndGet();
-    LOG.log(Level.INFO, "Pause metric collection. Pause count: {0}", count);
+    LOG.log(Level.INFO, "Resume metric collection. Pause count: {0}", count);
   }
 
   /**
