@@ -80,6 +80,7 @@ final class ETWorkerTask<V> implements Task {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
+    LOG.log(Level.INFO, "offlineModelEval: {0}", offlineModelEval);
   }
 
   @Override

@@ -57,6 +57,7 @@ public final class DolphinMaster {
 
   private final String dolphinJobId;
 
+  private final boolean offlineModelEval; // whether to perform model evaluation offline or online
   private final String modelTableId;
   private final String inputTableId;
   private final Configuration workerConf;
@@ -74,6 +75,7 @@ public final class DolphinMaster {
                         @Parameter(DolphinJobId.class) final String dolphinJobId,
                         @Parameter(ModelTableId.class) final String modelTableId,
                         @Parameter(InputTableId.class) final String inputTableId,
+                        @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
@@ -86,6 +88,7 @@ public final class DolphinMaster {
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
+    this.offlineModelEval = offlineModelEval;
     optimizationOrchestrator.start();
   }
 
@@ -100,6 +103,7 @@ public final class DolphinMaster {
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .bindNamedParameter(ModelTableId.class, modelTableId)
             .bindNamedParameter(InputTableId.class, inputTableId)
+            .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
             .build(),
         workerConf);
   }

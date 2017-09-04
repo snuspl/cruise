@@ -40,7 +40,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -82,8 +81,6 @@ public final class DolphinDriver {
   private final TableConfiguration serverTableConf;
   private final String inputPath;
 
-  private final boolean offlineModelEval; // whether to perform model evaluation offline or online
-
   private final String jobId;
 
   @Inject
@@ -109,7 +106,6 @@ public final class DolphinDriver {
                         @Parameter(NumServerBlocks.class) final int numServerBlocks,
                         @Parameter(JobIdentifier.class) final String jobId,
                         @Parameter(DriverIdentifier.class) final String driverId,
-                        @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
                         @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                         @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
@@ -141,7 +137,6 @@ public final class DolphinDriver {
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
-    this.offlineModelEval = offlineModelEval;
 
     this.jobId = jobId;
   }
@@ -212,11 +207,7 @@ public final class DolphinDriver {
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
         .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-        .setUserServiceConf(Configurations.merge(
-            NetworkConfProvider.getServiceConfiguration(jobId, jobId),
-            Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
-                .build()))
+        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId, jobId))
         .build();
   }
 
