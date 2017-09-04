@@ -145,7 +145,7 @@ public final class JobLauncher {
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
         NumWorkerHandlerThreads.class, NumWorkerSenderThreads.class,
         WorkerHandlerQueueSize.class, WorkerSenderQueueSize.class,
-        NumWorkerBlocks.class, NumTrainerThreads.class, MaxNumEpochs.class,
+        NumWorkerBlocks.class, HyperThreadEnabled.class, MaxNumEpochs.class,
         NumTotalMiniBatches.class, TestDataPath.class, InputDir.class
     );
 

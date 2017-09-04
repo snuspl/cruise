@@ -143,7 +143,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
-                     @Parameter(NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(HyperThreadEnabled.class) final boolean hyperThreadEnabled,
                      @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
     this.modelAccessor = modelAccessor;
@@ -165,7 +165,8 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {  // if valueTypeNum != 0, value's type is categorical(FeatureType.CATEGORICAL).
       this.valueType = FeatureType.CATEGORICAL;
     }
-    this.numTrainerThreads = numTrainerThreads;
+    // Use the half of the processors if hyper-thread is on, since using virtual cores do not help for float-point ops.
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors() / (hyperThreadEnabled ? 2 : 1);
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
   }
 
