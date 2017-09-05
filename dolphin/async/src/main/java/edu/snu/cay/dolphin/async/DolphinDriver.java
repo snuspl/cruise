@@ -174,7 +174,7 @@ public final class DolphinDriver {
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setNumTotalBlocks(numTotalBlocks)
         .setIsMutableTable(false)
-        .setIsOrderedTable(true)
+        .setIsOrderedTable(false)
         .setDataParserClass(dataParser.getClass())
         .setUserParamConf(userParamConf)
         .build();
