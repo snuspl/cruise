@@ -124,6 +124,13 @@ final class ModelChkpManager {
       throw new RuntimeException(e);
     }
 
+    // sleep before starting table chkp load
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // restore a model to evaluate from a checkpoint
     try {
       final Future<String>[] chkpIdFutures = checkpointIdFutures.pop();
