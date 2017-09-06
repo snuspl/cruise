@@ -32,6 +32,7 @@ import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -243,7 +244,41 @@ public final class DolphinDriver {
 
             dolphinMaster.start(servers, workers, modelTable, inputTable);
 
+            // sleep before dropping table for preventing loss of ongoing non-blocking ops(pushes)
+            Thread.sleep(30000);
+            inputTable.drop().get();
+            workers.forEach(worker -> {
+              try {
+                modelTable.unsubscribe(worker.getId()).get();
+              } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+              }
+            });
+
             workers.forEach(AllocatedExecutor::close);
+
+            Thread.sleep(30000);
+
+            // start model evaluation with new workers
+            final List<AllocatedExecutor> workersForEvaluation
+                = etMaster.addExecutors(workers.size(), getWorkerExecutorConf()).get();
+            final AllocatedTable dummyTable = etMaster.createTable(
+                TableConfiguration.newBuilder()
+                    .setId(InputTableId.DEFAULT_VALUE)
+                    .setKeyCodecClass(StreamingSerializableCodec.class)
+                    .setValueCodecClass(StreamingSerializableCodec.class)
+                    .setUpdateValueCodecClass(SerializableCodec.class)
+                    .setUpdateFunctionClass(VoidUpdateFunction.class)
+                    .setIsMutableTable(false)
+                    .setIsOrderedTable(true)
+                    .build(),
+                workersForEvaluation).get();
+
+            modelTable.subscribe(workersForEvaluation).get();
+
+            dolphinMaster.evaluate(workersForEvaluation);
+
+            workersForEvaluation.forEach(AllocatedExecutor::close);
             servers.forEach(AllocatedExecutor::close);
           } catch (Exception e) {
             LOG.log(Level.SEVERE, "Exception while running a job", e);

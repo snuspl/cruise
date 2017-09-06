@@ -162,10 +162,6 @@ final class ModelChkpManager {
    * Create a checkpoint of a current model table.
    */
   void createCheckpoint() {
-    if (!offlineModelEval) {
-      return;
-    }
-
     try {
       final ListenableFuture<String> inputChkpIdFuture = etMasterFuture.get().getTable(inputTableId).checkpoint();
       final ListenableFuture<String> modelChkpIdFuture = etMasterFuture.get().getTable(modelTableId).checkpoint();
