@@ -179,7 +179,8 @@ public final class ChkpManagerSlave {
         chkpedBlocks.add(block.getId());
       });
 
-      LOG.log(Level.INFO, "Checkpoint done. chkpId: {0}, tableId: {1}, numBlocks: {2}, numItems:{3}",
+      LOG.log(Level.INFO,
+          "Driver checked checkpoint done. chkpId: {0}, tableId: {1}, numBlocks: {2}, numItems:{3}",
           new Object[]{chkpId, tableId, chkpedBlocks.size(), numItems.get()});
     }
 
