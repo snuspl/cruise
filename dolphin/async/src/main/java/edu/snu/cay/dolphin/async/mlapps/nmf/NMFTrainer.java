@@ -85,6 +85,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
+                     @Parameter(HyperThreadEnabled.class) final boolean hyperThreadEnabled,
                      final NMFModelGenerator modelGenerator,
                      final TrainingDataProvider<NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
@@ -104,7 +105,8 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.modelGenerator = modelGenerator;
     this.trainingDataProvider = trainingDataProvider;
 
-    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
+    // Use the half of the processors if hyper-thread is on, since using virtual cores do not help for float-point ops.
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors() / (hyperThreadEnabled ? 2 : 1);
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     // Note that this number of trainer threads does not consider hyper-thread.

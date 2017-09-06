@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.ModelHolder;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.utils.CatchableExecutors;
@@ -62,6 +63,7 @@ final class SparseLDASampler {
                            @Parameter(Beta.class) final double beta,
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
+                           @Parameter(DolphinParameters.HyperThreadEnabled.class) final boolean hyperThreadEnabled,
                            final ModelHolder<LDAModel> modelHolder) {
     this.alpha = alpha;
     this.beta = beta;
@@ -69,7 +71,8 @@ final class SparseLDASampler {
     this.numVocabs = numVocabs;
     this.modelHolder = modelHolder;
 
-    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
+    // Use the half of the processors if hyper-thread is on, since using virtual cores do not help for float-point ops.
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors() / (hyperThreadEnabled ? 2 : 1);
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
   }
 
