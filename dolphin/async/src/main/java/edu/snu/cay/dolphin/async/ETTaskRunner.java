@@ -21,10 +21,12 @@ import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -43,6 +45,8 @@ public final class ETTaskRunner {
 
   private final ETMaster etMaster;
 
+  private final JobMessageObserver jobMessageObserver;
+
   private final InjectionFuture<DolphinMaster> etDolphinMasterFuture;
 
   private final WorkerStateManager workerStateManager;
@@ -54,10 +58,12 @@ public final class ETTaskRunner {
 
   @Inject
   private ETTaskRunner(final InjectionFuture<DolphinMaster> dolphinMasterFuture,
+                       final JobMessageObserver jobMessageObserver,
                        final ETMaster etMaster,
                        final WorkerStateManager workerStateManager,
                        @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
     this.etMaster = etMaster;
+    this.jobMessageObserver = jobMessageObserver;
     this.etDolphinMasterFuture = dolphinMasterFuture;
     this.workerStateManager = workerStateManager;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
@@ -113,6 +119,9 @@ public final class ETTaskRunner {
                                   final Set<String> deletedWorkers,
                                   final Set<String> addedServers,
                                   final Set<String> deletedServers) {
+    final int numPrevWorkers = workerExecutors.size();
+    final int numPrevServers = serverExecutors.size();
+
     for (final String addedWorker : addedWorkers) {
       final SubmittedTask task;
       final AllocatedExecutor executor;
@@ -144,6 +153,15 @@ public final class ETTaskRunner {
     workerExecutors.keySet().removeAll(deletedWorkers);
     serverExecutors.keySet().removeAll(deletedServers);
     executorIdToTask.keySet().removeAll(deletedWorkers);
+
+    final int numAfterWorkers = workerExecutors.size();
+    final int numAfterServers = serverExecutors.size();
+
+    if (numPrevWorkers != numAfterWorkers || numPrevServers != numAfterServers) {
+      final String msgToClient = String.format("(S: %d, W: %d) -> (S: %d, W: %d)",
+          numPrevServers, numPrevWorkers, numAfterServers, numAfterWorkers);
+      jobMessageObserver.sendMessageToClient(msgToClient.getBytes(StandardCharsets.UTF_8));
+    }
   }
 
   private List<TaskResult> waitAndGetTaskResult() {

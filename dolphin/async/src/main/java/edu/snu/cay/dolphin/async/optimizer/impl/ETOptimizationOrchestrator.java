@@ -31,9 +31,11 @@ import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,6 +63,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final ETTaskRunner taskRunner;
 
   private final ProgressTracker progressTracker;
+
+  private final JobMessageObserver jobMessageObserver;
 
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
@@ -91,6 +95,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      final ETTaskRunner taskRunner,
                                      final WorkerStateManager workerStateManager,
                                      final ProgressTracker progressTracker,
+                                     final JobMessageObserver jobMessageObserver,
                                      @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                                      @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
@@ -109,6 +114,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     this.taskRunner = taskRunner;
     this.workerStateManager = workerStateManager;
     this.progressTracker = progressTracker;
+    this.jobMessageObserver = jobMessageObserver;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.optimizationIntervalMs = optimizationIntervalMs;
@@ -126,7 +132,11 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
         } else {
           this.numAvailableEvals = numInitialResources;
         }
-        LOG.log(Level.INFO, "The number of available resources has changed to {0}", numAvailableEvals);
+        final String resourceChangeMsg =
+            String.format("The number of available resources has changed to %d", numAvailableEvals);
+
+        LOG.log(Level.INFO, resourceChangeMsg);
+        jobMessageObserver.sendMessageToClient(resourceChangeMsg.getBytes(StandardCharsets.UTF_8));
       }, extraResourcesPeriodSec, extraResourcesPeriodSec, TimeUnit.SECONDS);
     } else if (numExtraResources < 0 || extraResourcesPeriodSec < 0) {
       final String msg = String.format("Both the number of extra resources and the period should be set positive. " +
