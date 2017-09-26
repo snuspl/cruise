@@ -31,7 +31,7 @@ import edu.snu.cay.services.et.plan.impl.ETPlan;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 import edu.snu.cay.services.et.plan.impl.op.DeallocateOp;
 import edu.snu.cay.utils.CatchableExecutors;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
@@ -89,9 +89,9 @@ final class PlanETDriver {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
         .setId(tableId)
         .setNumTotalBlocks(NUM_BLOCKS)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(PrefixUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(true);

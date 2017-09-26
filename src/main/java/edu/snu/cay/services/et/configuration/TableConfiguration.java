@@ -38,6 +38,7 @@ public final class TableConfiguration {
   private final Class<? extends UpdateFunction> updateFunctionClass;
   private final boolean isMutableTable;
   private final boolean isOrderedTable;
+  private final int chunkSize;
   private final int numTotalBlocks;
   private final Class<? extends DataParser> dataParserClass;
   private final Class<? extends BulkDataLoader> bulkDataLoaderClass;
@@ -51,6 +52,7 @@ public final class TableConfiguration {
                              final Class<? extends UpdateFunction> updateFunctionClass,
                              final boolean isMutableTable,
                              final boolean isOrderedTable,
+                             final Integer chunkSize,
                              final Integer numTotalBlocks,
                              final Class<? extends DataParser> dataParserClass,
                              final Class<? extends BulkDataLoader> bulkDataLoaderClass,
@@ -62,6 +64,7 @@ public final class TableConfiguration {
     this.updateFunctionClass = updateFunctionClass;
     this.isMutableTable = isMutableTable;
     this.isOrderedTable = isOrderedTable;
+    this.chunkSize = chunkSize;
     this.numTotalBlocks = numTotalBlocks;
     this.dataParserClass = dataParserClass;
     this.bulkDataLoaderClass = bulkDataLoaderClass;
@@ -125,6 +128,13 @@ public final class TableConfiguration {
   }
 
   /**
+   * @return the chunk size
+   */
+  public int getChunkSize() {
+    return chunkSize;
+  }
+
+  /**
    * @return a data parser
    */
   public Class<? extends DataParser> getDataParserClass() {
@@ -163,6 +173,7 @@ public final class TableConfiguration {
               .bindNamedParameter(IsMutableTable.class, Boolean.toString(isMutableTable))
               .bindNamedParameter(IsOrderedTable.class, Boolean.toString(isOrderedTable))
               .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
+              .bindNamedParameter(ChunkSize.class, Integer.toString(chunkSize))
               .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
               .bindImplementation(DataParser.class, dataParserClass)
               .bindImplementation(BulkDataLoader.class, bulkDataLoaderClass)
@@ -197,6 +208,7 @@ public final class TableConfiguration {
     /**
      * Optional parameters.
      */
+    private Integer chunkSize = Integer.valueOf(ChunkSize.DEFAULT_VALUE_STR);
     private Integer numTotalBlocks = Integer.valueOf(NumTotalBlocks.DEFAULT_VALUE_STR);
     private Class<? extends DataParser> dataParserClass = DefaultDataParser.class;
     private Class<? extends BulkDataLoader> bulkDataLoaderClass = NoneKeyBulkDataLoader.class;
@@ -240,6 +252,11 @@ public final class TableConfiguration {
       return this;
     }
 
+    public Builder setChunkSize(final Integer chunkSize) {
+      this.chunkSize = chunkSize;
+      return this;
+    }
+
     public Builder setNumTotalBlocks(final Integer numTotalBlocks) {
       this.numTotalBlocks = numTotalBlocks;
       return this;
@@ -271,7 +288,8 @@ public final class TableConfiguration {
       BuilderUtils.notNull(isOrderedTable);
 
       return new TableConfiguration(id, keyCodecClass, valueCodecClass, updateValueCodecClass, updateFunctionClass,
-          isMutableTable, isOrderedTable, numTotalBlocks, dataParserClass, bulkDataLoaderClass, userParamConf);
+          isMutableTable, isOrderedTable, chunkSize, numTotalBlocks,
+          dataParserClass, bulkDataLoaderClass, userParamConf);
     }
   }
 }

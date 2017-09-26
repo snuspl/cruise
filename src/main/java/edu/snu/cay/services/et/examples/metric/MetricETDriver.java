@@ -26,8 +26,8 @@ import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -98,9 +98,9 @@ final class MetricETDriver {
   private TableConfiguration buildTableConf(final String tableId) {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
         .setId(tableId)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false);

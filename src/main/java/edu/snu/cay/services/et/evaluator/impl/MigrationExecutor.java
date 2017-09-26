@@ -20,19 +20,19 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.utils.CatchableExecutors;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
@@ -52,7 +52,8 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
   private static final int MAX_CONCURRENT_MIGRATIONS = 4;
   private static final int NUM_BLOCK_SENDER_THREADS = 2;
   private static final int NUM_DATA_MSG_HANDLER_THREADS = 2;
-  private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 2;
+  private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 8;
+  private static final byte[] EMPTY_BYTES = new byte[0];
 
   // Thread pools to handle the messages in separate threads to prevent NCS threads' overhead.
   private final ExecutorService blockSenderExecutor = CatchableExecutors.newFixedThreadPool(NUM_BLOCK_SENDER_THREADS);
@@ -183,7 +184,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         ownershipCache.update(blockId, oldOwnerId, newOwnerId);
 
         // send block data to receiver
-        migration.sendDataMsg(blockId);
+        migration.sendBlockItemsInChunk(blockId);
 
         // send ownershipMoved msg to driver
         try {
@@ -197,14 +198,13 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     }
   }
 
+  private final Map<Long, Map<Integer, Pair<AtomicInteger, Map>>> opIdToReceivingBlocks = new ConcurrentHashMap<>();
+
   private <K, V> void onDataMsg(final long operationId, final DataMsg dataMsg) {
     final String tableId = dataMsg.getTableId();
     final int blockId = dataMsg.getBlockId();
     final String senderId = dataMsg.getSenderId();
     final String receiverId = dataMsg.getReceiverId();
-
-    LOG.log(Level.FINE, "OnDataMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}",
-        new Object[]{operationId, tableId, blockId, senderId, receiverId});
 
     try {
       final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -214,19 +214,37 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
       final boolean moveDataAndOwnershipTogether = !tableComponents.getTableMetadata().isMutableTable();
 
       dataMsgHandlerExecutor.submit(() -> {
-        final Map<K, V> dataMap = toDataMap(dataMsg.getKvPairs(), kvuSerializer);
+        final Map<Integer, Pair<AtomicInteger, Map>> receivingBlocks =
+            opIdToReceivingBlocks.computeIfAbsent(operationId, x -> new ConcurrentHashMap<>());
+        final Pair<AtomicInteger, Map> receivingBlockMetadata =
+            receivingBlocks.computeIfAbsent(blockId, x -> Pair.of(new AtomicInteger(), new ConcurrentHashMap<>()));
 
-        // should allow access after putting a block
-        try {
-          blockStore.putBlock(blockId, dataMap);
+        final AtomicInteger receivedItemCount = receivingBlockMetadata.getLeft();
+        final Map<K, V> blockDataMap = receivingBlockMetadata.getRight();
 
-          if (moveDataAndOwnershipTogether) { // for immutable tables
-            ownershipCache.update(blockId, senderId, receiverId);
+        decodeKeyValuePairs(dataMsg.getKvPairs().array(), dataMsg.getNumItems(), blockDataMap, kvuSerializer);
+
+        final int totalReceivedItems = receivedItemCount.addAndGet(dataMsg.getNumItems());
+        LOG.log(Level.FINE, "OnDataMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}," +
+                "numItemsInThisChunk: {5}, numReceivedItems: [{6} / {7}]",
+            new Object[]{operationId, tableId, blockId, senderId, receiverId,
+                dataMsg.getNumItems(), totalReceivedItems, dataMsg.getNumTotalItems()});
+
+        if (totalReceivedItems == dataMsg.getNumTotalItems()) {
+          receivingBlocks.remove(blockId);
+
+          // should allow access after putting a block
+          try {
+            blockStore.putBlock(blockId, blockDataMap);
+
+            if (moveDataAndOwnershipTogether) { // for immutable table
+              ownershipCache.update(blockId, senderId, receiverId);
+            }
+            ownershipCache.allowAccessToBlock(blockId);
+            msgSender.sendDataAckMsg(operationId, tableId, blockId, senderId, receiverId);
+          } catch (final BlockAlreadyExistsException | NetworkException e) {
+            throw new RuntimeException(e);
           }
-          ownershipCache.allowAccessToBlock(blockId);
-          msgSender.sendDataAckMsg(operationId, tableId, blockId, senderId, receiverId);
-        } catch (final BlockAlreadyExistsException | NetworkException e) {
-          throw new RuntimeException(e);
         }
       });
 
@@ -291,6 +309,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     private final List<Integer> blockIds;
 
     private final boolean moveDataAndOwnershipTogether;
+    private final int chunkSize;
     private final BlockStore<K, V, ?> blockStore;
     private final KVUSerializer<K, V, ?> kvuSerializer;
 
@@ -312,6 +331,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
       this.senderId = senderId;
       this.receiverId = receiverId;
       this.moveDataAndOwnershipTogether = !tableComponents.getTableMetadata().isMutableTable();
+      this.chunkSize = tableComponents.getTableMetadata().getChunkSize();
       this.blockStore = tableComponents.getBlockStore();
       this.kvuSerializer = tableComponents.getSerializer();
     }
@@ -325,11 +345,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         final int blockIdToMigrate = blockIds.get(blockIdxToSend);
 
         LOG.log(Level.FINE, "Start migrating a block. numTotalBlocksToSend: {0}, numSentBlocks: {1}," +
-                " senderId: {2}, receiverId: {3}, blockId: {4}",
-            new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate});
+                " senderId: {2}, receiverId: {3}, blockId: {4}, chunkSize:{5}",
+            new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate, chunkSize});
 
         if (moveDataAndOwnershipTogether) {
-          sendDataMsg(blockIdToMigrate);
+          sendBlockItemsInChunk(blockIdToMigrate);
         } else {
           sendOwnershipMsg(blockIdToMigrate);
         }
@@ -346,17 +366,50 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
       }
     }
 
-    private void sendDataMsg(final int blockId) {
+    private void sendBlockItemsInChunk(final int blockId) {
       try {
-        final Map<K, V> blockData = blockStore.getBlock(blockId);
-        final List<KVPair> keyValuePairs = toKeyValuePairs(blockData, kvuSerializer);
-        numSentKVEntries.getAndAdd(keyValuePairs.size());
-        keyValuePairs.forEach(kvPair -> {
-          numSentKeyBytes.getAndAdd(kvPair.getKey().getKey().array().length);
-          numSentValueBytes.getAndAdd(kvPair.getValue().getValue().array().length);
-        });
-        msgSender.sendDataMsg(operationId, tableId, blockId, keyValuePairs, senderId, receiverId);
-      } catch (final BlockNotExistsException | NetworkException e) {
+        final Map<K, V> blockDataMap = blockStore.getBlock(blockId);
+        final int numTotalItems = blockDataMap.size();
+
+        try {
+          if (numTotalItems == 0) {
+            msgSender.sendDataMsg(operationId, tableId, blockId, EMPTY_BYTES,
+                0, numTotalItems, senderId, receiverId);
+          } else {
+
+            final Iterator<Map.Entry<K, V>> itemIter = blockDataMap.entrySet().iterator();
+
+            while (itemIter.hasNext()) {
+              try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                   DataOutputStream dos = new DataOutputStream(baos)) {
+                final StreamingCodec<K> keyCodec = (StreamingCodec<K>) kvuSerializer.getKeyCodec();
+                final StreamingCodec<V> valueCodec = (StreamingCodec<V>) kvuSerializer.getValueCodec();
+
+                // aggregate items into a chunk
+                int count = 0;
+                while (itemIter.hasNext() && count < chunkSize) {
+                  final Map.Entry<K, V> entry = itemIter.next();
+                  keyCodec.encodeToStream(entry.getKey(), dos);
+                  valueCodec.encodeToStream(entry.getValue(), dos);
+                  count++;
+                }
+
+                numSentKVEntries.addAndGet(count);
+
+                final byte[] serializedItem = baos.getByteArray();
+
+                msgSender.sendDataMsg(operationId, tableId, blockId, serializedItem,
+                    count, numTotalItems, senderId, receiverId);
+
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            }
+          }
+        } catch (NetworkException e) {
+          throw new RuntimeException(e);
+        }
+      } catch (BlockNotExistsException e) {
         throw new RuntimeException(e);
       }
     }
@@ -380,35 +433,22 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     }
   }
 
-  private <K, V> List<KVPair> toKeyValuePairs(final Map<K, V> blockData,
-                                              final KVUSerializer<K, V, ?> kvuSerializer) {
-    final List<KVPair> kvPairs = new ArrayList<>(blockData.size());
-    for (final Map.Entry<K, V> entry : blockData.entrySet()) {
-      final DataKey dataKey = DataKey.newBuilder()
-          .setKey(ByteBuffer.wrap(kvuSerializer.getKeyCodec().encode(entry.getKey())))
-          .build();
-      final DataValue dataValue = DataValue.newBuilder()
-          .setValue(ByteBuffer.wrap(kvuSerializer.getValueCodec().encode(entry.getValue())))
-          .build();
+  private <K, V> void decodeKeyValuePairs(final byte[] kvPairs,
+                                          final int numItems,
+                                          final Map<K, V> kvMap,
+                                          final KVUSerializer<K, V, ?> kvuSerializer) {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(kvPairs);
+         DataInputStream dis = new DataInputStream(bais)) {
+      final StreamingCodec<K> keyCodec = (StreamingCodec<K>) kvuSerializer.getKeyCodec();
+      final StreamingCodec<V> valueCodec = (StreamingCodec<V>) kvuSerializer.getValueCodec();
 
-      kvPairs.add(KVPair.newBuilder()
-          .setKey(dataKey)
-          .setValue(dataValue)
-          .build());
+      for (int i = 0; i < numItems; i++) {
+        final K key = keyCodec.decodeFromStream(dis);
+        final V value = valueCodec.decodeFromStream(dis);
+        kvMap.put(key, value);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
-    return kvPairs;
-  }
-
-  private <K, V> Map<K, V> toDataMap(final List<KVPair> kvPairs,
-                                     final KVUSerializer<K, V, ?> kvuSerializer) {
-    final Map<K, V> dataMap = new HashMap<>(kvPairs.size());
-    for (final KVPair kvPair : kvPairs) {
-      final DataKey dataKey = kvPair.getKey();
-      final DataValue dataValue = kvPair.getValue();
-
-      dataMap.put(kvuSerializer.getKeyCodec().decode(dataKey.getKey().array()),
-          kvuSerializer.getValueCodec().decode(dataValue.getValue().array()));
-    }
-    return dataMap;
   }
 }

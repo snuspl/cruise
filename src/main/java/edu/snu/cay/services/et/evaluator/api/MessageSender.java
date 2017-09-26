@@ -136,7 +136,7 @@ public interface MessageSender {
    * The operation should be given a unique {@code opId}.
    */
   void sendDataMsg(long opId, String tableId, int blockId,
-                   List<KVPair> kvPairs,
+                   byte[] kvPairs, int numItems, int numTotalItems,
                    String senderId, String receiverId) throws NetworkException;
 
   /**

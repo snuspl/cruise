@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.configuration.parameters.ChunkSize;
 import edu.snu.cay.services.et.configuration.parameters.IsMutableTable;
 import edu.snu.cay.services.et.configuration.parameters.IsOrderedTable;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
@@ -27,14 +28,17 @@ import javax.inject.Inject;
  */
 public final class TableMetadata {
   private final int numTotalBlocks;
+  private final int chunkSize;
   private final boolean isMutableTable;
   private final boolean isOrderedTable;
 
   @Inject
   private TableMetadata(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                        @Parameter(ChunkSize.class) final int chunkSize,
                         @Parameter(IsMutableTable.class) final boolean isMutableTable,
                         @Parameter(IsOrderedTable.class) final boolean isOrderedTable) {
     this.numTotalBlocks = numTotalBlocks;
+    this.chunkSize = chunkSize;
     this.isMutableTable = isMutableTable;
     this.isOrderedTable = isOrderedTable;
   }
@@ -44,6 +48,13 @@ public final class TableMetadata {
    */
   public int getNumTotalBlocks() {
     return numTotalBlocks;
+  }
+
+  /**
+   * @return the size of chunk, a transfer unit of data migration
+   */
+  public int getChunkSize() {
+    return chunkSize;
   }
 
   /**

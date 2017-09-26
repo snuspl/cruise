@@ -470,15 +470,9 @@
   [
     {"name": "tableId", "type" : "string"},
     {"name": "blockId", "type": "int"},
-    {"name": "kvPairs", "type": {"type": "array", "items":
-        {"type": "record",
-         "name": "KVPair",
-         "fields":
-         [
-           {"name": "key", "type": "DataKey"},
-           {"name": "value", "type": "DataValue"}
-         ]
-        }}},
+    {"name": "numTotalItems", "type": "int"},
+    {"name": "numItems", "type": "int"},
+    {"name": "kvPairs", "type": "bytes"},
     {"name": "senderId", "type": "string"},
     {"name": "receiverId", "type": "string"}
   ]

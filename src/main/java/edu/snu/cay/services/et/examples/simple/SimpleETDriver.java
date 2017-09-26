@@ -28,8 +28,8 @@ import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -85,9 +85,9 @@ final class SimpleETDriver {
                                             final boolean isOrderedTable) {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
         .setId(tableId)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(SimpleUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(isOrderedTable);

@@ -30,9 +30,9 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecut
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -96,9 +96,9 @@ final class TableAccessETDriver {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
         .setId(tableId)
         .setNumTotalBlocks(NUM_BLOCKS)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(PrefixUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(isOrderedTable);

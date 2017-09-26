@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -89,9 +90,9 @@ public final class FallbackManagerTest {
             .setIsMutableTable(false)
             .setIsOrderedTable(false)
             .setUpdateFunctionClass(VoidUpdateFunction.class)
-            .setUpdateValueCodecClass(SerializableCodec.class)
-            .setKeyCodecClass(SerializableCodec.class)
-            .setValueCodecClass(SerializableCodec.class)
+            .setUpdateValueCodecClass(StreamingSerializableCodec.class)
+            .setKeyCodecClass(StreamingSerializableCodec.class)
+            .setValueCodecClass(StreamingSerializableCodec.class)
             .setNumTotalBlocks(NUM_TOTAL_BLOCKS)
             .build(),
         ownerExecutors);

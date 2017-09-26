@@ -403,7 +403,7 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendDataMsg(final long opId, final String tableId, final int blockId,
-                          final List<KVPair> kvPairs,
+                          final byte[] kvPairs, final int numItems, final int numTotalItems,
                           final String senderId, final String receiverId) throws NetworkException {
     final byte[] innerMsg = AvroUtils.toBytes(
         MigrationMsg.newBuilder()
@@ -413,7 +413,9 @@ public final class MessageSenderImpl implements MessageSender {
                 DataMsg.newBuilder()
                     .setTableId(tableId)
                     .setBlockId(blockId)
-                    .setKvPairs(kvPairs)
+                    .setNumItems(numItems)
+                    .setNumTotalItems(numTotalItems)
+                    .setKvPairs(ByteBuffer.wrap(kvPairs))
                     .setSenderId(senderId)
                     .setReceiverId(receiverId)
                     .build())

@@ -30,8 +30,8 @@ import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.NoneKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -110,9 +110,9 @@ final class LoadETDriver {
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setNumTotalBlocks(NUM_BLOCKS)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(isOrderedTable)

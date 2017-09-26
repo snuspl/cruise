@@ -27,8 +27,8 @@ import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -98,9 +98,9 @@ public class RemoteAccessOpSenderTest {
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setNumTotalBlocks(numTotalBlocks)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)

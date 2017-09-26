@@ -27,9 +27,9 @@ import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -127,9 +127,9 @@ public final class AddIntegerETDriver {
   private TableConfiguration buildTableConf(final String tableId, final Configuration userTableParamConf) {
     return TableConfiguration.newBuilder()
         .setId(tableId)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdateValueCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
+        .setValueCodecClass(StreamingSerializableCodec.class)
+        .setUpdateValueCodecClass(StreamingSerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setUserParamConf(userTableParamConf)
         .setIsMutableTable(true)
