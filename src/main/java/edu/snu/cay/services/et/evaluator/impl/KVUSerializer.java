@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -30,13 +31,13 @@ import javax.inject.Inject;
  */
 final class KVUSerializer<K, V, U> {
 
-  private final Codec<K> keyCodec;
-  private final Codec<V> valueCodec;
+  private final StreamingCodec<K> keyCodec;
+  private final StreamingCodec<V> valueCodec;
   private final Codec<U> updateValueCodec;
 
   @Inject
-  private KVUSerializer(@Parameter(KeyCodec.class) final Codec<K> keyCodec,
-                        @Parameter(ValueCodec.class) final Codec<V> valueCodec,
+  private KVUSerializer(@Parameter(KeyCodec.class) final StreamingCodec<K> keyCodec,
+                        @Parameter(ValueCodec.class) final StreamingCodec<V> valueCodec,
                         @Parameter(UpdateValueCodec.class) final Codec<U> updateValueCodec) {
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
@@ -46,14 +47,14 @@ final class KVUSerializer<K, V, U> {
   /**
    * @return a key codec
    */
-  Codec<K> getKeyCodec() {
+  StreamingCodec<K> getKeyCodec() {
     return keyCodec;
   }
 
   /**
    * @return a value codec
    */
-  Codec<V> getValueCodec() {
+  StreamingCodec<V> getValueCodec() {
     return valueCodec;
   }
 

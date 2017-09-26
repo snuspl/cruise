@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.*;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
@@ -32,8 +33,8 @@ import org.apache.reef.util.BuilderUtils;
  */
 public final class TableConfiguration {
   private final String id;
-  private final Class<? extends Codec> keyCodecClass;
-  private final Class<? extends Codec> valueCodecClass;
+  private final Class<? extends StreamingCodec> keyCodecClass;
+  private final Class<? extends StreamingCodec> valueCodecClass;
   private final Class<? extends Codec> updateValueCodecClass;
   private final Class<? extends UpdateFunction> updateFunctionClass;
   private final boolean isMutableTable;
@@ -47,7 +48,8 @@ public final class TableConfiguration {
   private Configuration configuration = null;
 
   private TableConfiguration(final String id,
-                             final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
+                             final Class<? extends StreamingCodec> keyCodecClass,
+                             final Class<? extends StreamingCodec> valueCodecClass,
                              final Class<? extends Codec> updateValueCodecClass,
                              final Class<? extends UpdateFunction> updateFunctionClass,
                              final boolean isMutableTable,
@@ -81,14 +83,14 @@ public final class TableConfiguration {
   /**
    * @return a key codec
    */
-  public Class<? extends Codec> getKeyCodecClass() {
+  public Class<? extends StreamingCodec> getKeyCodecClass() {
     return keyCodecClass;
   }
 
   /**
    * @return a value codec
    */
-  public Class<? extends Codec> getValueCodecClass() {
+  public Class<? extends StreamingCodec> getValueCodecClass() {
     return valueCodecClass;
   }
 
@@ -198,8 +200,8 @@ public final class TableConfiguration {
      * Required parameters.
      */
     private String id;
-    private Class<? extends Codec> keyCodecClass;
-    private Class<? extends Codec> valueCodecClass;
+    private Class<? extends StreamingCodec> keyCodecClass;
+    private Class<? extends StreamingCodec> valueCodecClass;
     private Class<? extends Codec> updateValueCodecClass;
     private Class<? extends UpdateFunction> updateFunctionClass;
     private Boolean isMutableTable;
@@ -222,12 +224,12 @@ public final class TableConfiguration {
       return this;
     }
 
-    public Builder setKeyCodecClass(final Class<? extends Codec> keyCodecClass) {
+    public Builder setKeyCodecClass(final Class<? extends StreamingCodec> keyCodecClass) {
       this.keyCodecClass = keyCodecClass;
       return this;
     }
 
-    public Builder setValueCodecClass(final Class<? extends Codec> valueCodecClass) {
+    public Builder setValueCodecClass(final Class<? extends StreamingCodec> valueCodecClass) {
       this.valueCodecClass = valueCodecClass;
       return this;
     }

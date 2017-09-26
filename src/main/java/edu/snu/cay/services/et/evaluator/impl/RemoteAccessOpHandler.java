@@ -28,6 +28,7 @@ import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -334,8 +335,8 @@ final class RemoteAccessOpHandler {
       registerOp(tableId, tableComponents, opId, origEvalId);
 
       final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
-      final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-      final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+      final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+      final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
       final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
       final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
@@ -429,8 +430,8 @@ final class RemoteAccessOpHandler {
     final String origEvalId = opMetadata.getOrigId();
 
     try {
-      final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-      final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+      final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+      final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
       if (opMetadata.isSingleKey()) {
         final DataValue dataValue;
         if (localOutput != null) {

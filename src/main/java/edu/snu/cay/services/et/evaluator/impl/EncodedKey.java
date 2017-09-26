@@ -16,20 +16,20 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import org.apache.hadoop.util.hash.MurmurHash;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 
 public final class EncodedKey<K> {
   private final K key;
   private final int hash;
   private final byte[] encoded;
 
-  EncodedKey(final K key, final Codec<K> keyCodec) {
+  EncodedKey(final K key, final StreamingCodec<K> keyCodec) {
     this.key = key;
     this.encoded = keyCodec.encode(key);
     this.hash = computeHash(encoded);
   }
 
-  EncodedKey(final byte[] encodedKey, final Codec<K> keyCodec) {
+  EncodedKey(final byte[] encodedKey, final StreamingCodec<K> keyCodec) {
     this.key = keyCodec.decode(encodedKey);
     this.encoded = encodedKey;
     this.hash = computeHash(encoded);

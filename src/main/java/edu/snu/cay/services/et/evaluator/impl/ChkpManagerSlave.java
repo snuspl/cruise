@@ -26,7 +26,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.impl.StreamingCodec;
-import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -167,9 +166,8 @@ public final class ChkpManagerSlave {
         try (FSDataOutputStream fos = fs.create(new Path(baseDir, Integer.toString(block.getId())))) {
           fos.writeInt(block.getNumPairs());
           block.iterator().forEachRemaining(kvEntry -> {
-            // TODO #215: use StreamingCodec
-            ((StreamingCodec<K>) kvuSerializer.getKeyCodec()).encodeToStream(kvEntry.getKey(), fos);
-            ((StreamingCodec<V>) kvuSerializer.getValueCodec()).encodeToStream(kvEntry.getValue(), fos);
+            kvuSerializer.getKeyCodec().encodeToStream(kvEntry.getKey(), fos);
+            kvuSerializer.getValueCodec().encodeToStream(kvEntry.getValue(), fos);
           });
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -221,8 +219,8 @@ public final class ChkpManagerSlave {
     } catch (InjectionException e) {
       throw new RuntimeException("Table conf file has been corrupted", e);
     }
-    final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
 
     final Configuration hadoopConf = new Configuration();
     // read checkpoint files and put into a table
@@ -235,9 +233,8 @@ public final class ChkpManagerSlave {
         final int numItems = fis.readInt();
         final List<Pair<K, V>> kvList = new ArrayList<>(numItems);
         for (int i = 0; i < numItems; i++) {
-          // TODO #215: use StreamingCodec
-          final K key = ((StreamingCodec<K>) keyCodec).decodeFromStream(fis);
-          final V value = ((StreamingCodec<V>) valueCodec).decodeFromStream(fis);
+          final K key = keyCodec.decodeFromStream(fis);
+          final V value = valueCodec.decodeFromStream(fis);
           kvList.add(Pair.of(key, value));
         }
         fis.close();
@@ -265,9 +262,8 @@ public final class ChkpManagerSlave {
       fs.setWriteChecksum(false);
       fos.writeInt(kvList.size());
       kvList.iterator().forEachRemaining(kvEntry -> {
-        // TODO #215: use StreamingCodec
-        ((StreamingCodec<K>) kvuSerializer.getKeyCodec()).encodeToStream(kvEntry.getKey(), fos);
-        ((StreamingCodec<V>) kvuSerializer.getValueCodec()).encodeToStream(kvEntry.getValue(), fos);
+        kvuSerializer.getKeyCodec().encodeToStream(kvEntry.getKey(), fos);
+        kvuSerializer.getValueCodec().encodeToStream(kvEntry.getValue(), fos);
       });
     }
   }
@@ -362,8 +358,8 @@ public final class ChkpManagerSlave {
                                        final Path baseDir, final FileSystem fs) throws IOException {
     final List<Future> futureList = new LinkedList<>();
     final KVUSerializer<K, V, ?> kvuSerializer = tableComponents.getSerializer();
-    final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
 
     int numTotalItems = 0;
     for (final Integer blockId : blockIdsToLoad) {
@@ -371,9 +367,8 @@ public final class ChkpManagerSlave {
         final int numItems = fis.readInt();
         final List<Pair<K, V>> kvList = new ArrayList<>(numItems);
         for (int i = 0; i < numItems; i++) {
-          // TODO #215: use StreamingCodec
-          final K key = ((StreamingCodec<K>) keyCodec).decodeFromStream(fis);
-          final V value = ((StreamingCodec<V>) valueCodec).decodeFromStream(fis);
+          final K key = keyCodec.decodeFromStream(fis);
+          final V value = valueCodec.decodeFromStream(fis);
           kvList.add(Pair.of(key, value));
         }
         numTotalItems += numItems;

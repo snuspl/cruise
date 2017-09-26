@@ -31,7 +31,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -115,8 +115,8 @@ public final class RemoteAccessOpHandlerTest {
   public void testRemoteAccess() throws TableNotExistException, InterruptedException, NetworkException {
     final TableComponents<String, Integer, Integer> tableComponents = tables.getTableComponents(TABLE_ID);
     final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
-    final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<Integer> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<String> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<Integer> valueCodec = kvuSerializer.getValueCodec();
 
     // we can know whether the access has been finished using 'replyLatch'
     final ResettingCountDownLatch replyLatch = new ResettingCountDownLatch(1);
@@ -247,8 +247,8 @@ public final class RemoteAccessOpHandlerTest {
 
     final TableComponents<String, Integer, Integer> tableComponents = tables.getTableComponents(TABLE_ID);
     final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
-    final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<Integer> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<String> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<Integer> valueCodec = kvuSerializer.getValueCodec();
 
     // Assume that the table has been unassociated
     tables.remove(TABLE_ID);
@@ -270,8 +270,8 @@ public final class RemoteAccessOpHandlerTest {
   }
 
   private <K, V> Pair<DataKey, DataValue> getDataPair(final K key, final V value,
-                                                      final Codec<K> keyCodec,
-                                                      final Codec<V> valueCodec) {
+                                                      final StreamingCodec<K> keyCodec,
+                                                      final StreamingCodec<V> valueCodec) {
     final DataKey dataKey = new DataKey();
     dataKey.setKey(ByteBuffer.wrap(keyCodec.encode(key)));
 

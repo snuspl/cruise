@@ -22,7 +22,7 @@ import edu.snu.cay.services.et.evaluator.api.*;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.Nonnull;
@@ -51,7 +51,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   /**
    * A key codec.
    */
-  private final Codec<K> keyCodec;
+  private final StreamingCodec<K> keyCodec;
 
   /**
    * Internal components for a table.
@@ -75,7 +75,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
   @Inject
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
-                    @Parameter(KeyCodec.class) final Codec<K> keyCodec,
+                    @Parameter(KeyCodec.class) final StreamingCodec<K> keyCodec,
                     final TableComponents tableComponents,
                     final Tablet<K, V, U> tablet,
                     final RemoteAccessOpSender remoteAccessOpSender,

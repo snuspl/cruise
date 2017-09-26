@@ -26,6 +26,7 @@ import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -317,8 +318,8 @@ public final class RemoteAccessOpSender {
 
     final DataKey dataKey = new DataKey();
     final DataValue dataValue;
-    final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
     final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
 
     // encode key
@@ -356,8 +357,8 @@ public final class RemoteAccessOpSender {
       final MultiKeyDataOpMetadata<K, V, U> dataOpMetadata) {
     final DataKeys dataKeys = new DataKeys();
     final DataValues dataValues = new DataValues();
-    final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
-    final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+    final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
     final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
 
     final List<ByteBuffer> encodedKeys = new ArrayList<>();

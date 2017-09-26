@@ -23,7 +23,7 @@ import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -63,7 +63,7 @@ final class FallbackManager {
     try {
       final AllocatedTable table = tableManagerFuture.get().getAllocatedTable(tableId);
       final Injector injector = Tang.Factory.getTang().newInjector(table.getTableConfiguration().getConfiguration());
-      final Codec keyCodec = injector.getNamedInstance(KeyCodec.class);
+      final StreamingCodec keyCodec = injector.getNamedInstance(KeyCodec.class);
 
       final BlockPartitioner blockPartitioner = injector.getInstance(BlockPartitioner.class);
       final int blockId = blockPartitioner.getBlockId(keyCodec.decode(innerMsg.getDataKey().getKey().array()));

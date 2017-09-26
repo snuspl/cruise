@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.services.et.configuration.parameters;
 
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "The codec class for encoding and decoding value objects in table")
-public final class ValueCodec implements Name<Codec> {
+public final class ValueCodec implements Name<StreamingCodec> {
 }

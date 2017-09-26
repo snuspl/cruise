@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -34,11 +34,11 @@ public final class HashBasedBlockPartitioner<K> implements BlockPartitioner<K> {
    */
   private final KeySpacePartitioner keySpacePartitioner;
 
-  private final Codec<K> keyCodec;
+  private final StreamingCodec<K> keyCodec;
 
   @Inject
   private HashBasedBlockPartitioner(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                                    @Parameter(KeyCodec.class) final Codec<K> keyCodec) {
+                                    @Parameter(KeyCodec.class) final StreamingCodec<K> keyCodec) {
     this.keySpacePartitioner = new KeySpacePartitioner(0, Integer.MAX_VALUE, numTotalBlocks);
     this.keyCodec = keyCodec;
   }
