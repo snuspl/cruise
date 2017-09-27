@@ -244,6 +244,18 @@ public final class OwnershipCache {
   }
 
   /**
+   * Holds a write lock on the ownership of a block with {@code blockId}.
+   * Callers should unlock the returned lock after use.
+   * @param blockId a block Id
+   * @return a write lock that should be unlocked after use
+   */
+  public Lock holdWriteLock(final int blockId) {
+    final Lock writeLock = ownershipLocks.get(blockId).writeLock();
+    writeLock.lock();
+    return writeLock;
+  }
+
+  /**
    * Completes sync by sending a response msg to master.
    */
   private void completeSync(final long opId, final String deletedExecutorId) {

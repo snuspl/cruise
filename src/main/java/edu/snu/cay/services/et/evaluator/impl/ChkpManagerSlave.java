@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -163,6 +164,8 @@ public final class ChkpManagerSlave {
       final AtomicInteger numItems = new AtomicInteger(0);
       blockStore.iterator().forEachRemaining(block -> {
         // create a file for each block
+        // prevent modifying value while doing chkp
+        final Lock lock = tableComponents.getOwnershipCache().holdWriteLock(block.getId());
         try (FSDataOutputStream fos = fs.create(new Path(baseDir, Integer.toString(block.getId())))) {
           fos.writeInt(block.getNumPairs());
           block.iterator().forEachRemaining(kvEntry -> {
@@ -171,6 +174,8 @@ public final class ChkpManagerSlave {
           });
         } catch (IOException e) {
           throw new RuntimeException(e);
+        } finally {
+          lock.unlock();
         }
 
         numItems.getAndAdd(block.getNumPairs());
