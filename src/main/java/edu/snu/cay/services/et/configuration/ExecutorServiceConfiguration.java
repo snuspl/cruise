@@ -21,8 +21,10 @@ import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
+import edu.snu.cay.services.et.evaluator.impl.Tables;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.evaluator.context.parameters.Services;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.formats.*;
@@ -59,6 +61,7 @@ public final class ExecutorServiceConfiguration extends ConfigurationModuleBuild
    * ConfigurationModule.
    */
   public static final ConfigurationModule CONF = new ExecutorServiceConfiguration()
+      .bindSetEntry(Services.class, Tables.class)
       .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
       .bindNamedParameter(ExecutorIdentifier.class, IDENTIFIER)
       .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)
