@@ -40,6 +40,7 @@ import java.util.logging.Logger;
  */
 public final class PlanExecutorImpl implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(PlanExecutorImpl.class.getName());
+  private static final int NUM_EXECUTOR_THREADS = 16;
 
   private final ETMaster etMaster;
   private final MetricManager metricManager;
@@ -61,6 +62,13 @@ public final class PlanExecutorImpl implements PlanExecutor {
    * It's null, when there's no ongoing plan.
    */
   private final AtomicReference<ExecutingPlan> executingPlan = new AtomicReference<>();
+
+  /**
+   * A thread pool for parallelizing plan operations.
+   * Actually it's not for execute the operation from end to end.
+   * This thread pool parallelizes the part between the entry of {@link Op#execute} and its return of {@link Future}.
+   */
+  private final ExecutorService executor = CatchableExecutors.newFixedThreadPool(NUM_EXECUTOR_THREADS);
 
   @Inject
   private PlanExecutorImpl(final ETMaster etMaster,
@@ -121,20 +129,22 @@ public final class PlanExecutorImpl implements PlanExecutor {
 
         if (nextOps != null) {
           // executes operations in parallel, because they have no dependency between them
-          nextOps.forEach(op -> {
-            try {
-              LOG.log(Level.INFO, "Start executing op: {0}", op);
-              final long opStartTime = System.currentTimeMillis();
-              op.execute(etMaster, metricManager, virtualIdToActualId)
-                  .addListener(opResult -> {
-                    LOG.log(Level.INFO, "Op elapsed time (ms): {0}, OpId: {1}, OpType: {2}",
-                        new Object[]{System.currentTimeMillis() - opStartTime, op.getOpId(), op.getOpType()});
-                    onOpComplete(op, opResult);
-                  });
-            } catch (PlanOpExecutionException e) {
-              throw new RuntimeException(e);
-            }
-          });
+          nextOps.forEach(op ->
+              executor.submit(() -> {
+                try {
+                  LOG.log(Level.INFO, "Start executing op: {0}", op);
+                  final long opStartTime = System.currentTimeMillis();
+                  op.execute(etMaster, metricManager, virtualIdToActualId)
+                      .addListener(opResult -> {
+                        LOG.log(Level.INFO, "Op elapsed time (ms): {0}, OpId: {1}, OpType: {2}",
+                            new Object[]{System.currentTimeMillis() - opStartTime, op.getOpId(), op.getOpType()});
+                        onOpComplete(op, opResult);
+                      });
+                } catch (PlanOpExecutionException e) {
+                  throw new RuntimeException(e);
+                }
+              }));
+
           numStartedOps += nextOps.size();
         }
         LOG.log(Level.INFO, "The number of started ops: [{0} / {1}]", new Object[]{numStartedOps, numTotalOps});
