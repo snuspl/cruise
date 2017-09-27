@@ -120,6 +120,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(Lambda.class) final float lambda,
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
+                     @Parameter(HyperThreadEnabled.class) final boolean hyperThreadEnabled,
                      @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
@@ -144,7 +145,8 @@ final class MLRTrainer implements Trainer<MLRData> {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
 
-    this.numTrainerThreads = Runtime.getRuntime().availableProcessors();
+    // Use the half of the processors if hyper-thread is on, since using virtual cores do not help for float-point ops.
+    this.numTrainerThreads = Runtime.getRuntime().availableProcessors() / (hyperThreadEnabled ? 2 : 1);
     this.executor = CatchableExecutors.newFixedThreadPool(numTrainerThreads);
 
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);

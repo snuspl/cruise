@@ -68,9 +68,9 @@ public final class DolphinParameters {
   public final class NumServerBlocks implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of threads to run Trainer with",
-      short_name = "num_trainer_threads", default_value = "1")
-  public final class NumTrainerThreads implements Name<Integer> {
+  @NamedParameter(doc = "Whether the hyper-thread is enabled, which determines the proper number of trainer threads.",
+      short_name = "hyper_thread_enabled", default_value = "false")
+  public final class HyperThreadEnabled implements Name<Boolean> {
   }
 
   @NamedParameter(doc = "Desired memory size for each worker evaluator (MBs)",
