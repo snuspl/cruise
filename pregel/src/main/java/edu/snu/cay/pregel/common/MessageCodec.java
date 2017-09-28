@@ -73,6 +73,7 @@ public final class MessageCodec<M> implements Codec<Iterable<M>>, StreamingCodec
     }
   }
 
+  // TODO #1244: implement StreamingCodec
   @Override
   public void encodeToStream(final Iterable<M> obj, final DataOutputStream stream) {
     throw new NotImplementedException("not implemented");

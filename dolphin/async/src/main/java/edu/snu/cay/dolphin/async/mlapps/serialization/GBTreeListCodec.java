@@ -89,6 +89,7 @@ public final class GBTreeListCodec implements Codec<List<GBTree>>, StreamingCode
     }
   }
 
+  // TODO #1244: implement StreamingCodec
   @Override
   public void encodeToStream(final List<GBTree> obj, final DataOutputStream stream) {
     throw new NotImplementedException("not implemented");

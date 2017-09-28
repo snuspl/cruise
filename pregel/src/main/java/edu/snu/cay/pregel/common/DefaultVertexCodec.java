@@ -104,6 +104,7 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>>, Stre
     }
   }
 
+  // TODO #1244: implement StreamingCodec
   @Override
   public void encodeToStream(final Vertex<V, E> obj, final DataOutputStream stream) {
     throw new NotImplementedException("not implemented");
