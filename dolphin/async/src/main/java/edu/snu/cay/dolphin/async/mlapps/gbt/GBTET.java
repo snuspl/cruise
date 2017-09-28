@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeListCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
 
@@ -36,10 +36,10 @@ public final class GBTET {
     ETDolphinLauncher.launch("GBTET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(GBTTrainer.class)
         .setInputParserClass(GBTETDataParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(GBTDataCodec.class)
         .setModelUpdateFunctionClass(GBTETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(GBTreeListCodec.class)
         .setModelUpdateValueCodecClass(GBTreeCodec.class)
         .addParameterClass(Gamma.class)

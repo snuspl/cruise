@@ -18,11 +18,9 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import javax.inject.Inject;
-
-import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
  * Application launching code for Lasso with JobServer.
@@ -37,10 +35,10 @@ public final class LassoJob {
     JobLauncher.submitJob("Lasso", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(LassoTrainer.class)
         .setInputParserClass(LassoETParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(LassoDataCodec.class)
         .setModelUpdateFunctionClass(LassoETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .build());

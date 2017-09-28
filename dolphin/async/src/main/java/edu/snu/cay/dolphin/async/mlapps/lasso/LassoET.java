@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import javax.inject.Inject;
 
@@ -35,10 +35,10 @@ public final class LassoET {
     ETDolphinLauncher.launch("LassoET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(LassoTrainer.class)
         .setInputParserClass(LassoETParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(LassoDataCodec.class)
         .setModelUpdateFunctionClass(LassoETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
         .build());
