@@ -36,6 +36,7 @@ import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
@@ -162,8 +163,8 @@ public final class DolphinDriver {
   private static TableConfiguration buildWorkerTableConf(final Injector workerInjector,
                                                          final int numTotalBlocks,
                                                          final Configuration userParamConf) throws InjectionException {
-    final Codec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
-    final Codec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
+    final StreamingCodec keyCodec = workerInjector.getNamedInstance(KeyCodec.class);
+    final StreamingCodec valueCodec = workerInjector.getNamedInstance(ValueCodec.class);
     final DataParser dataParser = workerInjector.getInstance(DataParser.class);
 
     return TableConfiguration.newBuilder()
@@ -183,8 +184,8 @@ public final class DolphinDriver {
   private static TableConfiguration buildServerTableConf(final Injector serverInjector,
                                                          final int numTotalBlocks,
                                                          final Configuration userParamConf) throws InjectionException {
-    final Codec keyCodec = serverInjector.getNamedInstance(KeyCodec.class);
-    final Codec valueCodec = serverInjector.getNamedInstance(ValueCodec.class);
+    final StreamingCodec keyCodec = serverInjector.getNamedInstance(KeyCodec.class);
+    final StreamingCodec valueCodec = serverInjector.getNamedInstance(ValueCodec.class);
     final Codec updateValueCodec = serverInjector.getNamedInstance(UpdateValueCodec.class);
     final UpdateFunction updateFunction = serverInjector.getInstance(UpdateFunction.class);
 

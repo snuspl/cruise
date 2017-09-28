@@ -21,6 +21,7 @@ import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.graph.api.Edge;
 import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.DefaultVertex;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -41,7 +42,7 @@ import java.util.logging.Logger;
  * 1. Edge w/ value : [ long: target vertex id | E: edge value ]
  * 2. Edge w/o value : [ long: target vertex id ]
  */
-public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
+public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>>, StreamingCodec<Vertex<V, E>> {
 
   private static final Logger LOG = Logger.getLogger(DefaultVertexCodec.class.getName());
   private final StreamingCodec<V> vertexValueCodec;
@@ -101,5 +102,15 @@ public final class DefaultVertexCodec<V, E> implements Codec<Vertex<V, E>> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void encodeToStream(final Vertex<V, E> obj, final DataOutputStream stream) {
+    throw new NotImplementedException("not implemented exception");
+  }
+
+  @Override
+  public Vertex<V, E> decodeFromStream(final DataInputStream stream) {
+    throw new NotImplementedException("not implemented exception");
   }
 }

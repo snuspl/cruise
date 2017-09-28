@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Beta;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumVocabs;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;
@@ -39,10 +40,10 @@ public final class LDAJob {
     JobLauncher.submitJob("LDA", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setInputParserClass(LDAETDataParser.class)
-        .setInputKeyCodecClass(SerializableCodec.class)
+        .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(LDADataCodec.class)
         .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
-        .setModelKeyCodecClass(SerializableCodec.class)
+        .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(SparseArrayCodec.class)
         .setModelUpdateValueCodecClass(SerializableCodec.class)
         .addParameterClass(Alpha.class)
