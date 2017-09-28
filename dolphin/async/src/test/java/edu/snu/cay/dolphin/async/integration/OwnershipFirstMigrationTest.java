@@ -86,15 +86,15 @@ public final class OwnershipFirstMigrationTest {
   }
 
   private List<String> getDefaultArguments(final int numWorkers) {
-    final int miniBatchSize = 10;
-    final int numWorkerBlocks = numWorkers * 10;
-    final int numTotalTrainingData = miniBatchSize * numWorkerBlocks;
+    final int numMiniBatches = 10;
+    final int numWorkerBlocks = numWorkers * numMiniBatches;
+    final int numDataPerWorker = numMiniBatches; // a single data item for a batch
 
     return Arrays.asList(
         "-max_num_epochs", Integer.toString(5),
-        "-mini_batch_size", Integer.toString(miniBatchSize),
+        "-num_mini_batches", Integer.toString(numMiniBatches),
         "-num_worker_blocks", Integer.toString(numWorkerBlocks),
-        "-num_training_data", Integer.toString(numTotalTrainingData / numWorkers), // number of data per worker
+        "-num_training_data", Integer.toString(numDataPerWorker),
         "-num_test_data", Integer.toString(10),
         "-delta", Integer.toString(4),
         "-num_keys", Integer.toString(50),
