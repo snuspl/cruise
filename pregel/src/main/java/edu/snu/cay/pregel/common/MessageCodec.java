@@ -17,6 +17,7 @@ package edu.snu.cay.pregel.common;
 
 import com.google.common.collect.Lists;
 import edu.snu.cay.pregel.PregelParameters.*;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -33,7 +34,7 @@ import java.util.List;
  *
  * @param <M> message value
  */
-public final class MessageCodec<M> implements Codec<Iterable<M>> {
+public final class MessageCodec<M> implements Codec<Iterable<M>>, StreamingCodec<Iterable<M>> {
 
   private final StreamingCodec<M> valueCodec;
   @Inject
@@ -70,5 +71,15 @@ public final class MessageCodec<M> implements Codec<Iterable<M>> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void encodeToStream(final Iterable<M> obj, final DataOutputStream stream) {
+    throw new NotImplementedException("not implemented");
+  }
+
+  @Override
+  public Iterable<M> decodeFromStream(final DataInputStream stream) {
+    throw new NotImplementedException("not implemented");
   }
 }

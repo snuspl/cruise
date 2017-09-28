@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.annotations.audience.ClientSide;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -41,11 +42,11 @@ import java.util.List;
 public final class ETDolphinConfiguration {
   private final Class<? extends Trainer> trainerClass;
   private final Class<? extends DataParser> inputParserClass;
-  private final Class<? extends Codec> inputKeyCodecClass;
-  private final Class<? extends Codec> inputValueCodecClass;
+  private final Class<? extends StreamingCodec> inputKeyCodecClass;
+  private final Class<? extends StreamingCodec> inputValueCodecClass;
   private final Class<? extends UpdateFunction> modelUpdateFunctionClass;
-  private final Class<? extends Codec> modelKeyCodecClass;
-  private final Class<? extends Codec> modelValueCodecClass;
+  private final Class<? extends StreamingCodec> modelKeyCodecClass;
+  private final Class<? extends StreamingCodec> modelValueCodecClass;
   private final Class<? extends Codec> modelUpdateValueCodecClass;
 
   private final List<Class<? extends Name<?>>> parameterClassList;
@@ -54,11 +55,11 @@ public final class ETDolphinConfiguration {
 
   private ETDolphinConfiguration(final Class<? extends Trainer> trainerClass,
                                  final Class<? extends DataParser> inputParserClass,
-                                 final Class<? extends Codec> inputKeyCodecClass,
-                                 final Class<? extends Codec> inputValueCodecClass,
+                                 final Class<? extends StreamingCodec> inputKeyCodecClass,
+                                 final Class<? extends StreamingCodec> inputValueCodecClass,
                                  final Class<? extends UpdateFunction> modelUpdateFunctionClass,
-                                 final Class<? extends Codec> modelKeyCodecClass,
-                                 final Class<? extends Codec> modelValueCodecClass,
+                                 final Class<? extends StreamingCodec> modelKeyCodecClass,
+                                 final Class<? extends StreamingCodec> modelValueCodecClass,
                                  final Class<? extends Codec> modelUpdateValueCodecClass,
                                  final List<Class<? extends Name<?>>> parameterClassList,
                                  final Configuration workerConfiguration,
@@ -84,11 +85,11 @@ public final class ETDolphinConfiguration {
     return inputParserClass;
   }
 
-  public Class<? extends Codec> getInputKeyCodecClass() {
+  public Class<? extends StreamingCodec> getInputKeyCodecClass() {
     return inputKeyCodecClass;
   }
 
-  public Class<? extends Codec> getInputValueCodecClass() {
+  public Class<? extends StreamingCodec> getInputValueCodecClass() {
     return inputValueCodecClass;
   }
 
@@ -96,11 +97,11 @@ public final class ETDolphinConfiguration {
     return modelUpdateFunctionClass;
   }
 
-  public Class<? extends Codec> getModelKeyCodecClass() {
+  public Class<? extends StreamingCodec> getModelKeyCodecClass() {
     return modelKeyCodecClass;
   }
 
-  public Class<? extends Codec> getModelValueCodecClass() {
+  public Class<? extends StreamingCodec> getModelValueCodecClass() {
     return modelValueCodecClass;
   }
 
@@ -127,12 +128,12 @@ public final class ETDolphinConfiguration {
   public static class Builder implements org.apache.reef.util.Builder<ETDolphinConfiguration> {
     private Class<? extends Trainer> trainerClass;
     private Class<? extends DataParser> inputParserClass;
-    private Class<? extends Codec> inputKeyCodecClass = StreamingSerializableCodec.class;
-    private Class<? extends Codec> inputValueCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends StreamingCodec> inputKeyCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends StreamingCodec> inputValueCodecClass = StreamingSerializableCodec.class;
 
     private Class<? extends UpdateFunction> modelUpdateFunctionClass;
-    private Class<? extends Codec> modelKeyCodecClass = StreamingSerializableCodec.class;
-    private Class<? extends Codec> modelValueCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends StreamingCodec> modelKeyCodecClass = StreamingSerializableCodec.class;
+    private Class<? extends StreamingCodec> modelValueCodecClass = StreamingSerializableCodec.class;
     private Class<? extends Codec> modelUpdateValueCodecClass = SerializableCodec.class;
 
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
@@ -149,12 +150,12 @@ public final class ETDolphinConfiguration {
       return this;
     }
 
-    public Builder setInputKeyCodecClass(final Class<? extends Codec> inputKeyCodecClass) {
+    public Builder setInputKeyCodecClass(final Class<? extends StreamingCodec> inputKeyCodecClass) {
       this.inputKeyCodecClass = inputKeyCodecClass;
       return this;
     }
 
-    public Builder setInputValueCodecClass(final Class<? extends Codec> inputValueCodecClass) {
+    public Builder setInputValueCodecClass(final Class<? extends StreamingCodec> inputValueCodecClass) {
       this.inputValueCodecClass = inputValueCodecClass;
       return this;
     }
@@ -164,12 +165,12 @@ public final class ETDolphinConfiguration {
       return this;
     }
 
-    public Builder setModelKeyCodecClass(final Class<? extends Codec> modelKeyCodecClass) {
+    public Builder setModelKeyCodecClass(final Class<? extends StreamingCodec> modelKeyCodecClass) {
       this.modelKeyCodecClass = modelKeyCodecClass;
       return this;
     }
 
-    public Builder setModelValueCodecClass(final Class<? extends Codec> modelValueCodecClass) {
+    public Builder setModelValueCodecClass(final Class<? extends StreamingCodec> modelValueCodecClass) {
       this.modelValueCodecClass = modelValueCodecClass;
       return this;
     }
