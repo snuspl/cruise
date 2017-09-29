@@ -157,6 +157,7 @@ public final class ETTaskRunner {
     final int numAfterWorkers = workerExecutors.size();
     final int numAfterServers = serverExecutors.size();
 
+    // notify to the client when the number of worker/server changes
     if (numPrevWorkers != numAfterWorkers || numPrevServers != numAfterServers) {
       final String msgToClient = String.format("(S: %d, W: %d) -> (S: %d, W: %d)",
           numPrevServers, numPrevWorkers, numAfterServers, numAfterWorkers);
