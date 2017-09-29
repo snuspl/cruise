@@ -139,8 +139,7 @@ final class Document {
   }
 
   /**
-   *
-   * @return
+   * @return the count of topics assigned to each word in this document.
    */
   Map<Integer, Integer> getTopicCounts() {
     return new HashMap<>(topicCounts);

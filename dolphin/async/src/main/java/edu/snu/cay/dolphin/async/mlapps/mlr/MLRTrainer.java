@@ -261,7 +261,10 @@ final class MLRTrainer implements Trainer<MLRData> {
     map.put("avgAccuracy", (double) trainingLossRegLossAvgAccuracy.getThird());
     return map;
   }
-
+  
+  /**
+   * Pull models one last time and perform validation.
+   */
   private MLRModel pullModelsToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
     final List<Vector> partitions = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
 
@@ -282,9 +285,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     return mlrModel;
   }
 
-  /**
-   * Pull models one last time and perform validation.
-   */
   @Override
   public void cleanup() {
     executor.shutdown();
