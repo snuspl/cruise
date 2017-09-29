@@ -51,8 +51,6 @@ final class ModelChkpManager {
   private final String modelTableId;
   private final String inputTableId;
 
-  private final boolean offlineModelEval;
-
   private final InjectionFuture<ETMaster> etMasterFuture;
 
   private final InjectionFuture<ETTaskRunner> etTaskRunnerFuture;
@@ -69,7 +67,6 @@ final class ModelChkpManager {
   private ModelChkpManager(final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<ETTaskRunner> etTaskRunnerFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
-                           @Parameter(DolphinParameters.OfflineModelEvaluation.class) final boolean offlineModelEval,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.etMasterFuture = etMasterFuture;
@@ -77,12 +74,14 @@ final class ModelChkpManager {
     this.msgSender = msgSender;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
-    this.offlineModelEval = offlineModelEval;
-    LOG.log(Level.INFO, "Offline model evaluation is turned" + (offlineModelEval ? "on" : "off"));
   }
 
   /**
    * On a message from worker.
+   * Workers send messages that they are ready to evaluate next model.
+   * Evaluation of one model table is started when all workers are synchronized.
+   * Manager restores a model table from the oldest checkpoint and lets workers evaluate the table.
+   * When there's no more checkpoints, manager stops worker from evaluation.
    */
   void onWorkerMsg() {
     final int numWorkersSentMsg = workerCount.incrementAndGet();

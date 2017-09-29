@@ -70,6 +70,8 @@ public final class DolphinDriver {
   private final ETMaster etMaster;
   private final DolphinMaster dolphinMaster;
 
+  private final boolean offlineModelEval;
+
   private final int numWorkers;
   private final int numServers;
 
@@ -90,6 +92,7 @@ public final class DolphinDriver {
                         final ETMaster etMaster,
                         final ConfigurationSerializer confSerializer,
                         final NetworkConnection<DolphinMsg> networkConnection,
+                        @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
                         @Parameter(NumServerCores.class) final int numServerCores,
@@ -115,6 +118,8 @@ public final class DolphinDriver {
     this.etMaster = etMaster;
     this.dolphinMaster = dolphinMaster;
 
+    this.offlineModelEval = offlineModelEval;
+
     this.numWorkers = numWorkers;
     this.numServers = numServers;
 
@@ -139,7 +144,6 @@ public final class DolphinDriver {
         numWorkerHandlerThreads, workerHandlerQueueSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, numWorkerBlocks, userParamConf);
     this.inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
-
     this.jobId = jobId;
   }
 
@@ -245,42 +249,51 @@ public final class DolphinDriver {
 
             dolphinMaster.start(servers, workers, modelTable, inputTable);
 
-            // sleep before dropping table for preventing loss of ongoing non-blocking ops(pushes)
-            Thread.sleep(30000);
-            inputTable.drop().get();
-            workers.forEach(worker -> {
-              try {
-                modelTable.unsubscribe(worker.getId()).get();
-              } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-              }
-            });
+            // need to evaluate model tables loaded from checkpoints ans new workers executors
+            if (offlineModelEval) {
+              // TODO #00: need a support that flushes out all remaining operations when dropping the table
+              // sleep before dropping table for preventing loss of ongoing non-blocking ops(pushes)
+              Thread.sleep(30000);
+              inputTable.drop().get();
+              workers.forEach(worker -> {
+                try {
+                  modelTable.unsubscribe(worker.getId()).get();
+                } catch (InterruptedException | ExecutionException e) {
+                  throw new RuntimeException(e);
+                }
+              });
 
-            workers.forEach(AllocatedExecutor::close);
+              workers.forEach(AllocatedExecutor::close);
 
-            Thread.sleep(30000);
+              // TODO #00: remove this safeguard that separates model evaluation phase from training phase
+              Thread.sleep(30000);
 
-            // start model evaluation with new workers
-            final List<AllocatedExecutor> workersForEvaluation
-                = etMaster.addExecutors(workers.size(), getWorkerExecutorConf()).get();
-            final AllocatedTable dummyTable = etMaster.createTable(
-                TableConfiguration.newBuilder()
-                    .setId(InputTableId.DEFAULT_VALUE)
-                    .setKeyCodecClass(StreamingSerializableCodec.class)
-                    .setValueCodecClass(StreamingSerializableCodec.class)
-                    .setUpdateValueCodecClass(SerializableCodec.class)
-                    .setUpdateFunctionClass(VoidUpdateFunction.class)
-                    .setIsMutableTable(false)
-                    .setIsOrderedTable(true)
-                    .build(),
-                workersForEvaluation).get();
+              // start model evaluation with new workers (to completely empty the memory)
+              final List<AllocatedExecutor> workersForEvaluation
+                  = etMaster.addExecutors(workers.size(), getWorkerExecutorConf()).get();
+              final AllocatedTable dummyTable = etMaster.createTable(
+                  TableConfiguration.newBuilder()
+                      .setId(InputTableId.DEFAULT_VALUE)
+                      .setKeyCodecClass(StreamingSerializableCodec.class)
+                      .setValueCodecClass(StreamingSerializableCodec.class)
+                      .setUpdateValueCodecClass(SerializableCodec.class)
+                      .setUpdateFunctionClass(VoidUpdateFunction.class)
+                      .setIsMutableTable(false)
+                      .setIsOrderedTable(true)
+                      .build(),
+                  workersForEvaluation).get();
 
-            modelTable.subscribe(workersForEvaluation).get();
+              modelTable.subscribe(workersForEvaluation).get();
 
-            dolphinMaster.evaluate(workersForEvaluation);
+              dolphinMaster.evaluate(workersForEvaluation);
 
-            workersForEvaluation.forEach(AllocatedExecutor::close);
-            servers.forEach(AllocatedExecutor::close);
+              workersForEvaluation.forEach(AllocatedExecutor::close);
+              servers.forEach(AllocatedExecutor::close);
+
+            } else {
+              workers.forEach(AllocatedExecutor::close);
+              servers.forEach(AllocatedExecutor::close);
+            }
           } catch (Exception e) {
             LOG.log(Level.SEVERE, "Exception while running a job", e);
             throw new RuntimeException(e);

@@ -133,27 +133,17 @@ final class ETWorkerTask<V> implements Task {
         }
       }
 
-      /*
       if (!offlineModelEval) {
         final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
         final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
 
         sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
       }
-      */
     }
 
     // Synchronize all workers before cleanup for workers
     // to finish with the globally equivalent view of trained model
     workerGlobalBarrier.await();
-
-//    if (offlineModelEval) {
-//      // TODO #00: sleep before starting evaluation to wait for previous pushes are flushed
-//      Thread.sleep(60000);
-//
-//      // evaluate all check-pointed models
-//      modelEvaluator.evaluate(trainer);
-//    }
 
     trainer.cleanup();
     return null;

@@ -38,6 +38,8 @@ public final class BatchProgressTracker {
   private final int numEpochs;
   private final int numMiniBatchesInEpoch;
 
+  private final boolean offlineModelEval;
+
   private final Map<String, Integer> workerIdToBatchProgress = new ConcurrentHashMap<>();
 
   private final AtomicInteger miniBatchCounter = new AtomicInteger(0);
@@ -46,10 +48,13 @@ public final class BatchProgressTracker {
   private BatchProgressTracker(@Parameter(DolphinParameters.MaxNumEpochs.class) final int numEpochs,
                                @Parameter(DolphinParameters.NumTotalMiniBatches.class)
                                  final int numMiniBatchesInEpoch,
+                               @Parameter(DolphinParameters.OfflineModelEvaluation.class)
+                                 final boolean offlineModelEval,
                                final ModelChkpManager modelChkpManager) {
     this.modelChkpManager = modelChkpManager;
     this.numEpochs = numEpochs;
     this.numMiniBatchesInEpoch = numMiniBatchesInEpoch;
+    this.offlineModelEval = offlineModelEval;
   }
 
   synchronized void onProgressMsg(final ProgressMsg msg) {
@@ -59,9 +64,12 @@ public final class BatchProgressTracker {
     final int epochIdx = totalMiniBatchCount / numMiniBatchesInEpoch;
     final int batchIdx = totalMiniBatchCount % numMiniBatchesInEpoch;
 
-    if (batchIdx == 0 && epochIdx > 0) {
-      modelChkpManager.createCheckpoint();
+    if (offlineModelEval) {
+      if (batchIdx == 0 && epochIdx > 0) {
+        modelChkpManager.createCheckpoint();
+      }
     }
+
     workerIdToBatchProgress.compute(workerId, (id, batchCount) -> batchCount == null ? 1 : batchCount + 1);
 
     LOG.log(Level.INFO, "Epoch started: {0} / {1}. Batch started: {2} / {3}.",
