@@ -69,11 +69,6 @@ public final class ETTaskRunner {
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
   }
 
-  public void setWorkerExecutors(final List<AllocatedExecutor> workers) {
-    workerExecutors.clear();
-    workers.forEach(worker -> workerExecutors.put(worker.getId(), worker));
-  }
-
   /**
    * Runs tasks on worker executors. It returns when all the worker task finish.
    * With optimization, the number of workers changes during runtime by {@link #updateExecutorEntry}.
@@ -183,19 +178,5 @@ public final class ETTaskRunner {
 
     LOG.log(Level.INFO, "Task finished");
     return taskResultList;
-  }
-
-  /**
-   * @return a list of running server executors
-   */
-  List<AllocatedExecutor> getServerExecutors() {
-    return new ArrayList<>(serverExecutors.values());
-  }
-
-  /**
-   * @return a list of running worker executors
-   */
-  List<AllocatedExecutor> getWorkerExecutors() {
-    return new ArrayList<>(workerExecutors.values());
   }
 }

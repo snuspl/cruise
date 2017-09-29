@@ -26,7 +26,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -53,39 +52,50 @@ final class ModelChkpManager {
 
   private final InjectionFuture<ETMaster> etMasterFuture;
 
-  private final InjectionFuture<ETTaskRunner> etTaskRunnerFuture;
-
   private final InjectionFuture<MasterSideMsgSender> msgSender;
 
   private final AtomicInteger workerCount = new AtomicInteger(0);
   private final AtomicInteger chkpCounter = new AtomicInteger(0);
   private final AtomicBoolean restoreStarted = new AtomicBoolean(false);
 
+  private List<AllocatedExecutor> runningServers;
+  private List<AllocatedExecutor> runningWorkers;
+
   private final ExecutorService executor = CatchableExecutors.newSingleThreadExecutor();
 
   @Inject
   private ModelChkpManager(final InjectionFuture<ETMaster> etMasterFuture,
-                           final InjectionFuture<ETTaskRunner> etTaskRunnerFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.etMasterFuture = etMasterFuture;
-    this.etTaskRunnerFuture = etTaskRunnerFuture;
     this.msgSender = msgSender;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
   }
 
   /**
+   * Set executors for evaluating a model.
+   * Should be called before starting model evaluation.
+   * It assumes that these entries does not change in model evaluation phase.
+   * @param serverExecutors server executors
+   * @param workerExecutors worker executors
+   */
+  void setExecutors(final List<AllocatedExecutor> serverExecutors,
+                    final List<AllocatedExecutor> workerExecutors) {
+    this.runningServers = serverExecutors;
+    this.runningWorkers = workerExecutors;
+  }
+
+  /**
    * On a message from worker.
    * Workers send messages that they are ready to evaluate next model.
-   * Evaluation of one model table is started when all workers are synchronized.
-   * Manager restores a model table from the oldest checkpoint and lets workers evaluate the table.
+   * Evaluation of one model table is started when all runningWorkers are synchronized.
+   * Manager restores a model table from the oldest checkpoint and lets runningWorkers evaluate the table.
    * When there's no more checkpoints, manager stops worker from evaluation.
    */
   void onWorkerMsg() {
     final int numWorkersSentMsg = workerCount.incrementAndGet();
-    final List<AllocatedExecutor> runningWorkers = etTaskRunnerFuture.get().getWorkerExecutors();
 
     LOG.log(Level.INFO, "Msg from a worker. [{0} / {1}]", new Object[]{numWorkersSentMsg, runningWorkers.size()});
 
@@ -136,9 +146,6 @@ final class ModelChkpManager {
 
       final String inputChkpId = chkpIdFutures[0].get();
       final String modelChkpId = chkpIdFutures[1].get();
-
-      final List<AllocatedExecutor> runningWorkers = new ArrayList<>(etTaskRunnerFuture.get().getWorkerExecutors());
-      final List<AllocatedExecutor> runningServers = new ArrayList<>(etTaskRunnerFuture.get().getServerExecutors());
 
       final Future<AllocatedTable> inputTableFuture = etMasterFuture.get().createTable(inputChkpId, runningWorkers);
       final Future<AllocatedTable> modelTableFuture = etMasterFuture.get().createTable(modelChkpId, runningServers);

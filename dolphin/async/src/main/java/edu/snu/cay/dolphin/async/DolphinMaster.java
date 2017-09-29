@@ -53,6 +53,7 @@ import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
 public final class DolphinMaster {
   private static final Logger LOG = Logger.getLogger(DolphinMaster.class.getName());
 
+  private final ModelChkpManager modelChkpManager;
   private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
   private final ProgressTracker progressTracker;
@@ -73,6 +74,7 @@ public final class DolphinMaster {
   @Inject
   private DolphinMaster(final MetricManager metricManager,
                         final OptimizationOrchestrator optimizationOrchestrator,
+                        final ModelChkpManager modelChkpManager,
                         final ETTaskRunner taskRunner,
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
@@ -84,6 +86,7 @@ public final class DolphinMaster {
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
+    this.modelChkpManager = modelChkpManager;
     this.metricManager = metricManager;
     this.taskRunner = taskRunner;
     this.progressTracker = progressTracker;
@@ -180,10 +183,14 @@ public final class DolphinMaster {
     }
   }
 
-  public void evaluate(final List<AllocatedExecutor> workers) {
+  /**
+   * Start evaluating a model with given server and worker executors.
+   * It loads and evaluate all checkpoints of a model table.
+   */
+  public void evaluate(final List<AllocatedExecutor> servers, final List<AllocatedExecutor> workers) {
     workers.forEach(worker -> metricManager.startMetricCollection(worker.getId(), getWorkerMetricConf()));
 
-    taskRunner.setWorkerExecutors(workers);
+    modelChkpManager.setExecutors(servers, workers);
 
     final List<Future<SubmittedTask>> taskFutures = new ArrayList<>(workers.size());
     workers.forEach(worker -> taskFutures.add(worker.submitTask(getWorkerTaskConf(ModelEvaluationTask.class))));
