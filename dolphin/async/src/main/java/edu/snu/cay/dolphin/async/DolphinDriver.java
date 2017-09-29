@@ -33,6 +33,7 @@ import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.StreamingSerializableCodec;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -69,6 +70,7 @@ public final class DolphinDriver {
 
   private final ETMaster etMaster;
   private final DolphinMaster dolphinMaster;
+  private final JobMessageObserver jobMessageObserver;
 
   private final boolean offlineModelEval;
 
@@ -90,6 +92,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final DolphinMaster dolphinMaster,
                         final ETMaster etMaster,
+                        final JobMessageObserver jobMessageObserver,
                         final ConfigurationSerializer confSerializer,
                         final NetworkConnection<DolphinMsg> networkConnection,
                         @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
@@ -117,6 +120,7 @@ public final class DolphinDriver {
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.dolphinMaster = dolphinMaster;
+    this.jobMessageObserver = jobMessageObserver;
 
     this.offlineModelEval = offlineModelEval;
 
@@ -249,8 +253,12 @@ public final class DolphinDriver {
 
             dolphinMaster.start(servers, workers, modelTable, inputTable);
 
+            jobMessageObserver.sendMessageToClient("Start training a model".getBytes());
+
             // need to evaluate model tables loaded from checkpoints with new workers executors
             if (offlineModelEval) {
+              jobMessageObserver.sendMessageToClient("Start evaluating the trained model".getBytes());
+
               // TODO #1248: need a support that flushes out all remaining operations when dropping the table
               // sleep before dropping table for preventing loss of ongoing non-blocking ops(pushes)
               Thread.sleep(30000);
