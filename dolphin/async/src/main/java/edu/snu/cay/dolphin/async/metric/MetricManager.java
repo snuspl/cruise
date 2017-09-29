@@ -77,7 +77,17 @@ public final class MetricManager {
    */
   private final Map<String, Integer> evalIdToMiniBatchCounter = new ConcurrentHashMap<>();
 
-  private final Set<String> skippedEvalIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  /**
+   * A collection of worker ids that report metrics after {@link #resumeMetricCollection()}.
+   */
+  private final Set<String> skippedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  /**
+   * A count of metric collection pauses.
+   * When a pause exists, metrics are not collected.
+   * Pauses are done by model checkpoint and optimization.
+   */
+  private final AtomicInteger metricCollectionPauseCount = new AtomicInteger(0);
 
   /**
    * Constructor of MetricManager.
@@ -205,20 +215,29 @@ public final class MetricManager {
     metricCollectionEnabled = true;
   }
 
-  private final AtomicInteger metricCollectionPauseCount = new AtomicInteger(0);
-
+  /**
+   * Clear all stored metrics.
+   */
   public void clearMetric() {
     metricStore.clearServerMetrics();
     metricStore.clearWorkerMetrics();
   }
 
+  /**
+   * Pause metric collection.
+   * Metric collection is disabled while pause count is greater than zero.
+   */
   public void pauseMetricCollection() {
     final int count = metricCollectionPauseCount.incrementAndGet();
     LOG.log(Level.INFO, "Pause metric collection. Pause count: {0}", count);
   }
 
+  /**
+   * Resume metric collection.
+   * It decreases pause count and resumes metric collection when count becomes zero.
+   */
   public void resumeMetricCollection() {
-    skippedEvalIds.clear();
+    skippedWorkerIds.clear();
     final int count = metricCollectionPauseCount.decrementAndGet();
     LOG.log(Level.INFO, "Resume metric collection. Pause count: {0}", count);
   }
@@ -305,8 +324,13 @@ public final class MetricManager {
       }
     }
 
+    /**
+     * This method is to skip one metric for each worker, after pause-resume.
+     * @param evalParams an worker metric
+     * @return true if this metric should be skipped
+     */
     private boolean isCorruptedMetricsToSkip(final WorkerEvaluatorParameters evalParams) {
-      final boolean toSkip = skippedEvalIds.add(evalParams.getId());
+      final boolean toSkip = skippedWorkerIds.add(evalParams.getId());
       if (toSkip) {
         LOG.log(Level.INFO, "Skip corrupted metrics from {0}", evalParams.getId());
       }

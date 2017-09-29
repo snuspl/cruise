@@ -251,9 +251,10 @@ public final class DolphinDriver {
 
             // need to evaluate model tables loaded from checkpoints with new workers executors
             if (offlineModelEval) {
-              // TODO #00: need a support that flushes out all remaining operations when dropping the table
+              // TODO #1248: need a support that flushes out all remaining operations when dropping the table
               // sleep before dropping table for preventing loss of ongoing non-blocking ops(pushes)
               Thread.sleep(30000);
+
               inputTable.drop().get();
               workers.forEach(worker -> {
                 try {
@@ -282,7 +283,7 @@ public final class DolphinDriver {
 
               modelTable.subscribe(workersForEvaluation).get();
 
-              dolphinMaster.evaluate(workersForEvaluation);
+              dolphinMaster.evaluate(servers, workersForEvaluation);
 
               workersForEvaluation.forEach(AllocatedExecutor::close);
               servers.forEach(AllocatedExecutor::close);
