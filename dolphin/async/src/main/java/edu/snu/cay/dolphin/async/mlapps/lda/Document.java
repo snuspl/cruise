@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Representation of a document in a corpus. This has words and corresponding topic assignment
@@ -44,8 +43,7 @@ final class Document {
     this.words = Ints.asList(words);
     this.assignments = new int[words.length];
 
-    // the number of assigned topics is bound to the document's words
-    this.topicCounts = new ConcurrentHashMap<>(words.length);
+    this.topicCounts = new HashMap<>(words.length); // the number of assigned topics is bound to the document's words
     this.numTopics = numTopics;
 
     initialize();
@@ -142,6 +140,6 @@ final class Document {
    * @return the count of topics assigned to each word in this document.
    */
   Map<Integer, Integer> getTopicCounts() {
-    return new HashMap<>(topicCounts);
+    return topicCounts;
   }
 }
