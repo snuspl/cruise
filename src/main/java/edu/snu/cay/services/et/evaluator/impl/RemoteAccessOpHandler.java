@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.CatchableExecutors;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -38,6 +39,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -54,21 +56,17 @@ final class RemoteAccessOpHandler {
 
   private final List<HandlerThread> handlerThreads;
 
-  /**
-   * A map holding ongoing operations until they finish.
-   * It maintains operations requested from remote clients.
-   * Key is a table Id and value is a set of operation Id and original requester executor Id pair.
-   * Operation should be identified with a pair of operation Id and and origin Id,
-   * because operation Id is only unique within the original executor.
-   */
-  private final Map<String, OngoingOps> tableIdToOngoingOps = new ConcurrentHashMap<>();
-
   private volatile boolean closeFlag = false;
 
   private final String driverId;
   private final String executorId;
   private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
+
+  /**
+   * Maintains an operation tracker for each table.
+   */
+  private final Map<String, TableOpTracker> tableOpTrackers = new ConcurrentHashMap<>();
 
   @Inject
   private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
@@ -171,7 +169,7 @@ final class RemoteAccessOpHandler {
       LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, tableId: {2}, blockId: {3}]]",
           new Object[]{opMetaData.getOpId(), opMetaData.getOrigId(), tableId, blockId});
 
-      final TableComponents<K, V, U> tableComponents = tableIdToOngoingOps.get(tableId).tableComponents;
+      final TableComponents<K, V, U> tableComponents = tableOpTrackers.get(tableId).tableComponents;
       final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
 
       final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -215,7 +213,7 @@ final class RemoteAccessOpHandler {
         ownershipLock.unlock();
       }
 
-      deregisterOp(tableId, opMetaData.getOpId(), opMetaData.getOrigId());
+      deregisterOp(tableId);
     }
 
     private <K, V, U> V processSingleKeyOp(final Block<K, V, U> block,
@@ -328,86 +326,103 @@ final class RemoteAccessOpHandler {
     final boolean replyRequired = msg.getReplyRequired();
     final String tableId = msg.getTableId();
 
+    final TableComponents<K, V, U> tableComponents;
     try {
-      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
+      tableComponents = tablesFuture.get().getTableComponents(tableId);
+    } catch (TableNotExistException e) {
       // If getTableComponents() fails, the operation is not registered and handled by the Driver with a fallback logic.
+      redirectToMaster(opId, msg, origEvalId);
+      return;
+    }
 
-      registerOp(tableId, tableComponents, opId, origEvalId);
+    if (!registerOp(tableId, tableComponents)) {
+      LOG.log(Level.INFO, "Operations for table {0} are being flushed. No more ops will be accepted.", tableId);
+      redirectToMaster(opId, msg, origEvalId);
+      return;
+    }
 
-      final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
-      final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
-      final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
-      final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
-      final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
+    // after registration of operation, let's handle it in local
+    final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
+    final StreamingCodec<K> keyCodec = kvuSerializer.getKeyCodec();
+    final StreamingCodec<V> valueCodec = kvuSerializer.getValueCodec();
+    final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
+    final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
+    if (msg.getIsSingleKey()) {
+      final DataKey dataKey = msg.getDataKey();
+      final DataValue dataValue = msg.getDataValue();
+      final K decodedKey = keyCodec.decode(dataKey.getKey().array());
+
+      // decode data values
+      final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
+          valueCodec.decode(dataValue.getValue().array()) : null;
+
+      // decode update data value
+      final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
+          updateValueCodec.decode(dataValue.getValue().array()) : null;
+
+      final int blockId = blockPartitioner.getBlockId(decodedKey);
+      final SingleKeyDataOpMetadata<K, V, U> operation = new SingleKeyDataOpMetadata<>(origEvalId,
+          opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
+
+      final int threadIdx = getThreadIdx(blockId);
+      handlerThreads.get(threadIdx).enqueue(operation);
+
+    } else {
+      final DataKeys dataKeys = msg.getDataKeys();
+      final DataValues dataValues = msg.getDataValues();
+
+      final List<K> keyList = new ArrayList<>();
+      dataKeys.getKeys().forEach(key -> keyList.add(keyCodec.decode(key.array())));
+
+      final List<V> valueList;
+      final List<U> updateValueList;
+
+      switch (opType) {
+      case PUT:
+        valueList = new ArrayList<>();
+        updateValueList = Collections.emptyList();
+        dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
+        break;
+      case UPDATE:
+        valueList = Collections.emptyList();
+        updateValueList = new ArrayList<>();
+        dataValues.getValues().forEach(value -> updateValueList.add(updateValueCodec.decode(value.array())));
+        break;
+      default:
+        throw new RuntimeException("Undefined type of OpMetadata");
+      }
+
+      // All keys match to same block id
+      final int blockId = blockPartitioner.getBlockId(keyList.get(0));
+      final MultiKeyDataOpMetadata<K, V, ?> operation = new MultiKeyDataOpMetadata<>(origEvalId,
+          opId, opType, replyRequired, tableId, blockId, keyList, valueList, updateValueList);
+
+      final int threadIdx = getThreadIdx(blockId);
+      handlerThreads.get(threadIdx).enqueue(operation);
+    }
+  }
+
+  /**
+   * Redirects operation to the master, when it has no metadata of a requested table.
+   */
+  private void redirectToMaster(final long opId, final TableAccessReqMsg msg, final String origEvalId) {
+    final String tableId = msg.getTableId();
+    final OpType opType = msg.getOpType();
+    final boolean replyRequired = msg.getReplyRequired();
+
+    try {
+      LOG.log(Level.WARNING, "The table access request (Table: {0}, opId: {1}) has failed." +
+          " Will redirect the message to the Driver for fallback.", new Object[] {tableId, opId});
       if (msg.getIsSingleKey()) {
-        final DataKey dataKey = msg.getDataKey();
-        final DataValue dataValue = msg.getDataValue();
-        final K decodedKey = keyCodec.decode(dataKey.getKey().array());
-
-        // decode data values
-        final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
-            valueCodec.decode(dataValue.getValue().array()) : null;
-
-        // decode update data value
-        final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
-            updateValueCodec.decode(dataValue.getValue().array()) : null;
-
-        final int blockId = blockPartitioner.getBlockId(decodedKey);
-        final SingleKeyDataOpMetadata<K, V, U> operation = new SingleKeyDataOpMetadata<>(origEvalId,
-            opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
-
-        final int threadIdx = getThreadIdx(blockId);
-        handlerThreads.get(threadIdx).enqueue(operation);
-
+        msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
+            msg.getDataKey(), msg.getDataValue());
       } else {
-        final DataKeys dataKeys = msg.getDataKeys();
-        final DataValues dataValues = msg.getDataValues();
-
-        final List<K> keyList = new ArrayList<>();
-        dataKeys.getKeys().forEach(key -> keyList.add(keyCodec.decode(key.array())));
-
-        final List<V> valueList;
-        final List<U> updateValueList;
-
-        switch (opType) {
-        case PUT:
-          valueList = new ArrayList<>();
-          updateValueList = Collections.emptyList();
-          dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
-          break;
-        case UPDATE:
-          valueList = Collections.emptyList();
-          updateValueList = new ArrayList<>();
-          dataValues.getValues().forEach(value -> updateValueList.add(updateValueCodec.decode(value.array())));
-          break;
-        default:
-          throw new RuntimeException("Undefined type of OpMetadata");
-        }
-
-        // All keys match to same block id
-        final int blockId = blockPartitioner.getBlockId(keyList.get(0));
-        final MultiKeyDataOpMetadata<K, V, ?> operation = new MultiKeyDataOpMetadata<>(origEvalId,
-            opId, opType, replyRequired, tableId, blockId, keyList, valueList, updateValueList);
-
-        final int threadIdx = getThreadIdx(blockId);
-        handlerThreads.get(threadIdx).enqueue(operation);
+        msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
+            msg.getDataKeys(), msg.getDataValues());
       }
-
-    } catch (final TableNotExistException e) {
-      try {
-        LOG.log(Level.WARNING, "The table access request (Table: {0}, opId: {1}) has failed." +
-            " Will redirect the message to the Driver for fallback.", new Object[] {tableId, opId});
-        if (msg.getIsSingleKey()) {
-          msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
-              msg.getDataKey(), msg.getDataValue());
-        } else {
-          msgSenderFuture.get().sendTableAccessReqMsg(origEvalId, driverId, opId, tableId, opType, replyRequired,
-              msg.getDataKeys(), msg.getDataValues());
-        }
-      } catch (NetworkException e1) {
-        throw new RuntimeException(e1);
-      }
+    } catch (NetworkException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -467,61 +482,162 @@ final class RemoteAccessOpHandler {
    * @param tableId a table id
    */
   void waitOpsTobeFlushed(final String tableId) {
-    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
-    if (ongoingOps == null) {
+    final TableOpTracker opTracker = tableOpTrackers.get(tableId);
+    if (opTracker == null) {
       return;
     }
 
-    final Set remainingOps = ongoingOps.queuedOps;
-
-    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", remainingOps.size());
-    while (!remainingOps.isEmpty()) {
+    opTracker.flush();
+    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", opTracker.getNumOps());
+    while (!opTracker.isFlushed()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
         // ignore interrupt
       }
-      LOG.log(Level.INFO, "remainingOps.size(): {0}", remainingOps.size());
+      LOG.log(Level.INFO, "The number of remaining ops: {0}", opTracker.getNumOps());
     }
-    tableIdToOngoingOps.remove(tableId);
+
+    tableOpTrackers.remove(tableId);
     LOG.log(Level.INFO, "ops for {0} has been flushed out", tableId);
-  }
-
-  /**
-   * A class for encapsulating ongoing operations and {@link TableComponents} together.
-   * It is to maintain {@link TableComponents} until processing all operations,
-   * even if the table has been dropped from this executor.
-   */
-  private class OngoingOps {
-    private final TableComponents tableComponents;
-    private final Set<Pair<Long, String>> queuedOps;
-
-    OngoingOps(final TableComponents tableComponents) {
-      this.tableComponents = tableComponents;
-      this.queuedOps = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    }
   }
 
   /**
    * Registers an operation before.
    */
-  private void registerOp(final String tableId, final TableComponents tableComponents,
-                          final long opId, final String origId) {
-    tableIdToOngoingOps.compute(tableId, (tId, ongoingOps) -> {
-      final OngoingOps result = ongoingOps == null ? new OngoingOps(tableComponents) : ongoingOps;
-      result.queuedOps.add(Pair.of(opId, origId));
-      return result;
-    });
+  private boolean registerOp(final String tableId, final TableComponents tableComponents) {
+    final TableOpTracker tableOpTracker =
+        tableOpTrackers.computeIfAbsent(tableId, (tId) -> new TableOpTracker(tableComponents));
+
+    return tableOpTracker.registerOp();
   }
 
   /**
    * Deregisters an operation after processing it.
    */
-  private void deregisterOp(final String tableId, final long opId, final String origId) {
-    final OngoingOps ongoingOps = tableIdToOngoingOps.get(tableId);
+  private void deregisterOp(final String tableId) {
+    final TableOpTracker tableOpTracker = tableOpTrackers.get(tableId);
+    if (tableOpTracker == null) {
+      throw new RuntimeException(String.format("No operations to degregister from table %s", tableId));
+    }
 
-    if (ongoingOps == null || !ongoingOps.queuedOps.remove(Pair.of(opId, origId))) {
-      LOG.log(Level.WARNING, "No existing ops with opId: {0}, origId: {1}", new Object[]{opId, origId});
+    tableOpTracker.deregisterOp();
+  }
+
+  /**
+   * A class that tracks the number of operations for a table.
+   * Operations are accepted only during PROCESSING state.
+   * This class maintains {@link TableComponents} to guarantee that ongoing operations can use it,
+   * even if the table has been removed asynchronously.
+   */
+  private static class TableOpTracker {
+    private final TableComponents tableComponents;
+    private final AtomicInteger numOps;
+    private final StateMachine stateMachine;
+
+    private enum State {
+      PROCESSING,
+      FLUSHING,
+      FLUSHED
+    }
+
+    TableOpTracker(final TableComponents tableComponents) {
+      this.tableComponents = tableComponents;
+      this.numOps = new AtomicInteger(0);
+      this.stateMachine = initStateMachine();
+    }
+
+    private static StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(State.PROCESSING, "An initial state that accepts incoming requests and process it.")
+          .addState(State.FLUSHING, "A state to flush out all ongoing operations, accept no more operations.")
+          .addState(State.FLUSHED, "A state that operation are completely flushed.")
+          .addTransition(State.PROCESSING, State.FLUSHING, "Requested to flush operations.")
+          .addTransition(State.FLUSHING, State.FLUSHED, "Operation flushing completes.")
+          .setInitialState(State.PROCESSING)
+          .build();
+    }
+
+    /**
+     * Register a operation for a table.
+     * @return true if operation has been accepted
+     */
+    synchronized boolean registerOp() {
+      final boolean accept;
+      switch ((State) stateMachine.getCurrentState()) {
+      case PROCESSING:
+        numOps.incrementAndGet();
+        accept = true;
+        break;
+      case FLUSHING:
+      case FLUSHED:
+        accept = false;
+        break;
+      default:
+        throw new RuntimeException("Unexpected state");
+      }
+      return accept;
+    }
+
+    /**
+     * Deregister a operation for a table.
+     */
+    synchronized void deregisterOp() {
+      switch ((State) stateMachine.getCurrentState()) {
+      case PROCESSING:
+        numOps.decrementAndGet();
+        break;
+      case FLUSHING:
+        final int remainingOps = numOps.decrementAndGet();
+        if (remainingOps == 0) {
+          LOG.log(Level.INFO, "No ops. Transit to FLUSHED state");
+          stateMachine.setState(State.FLUSHED);
+        }
+        break;
+      case FLUSHED:
+        throw new RuntimeException();
+      default:
+        throw new RuntimeException("Unexpected state");
+      }
+    }
+
+    /**
+     * Flushing the ongoing operations in the table.
+     * It returns after all operations are flushed out.
+     */
+    synchronized void flush() {
+      switch ((State) stateMachine.getCurrentState()) {
+      case PROCESSING:
+        // transit to FLUSHING state. do not accept more ops.
+        stateMachine.setState(State.FLUSHING);
+        if (numOps.get() == 0) {
+          LOG.log(Level.INFO, "No ops. Transit to FLUSHED state");
+          stateMachine.setState(State.FLUSHED);
+        }
+        break;
+      case FLUSHING:
+        LOG.log(Level.INFO, "Already in FLUSHING state");
+        break;
+      case FLUSHED:
+        LOG.log(Level.INFO, "Already flushed.");
+        break;
+      default:
+        throw new RuntimeException("Unexpected state");
+      }
+    }
+
+    /**
+     * @return the number of ongoing operations
+     */
+    int getNumOps() {
+      return numOps.get();
+    }
+
+    /**
+     * @return True if the operations are completely flushed
+     */
+    boolean isFlushed() {
+      return this.stateMachine.getCurrentState().equals(State.FLUSHED);
     }
   }
 }
