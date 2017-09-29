@@ -23,6 +23,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.services.et.evaluator.api.Table;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -199,7 +200,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<LassoData> inputData,
                                                  final Table modelTable) {
-    return Collections.emptyMap();
+    throw new NotImplementedException("This method is not supported yet.");
   }
 
   /**

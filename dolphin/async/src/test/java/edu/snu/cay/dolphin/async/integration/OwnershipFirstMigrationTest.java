@@ -94,7 +94,7 @@ public final class OwnershipFirstMigrationTest {
         "-max_num_epochs", Integer.toString(5),
         "-num_mini_batches", Integer.toString(numMiniBatches),
         "-num_worker_blocks", Integer.toString(numWorkerBlocks),
-        "-num_server_blocks", Integer.toString(numServers * 1),
+        "-num_server_blocks", Integer.toString(numServers),
         "-num_training_data", Integer.toString(numDataPerWorker),
         "-num_test_data", Integer.toString(10),
         "-delta", Integer.toString(4),

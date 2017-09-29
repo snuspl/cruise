@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -127,7 +128,7 @@ final class AddVectorTrainer implements Trainer {
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection inputData, final Table modelTable) {
-    return Collections.emptyMap();
+    throw new NotImplementedException("This method is not supported yet.");
   }
 
   @Override

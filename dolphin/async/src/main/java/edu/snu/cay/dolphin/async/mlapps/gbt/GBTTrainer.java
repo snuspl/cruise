@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.Tuple3;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.reef.tang.annotations.Parameter;
@@ -220,7 +221,7 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<GBTData> inputData, final Table modelTable) {
-    return Collections.emptyMap();
+    throw new NotImplementedException("This method is not supported yet.");
   }
 
   /**
