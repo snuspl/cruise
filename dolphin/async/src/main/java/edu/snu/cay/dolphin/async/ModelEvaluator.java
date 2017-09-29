@@ -99,7 +99,7 @@ final class ModelEvaluator {
   /**
    * Tell master that it's ready to evaluate the next model.
    * And wait master's response.
-   * @return True if there exists a model table to evaluate
+   * @return True if there exists a next model table to evaluate
    */
   private boolean askMasterForCheckpointedModel() {
     LOG.log(Level.INFO, "Ask master.");
@@ -116,6 +116,9 @@ final class ModelEvaluator {
     return doNext;
   }
 
+  /**
+   * A response from master about {@link #askMasterForCheckpointedModel()}.
+   */
   void onMasterMsg(final ModelEvalAnsMsg msg) {
     this.doNext = msg.getDoNext();
 
