@@ -251,9 +251,8 @@ public final class DolphinDriver {
             modelTable.subscribe(workers).get();
             inputTable.load(workers, inputPath).get();
 
-            dolphinMaster.start(servers, workers, modelTable, inputTable);
-
             jobMessageObserver.sendMessageToClient("Start training a model".getBytes());
+            dolphinMaster.start(servers, workers, modelTable, inputTable);
 
             // need to evaluate model tables loaded from checkpoints with new workers executors
             if (offlineModelEval) {

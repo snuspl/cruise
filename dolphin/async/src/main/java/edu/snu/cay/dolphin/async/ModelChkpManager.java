@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.CatchableExecutors;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -31,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,12 +51,13 @@ final class ModelChkpManager {
   private final String inputTableId;
 
   private final InjectionFuture<ETMaster> etMasterFuture;
+  private final InjectionFuture<JobMessageObserver> jobMessageObserverFuture;
 
   private final InjectionFuture<MasterSideMsgSender> msgSender;
 
   private final AtomicInteger workerCount = new AtomicInteger(0);
   private final AtomicInteger chkpCounter = new AtomicInteger(0);
-  private final AtomicBoolean restoreStarted = new AtomicBoolean(false);
+  private final AtomicInteger restoreCounter = new AtomicInteger(0);
 
   private List<AllocatedExecutor> runningServers;
   private List<AllocatedExecutor> runningWorkers;
@@ -66,9 +67,11 @@ final class ModelChkpManager {
   @Inject
   private ModelChkpManager(final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
+                           final InjectionFuture<JobMessageObserver> jobMessageObserverFuture,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.etMasterFuture = etMasterFuture;
+    this.jobMessageObserverFuture = jobMessageObserverFuture;
     this.msgSender = msgSender;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
@@ -114,7 +117,7 @@ final class ModelChkpManager {
    */
   private boolean restoreOldestCheckpoint() {
     // if it's the first restore wait until all chkps to be done
-    if (!restoreStarted.getAndSet(true)) {
+    if (restoreCounter.getAndIncrement() == 0) {
       waitChkpsToBeDone();
     }
 
@@ -122,6 +125,9 @@ final class ModelChkpManager {
       LOG.log(Level.INFO, "No more checkpoints.");
       return false;
     }
+
+    jobMessageObserverFuture.get().sendMessageToClient(
+        String.format("Model eval progress: [%d / %d]", restoreCounter.get(), chkpCounter.get()).getBytes());
 
     // Need to drop the previous model table first
     try {
