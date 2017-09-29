@@ -21,7 +21,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for running Dolphin trainers on ET.
+ * REEF Task for evaluating a model trained by training tasks.
  */
 final class ModelEvaluationTask implements Task {
   private static final Logger LOG = Logger.getLogger(ModelEvaluationTask.class.getName());
