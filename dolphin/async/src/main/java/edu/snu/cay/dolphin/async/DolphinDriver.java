@@ -265,9 +265,6 @@ public final class DolphinDriver {
 
               workers.forEach(AllocatedExecutor::close);
 
-              // TODO #00: remove this safeguard that separates model evaluation phase from training phase
-              Thread.sleep(30000);
-
               // start model evaluation with new workers (to completely empty the memory)
               final List<AllocatedExecutor> workersForEvaluation
                   = etMaster.addExecutors(workers.size(), getWorkerExecutorConf()).get();
