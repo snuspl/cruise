@@ -33,10 +33,10 @@ import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.ConfigurationUtils;
 import edu.snu.cay.utils.NullCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
@@ -167,7 +167,7 @@ public final class PregelDriver {
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
-        .setKeyCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
         .setValueCodecClass(DefaultVertexCodec.class) // TODO #1223: allow other types of vertex implementation
         .setUpdateValueCodecClass(NullCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
@@ -195,7 +195,7 @@ public final class PregelDriver {
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
-        .setKeyCodecClass(SerializableCodec.class)
+        .setKeyCodecClass(StreamingSerializableCodec.class)
         .setValueCodecClass(MessageCodec.class)
         .setUpdateValueCodecClass(((Codec) messageValueStreamingCodec).getClass())
         .setUpdateFunctionClass(MessageUpdateFunction.class)

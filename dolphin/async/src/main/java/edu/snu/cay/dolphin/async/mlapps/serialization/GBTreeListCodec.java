@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async.mlapps.serialization;
 
 import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
@@ -28,7 +30,7 @@ import java.util.List;
 /**
  * Codec for GBTree list.
  */
-public final class GBTreeListCodec implements Codec<List<GBTree>> {
+public final class GBTreeListCodec implements Codec<List<GBTree>>, StreamingCodec<List<GBTree>> {
 
   @Inject
   private GBTreeListCodec() {
@@ -85,5 +87,16 @@ public final class GBTreeListCodec implements Codec<List<GBTree>> {
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  // TODO #1244: implement StreamingCodec
+  @Override
+  public void encodeToStream(final List<GBTree> obj, final DataOutputStream stream) {
+    throw new NotImplementedException("not implemented");
+  }
+
+  @Override
+  public List<GBTree> decodeFromStream(final DataInputStream stream) {
+    throw new NotImplementedException("not implemented");
   }
 }

@@ -52,9 +52,8 @@ public final class DolphinParameters {
   public final class MaxNumEpochs implements Name<Integer> {
   }
 
-  // TODO #1193: Change the short value of MiniBatchSize parameter
   @NamedParameter(doc = "The total number of batches in an epoch",
-      short_name = "mini_batch_size")
+      short_name = "num_mini_batches")
   public final class NumTotalMiniBatches implements Name<Integer> {
   }
 
