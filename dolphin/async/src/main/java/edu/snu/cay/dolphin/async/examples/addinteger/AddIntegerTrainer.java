@@ -17,12 +17,15 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -112,6 +115,11 @@ final class AddIntegerTrainer implements Trainer {
   public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
                                      final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
+  }
+
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection inputData, final Table modelTable) {
+    throw new NotImplementedException("This method is not supported yet.");
   }
 
   @Override

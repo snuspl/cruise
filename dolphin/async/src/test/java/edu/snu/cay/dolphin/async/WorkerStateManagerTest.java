@@ -54,7 +54,8 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MasterSideMsgSender.class, WorkerSideMsgSender.class, ProgressTracker.class})
+@PrepareForTest({MasterSideMsgSender.class, WorkerSideMsgSender.class,
+    ProgressTracker.class, BatchProgressTracker.class, ModelChkpManager.class, ModelEvaluator.class})
 public class WorkerStateManagerTest {
   private static final Logger LOG = Logger.getLogger(WorkerStateManagerTest.class.getName());
   private static final String JOB_ID = WorkerStateManagerTest.class.getName();
@@ -87,12 +88,16 @@ public class WorkerStateManagerTest {
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
     injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
+    // mock classes that this test does not use
+    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class));
+    injector.bindVolatileInstance(BatchProgressTracker.class, mock(BatchProgressTracker.class));
+    injector.bindVolatileInstance(ModelChkpManager.class, mock(ModelChkpManager.class));
+
     final MasterSideMsgSender mockedMasterSideMsgSender = mock(MasterSideMsgSender.class);
     injector.bindVolatileInstance(MasterSideMsgSender.class, mockedMasterSideMsgSender);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
-    injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class)); // this test does not use it
     final MasterSideMsgHandler masterSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
     final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
@@ -128,6 +133,9 @@ public class WorkerStateManagerTest {
     injector.bindVolatileParameter(ExecutorIdentifier.class, workerId);
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
     injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
+
+    // mock classes that this test does not use
+    injector.bindVolatileInstance(ModelEvaluator.class, mock(ModelEvaluator.class));
 
     final WorkerSideMsgSender mockedWorkerSideMsgSender = mock(WorkerSideMsgSender.class);
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockedWorkerSideMsgSender);

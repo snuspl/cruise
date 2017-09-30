@@ -217,7 +217,10 @@ public final class ETDolphinLauncher {
         NumExtraResources.class, ExtraResourcesPeriodSec.class,
 
         // metric collection params
-        ServerMetricFlushPeriodMs.class);
+        ServerMetricFlushPeriodMs.class,
+
+        // model evaluation param
+        OfflineModelEvaluation.class);
 
     // it's empty now
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();

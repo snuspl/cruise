@@ -85,8 +85,24 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   public List<V> pull(final List<K> keys) {
     pullTracer.startTimer();
 
+    final List<V> resultValues = pull(keys, modelTable);
+
+    pullTracer.recordTime(keys.size());
+    LOG.log(Level.INFO, "{0} keys have been pulled. Used memory: {1} MB",
+        new Object[] {keys.size(), MemoryUtils.getUsedMemoryMB()});
+    return resultValues;
+  }
+
+  /**
+   * Do {@link #pull(List)} with a given table.
+   * @param keys a list of keys of model parameter
+   * @param aModelTable a table to read value from
+   * @return a list of values associated with the given {@code keys}.
+   *        Some positions in the list can be {@code null}, if the key has no associated value
+   */
+  public List<V> pull(final List<K> keys, final Table aModelTable) {
     final List<Future<V>> resultList = new ArrayList<>(keys.size());
-    keys.forEach(key -> resultList.add(modelTable.getOrInit(key)));
+    keys.forEach(key -> resultList.add(aModelTable.getOrInit(key)));
 
     final List<V> resultValues = new ArrayList<>(keys.size());
     for (final Future<V> opResult : resultList) {
@@ -105,9 +121,6 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
       resultValues.add(result);
     }
 
-    pullTracer.recordTime(keys.size());
-    LOG.log(Level.INFO, "{0} keys have been pulled. Used memory: {1} MB",
-        new Object[] {keys.size(), MemoryUtils.getUsedMemoryMB()});
     return resultValues;
   }
 

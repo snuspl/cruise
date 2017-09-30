@@ -117,7 +117,7 @@ public final class ProgressTracker implements ProgressProvider {
    */
   synchronized void onProgressMsg(final ProgressMsg progressMsg) {
     final String workerId = progressMsg.getExecutorId().toString();
-    final int epochProgress = progressMsg.getEpochIdx();
+    final int epochProgress = progressMsg.getProgress();
     LOG.log(Level.INFO, "Epoch progress reported by {0}: {1}", new Object[]{workerId, epochProgress});
 
     final Integer prevEpochProgress = workerIdToEpochIdx.put(workerId, epochProgress);

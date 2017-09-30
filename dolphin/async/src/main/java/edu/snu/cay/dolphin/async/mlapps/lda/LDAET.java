@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumVocabs;
 import edu.snu.cay.utils.IntegerCodec;
 import edu.snu.cay.utils.LongCodec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.cay.utils.StreamingSerializableCodec;
 
 import javax.inject.Inject;
 
@@ -46,7 +46,7 @@ public final class LDAET {
         .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
         .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(SparseArrayCodec.class)
-        .setModelUpdateValueCodecClass(SerializableCodec.class)
+        .setModelUpdateValueCodecClass(StreamingSerializableCodec.class)
         .addParameterClass(Alpha.class)
         .addParameterClass(Beta.class)
         .addParameterClass(NumTopics.class)

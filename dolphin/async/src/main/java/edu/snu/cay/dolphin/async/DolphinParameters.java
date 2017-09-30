@@ -165,6 +165,11 @@ public final class DolphinParameters {
     }
   }
 
+  @NamedParameter(doc = "Whether to evaluate a trained model in offline or online.",
+      short_name = "offline_model_eval", default_value = "false")
+  public final class OfflineModelEvaluation implements Name<Boolean> {
+  }
+
   // below is commonly used ML app parameters, not all apps use them
   @NamedParameter(doc = "input dimension", short_name = "features", default_value = "0")
   public static final class NumFeatures implements Name<Integer> {

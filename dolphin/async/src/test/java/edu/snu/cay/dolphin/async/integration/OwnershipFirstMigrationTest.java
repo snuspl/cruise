@@ -43,7 +43,7 @@ public final class OwnershipFirstMigrationTest {
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers;
 
-    final List<String> defaultArgList = getDefaultArguments(numWorkers);
+    final List<String> defaultArgList = getDefaultArguments(numWorkers, numServers);
 
     final List<String> argListForDeletingOneServer = Arrays.asList(
         "-num_workers", Integer.toString(numWorkers),
@@ -67,7 +67,7 @@ public final class OwnershipFirstMigrationTest {
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers + SampleOptimizers.MAX_CALLS_TO_MAKE;
 
-    final List<String> defaultArgList = getDefaultArguments(numWorkers);
+    final List<String> defaultArgList = getDefaultArguments(numWorkers, numServers);
 
     final List<String> argListForAddingOneServer = Arrays.asList(
         "-num_workers", Integer.toString(numWorkers),
@@ -85,7 +85,7 @@ public final class OwnershipFirstMigrationTest {
     assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorET.runAddVector(args));
   }
 
-  private List<String> getDefaultArguments(final int numWorkers) {
+  private List<String> getDefaultArguments(final int numWorkers, final int numServers) {
     final int numMiniBatches = 10;
     final int numWorkerBlocks = numWorkers * numMiniBatches;
     final int numDataPerWorker = numMiniBatches; // a single data item for a batch
@@ -94,6 +94,7 @@ public final class OwnershipFirstMigrationTest {
         "-max_num_epochs", Integer.toString(5),
         "-num_mini_batches", Integer.toString(numMiniBatches),
         "-num_worker_blocks", Integer.toString(numWorkerBlocks),
+        "-num_server_blocks", Integer.toString(numServers),
         "-num_training_data", Integer.toString(numDataPerWorker),
         "-num_test_data", Integer.toString(10),
         "-delta", Integer.toString(4),

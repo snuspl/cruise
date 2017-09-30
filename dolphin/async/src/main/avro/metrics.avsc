@@ -238,9 +238,10 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "WorkerMetricsType",
-      "symbols": ["BatchMetrics", "EpochMetrics"]}},
+      "symbols": ["BatchMetrics", "EpochMetrics", "ModelEvalMetrics"]}},
     {"name": "batchMetrics", "type": ["null", "BatchMetrics"], "default": null},
-    {"name": "epochMetrics", "type": ["null", "EpochMetrics"], "default": null}
+    {"name": "epochMetrics", "type": ["null", "EpochMetrics"], "default": null},
+    {"name": "objValue", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null}
   ]
 }
 ]

@@ -20,8 +20,9 @@
   "name": "ProgressMsg",
   "fields":
   [
+    {"name": "type", "type": {"type": "enum", "name": "ProgressMsgType", "symbols": ["Batch", "Epoch"]}},
     {"name": "executorId", "type": "string"},
-    {"name": "epochIdx", "type": "int"}
+    {"name": "progress", "type": "int"}
   ]
 },
 
@@ -33,6 +34,16 @@
   [
     {"name": "executorId", "type": "string"},
     {"name": "serializedState", "type": "bytes"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "ModelEvalAnsMsg",
+  "fields":
+  [
+    {"name": "doNext", "type": "boolean"}
   ]
 },
 
@@ -48,9 +59,10 @@
   [
     {"name": "jobId", "type": "string"},
     {"name": "type", "type": {"type": "enum", "name": "dolphinMsgType",
-        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg"]}},
+        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg", "ModelEvalAskMsg", "ModelEvalAnsMsg"]}},
     {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
-    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null}
+    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null},
+    {"name": "modelEvalAnsMsg", "type": ["null", "ModelEvalAnsMsg"], "default": null}
   ]
 }
 ]

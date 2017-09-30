@@ -30,6 +30,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -77,6 +78,18 @@ public final class MetricManager {
   private final Map<String, Integer> evalIdToMiniBatchCounter = new ConcurrentHashMap<>();
 
   /**
+   * A collection of worker ids that report metrics after {@link #resumeMetricCollection()}.
+   */
+  private final Set<String> skippedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  /**
+   * A count of metric collection pauses.
+   * When a pause exists, metrics are not collected.
+   * Pauses are done by model checkpoint and optimization.
+   */
+  private final AtomicInteger metricCollectionPauseCount = new AtomicInteger(0);
+
+  /**
    * Constructor of MetricManager.
    */
   @Inject
@@ -98,7 +111,7 @@ public final class MetricManager {
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
   void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
-    if (metricCollectionEnabled) {
+    if (metricCollectionEnabled && metricCollectionPauseCount.get() == 0) {
       if (isValidSource(workerId, numBlockByEvalIdForWorker)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
@@ -126,7 +139,7 @@ public final class MetricManager {
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
   void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
-    if (metricCollectionEnabled) {
+    if (metricCollectionEnabled && metricCollectionPauseCount.get() == 0) {
       if (isValidSource(serverId, numBlockByEvalIdForServer)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
@@ -191,8 +204,7 @@ public final class MetricManager {
   public void stopMetricCollection() {
     LOG.log(Level.INFO, "Metric collection stopped!");
     metricCollectionEnabled = false;
-    metricStore.clearServerMetrics();
-    metricStore.clearWorkerMetrics();
+    clearMetric();
   }
 
   /**
@@ -201,6 +213,33 @@ public final class MetricManager {
   public void startMetricCollection() {
     LOG.log(Level.INFO, "Metric collection started!");
     metricCollectionEnabled = true;
+  }
+
+  /**
+   * Clear all stored metrics.
+   */
+  public void clearMetric() {
+    metricStore.clearServerMetrics();
+    metricStore.clearWorkerMetrics();
+  }
+
+  /**
+   * Pause metric collection.
+   * Metric collection is disabled while pause count is greater than zero.
+   */
+  public void pauseMetricCollection() {
+    final int count = metricCollectionPauseCount.incrementAndGet();
+    LOG.log(Level.INFO, "Pause metric collection. Pause count: {0}", count);
+  }
+
+  /**
+   * Resume metric collection.
+   * It decreases pause count and resumes metric collection when count becomes zero.
+   */
+  public void resumeMetricCollection() {
+    skippedWorkerIds.clear();
+    final int count = metricCollectionPauseCount.decrementAndGet();
+    LOG.log(Level.INFO, "Resume metric collection. Pause count: {0}", count);
   }
 
   /**
@@ -251,7 +290,7 @@ public final class MetricManager {
 
     private void storeWorkerMiniBatchMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
       synchronized (workerEvalMiniBatchParams) {
-        if (!initialMetricsToSkip(evalParams) &&
+        if (!initialMetricsToSkip(evalParams) && !isCorruptedMetricsToSkip(evalParams) &&
             isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
           workerEvalMiniBatchParams.computeIfAbsent(workerId, x -> new ArrayList<>()).add(evalParams);
         }
@@ -283,6 +322,19 @@ public final class MetricManager {
             new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numBlocks});
         return false;
       }
+    }
+
+    /**
+     * This method is to skip one metric for each worker, after pause-resume.
+     * @param evalParams an worker metric
+     * @return true if this metric should be skipped
+     */
+    private boolean isCorruptedMetricsToSkip(final WorkerEvaluatorParameters evalParams) {
+      final boolean toSkip = skippedWorkerIds.add(evalParams.getId());
+      if (toSkip) {
+        LOG.log(Level.INFO, "Skip corrupted metrics from {0}", evalParams.getId());
+      }
+      return toSkip;
     }
 
     private boolean initialMetricsToSkip(final WorkerEvaluatorParameters evalParams) {

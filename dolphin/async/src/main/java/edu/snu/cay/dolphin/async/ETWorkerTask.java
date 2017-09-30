@@ -38,6 +38,7 @@ final class ETWorkerTask<V> implements Task {
   private final String taskId;
   private final int startingEpoch;
   private final int maxNumEpochs;
+  private final boolean offlineModelEval;
 
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
@@ -57,6 +58,7 @@ final class ETWorkerTask<V> implements Task {
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                       @Parameter(DolphinParameters.OfflineModelEvaluation.class) final boolean offlineModelEval,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<V> trainingDataProvider,
@@ -67,6 +69,7 @@ final class ETWorkerTask<V> implements Task {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
+    this.offlineModelEval = offlineModelEval;
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
@@ -74,6 +77,7 @@ final class ETWorkerTask<V> implements Task {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
+    LOG.log(Level.INFO, "offlineModelEval: {0}", offlineModelEval);
   }
 
   @Override
@@ -94,7 +98,7 @@ final class ETWorkerTask<V> implements Task {
 
     for (int epochIdx = startingEpoch; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
-      progressReporter.report(epochIdx);
+      progressReporter.reportEpochProgress(epochIdx);
 
       final long epochStartTime = System.currentTimeMillis();
       final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
@@ -110,7 +114,8 @@ final class ETWorkerTask<V> implements Task {
         }
 
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
-        
+        progressReporter.reportBatchProgress(miniBatchIdx);
+
         modelAccessor.getAndResetMetrics();
         final long miniBatchStartTime = System.currentTimeMillis();
         trainer.runMiniBatch(miniBatchData);
@@ -128,10 +133,12 @@ final class ETWorkerTask<V> implements Task {
         }
       }
 
-      final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
+      if (!offlineModelEval) {
+        final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+        final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
 
-      sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+        sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+      }
     }
 
     // Synchronize all workers before cleanup for workers

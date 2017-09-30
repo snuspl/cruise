@@ -42,6 +42,7 @@ final class Document {
   Document(final int[] words, final int numTopics) {
     this.words = Ints.asList(words);
     this.assignments = new int[words.length];
+
     this.topicCounts = new HashMap<>(words.length); // the number of assigned topics is bound to the document's words
     this.numTopics = numTopics;
 
@@ -135,6 +136,9 @@ final class Document {
     return topicCounts.getOrDefault(topicIndex, 0);
   }
 
+  /**
+   * @return the count of topics assigned to each word in this document.
+   */
   Map<Integer, Integer> getTopicCounts() {
     return topicCounts;
   }

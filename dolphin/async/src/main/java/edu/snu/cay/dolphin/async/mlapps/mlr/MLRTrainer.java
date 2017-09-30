@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.MemoryUtils;
 import edu.snu.cay.utils.ThreadUtils;
@@ -248,9 +249,42 @@ final class MLRTrainer implements Trainer<MLRData> {
     return buildEpochResult(trainingLossRegLossAvgAccuracy, testLossRegLossAvgAccuracy);
   }
 
+  @Override
+  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> inputData, final Table modelTable) {
+    final MLRModel mlrModel = pullModelsToEvaluate(classPartitionIndices, modelTable);
+    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy =
+        computeLoss(inputData, mlrModel.getParams());
+
+    final Map<CharSequence, Double> map = new HashMap<>();
+    map.put("loss", (double) trainingLossRegLossAvgAccuracy.getFirst());
+    map.put("regLoss", (double) trainingLossRegLossAvgAccuracy.getSecond());
+    map.put("avgAccuracy", (double) trainingLossRegLossAvgAccuracy.getThird());
+    return map;
+  }
+  
   /**
    * Pull models one last time and perform validation.
    */
+  private MLRModel pullModelsToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
+    final List<Vector> partitions = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+
+    final MLRModel mlrModel = new MLRModel(new Vector[numClasses]);
+    final Vector[] params = mlrModel.getParams();
+
+    for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
+      // 0 ~ (numPartitionsPerClass - 1) is for class 0
+      // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
+      // and so on
+      final List<Vector> partialModelsForThisClass =
+          partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
+
+      // concat partitions into one long vector
+      params[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
+    }
+
+    return mlrModel;
+  }
+
   @Override
   public void cleanup() {
     executor.shutdown();

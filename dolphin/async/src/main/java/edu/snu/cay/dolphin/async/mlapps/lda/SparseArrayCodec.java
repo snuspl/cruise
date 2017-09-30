@@ -58,7 +58,6 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
       dos.writeInt(array[array.length - 1]);
       for (int i = 0; i < array.length - 1; ++i) {
         if (array[i] != 0) {
-          dos.writeInt(i);
           dos.writeInt(array[i]);
         }
       }

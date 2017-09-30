@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.avro.MetricMsg;
@@ -106,6 +107,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         final EpochMetrics epochMetrics = workerMetrics.getEpochMetrics();
         final WorkerMetrics convertedEpochMetrics = convertEpochMetrics(metricReportMsg, hostname, epochMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedEpochMetrics);
+        break;
+      case ModelEvalMetrics:
+        final Metrics modelEvalMetrics = workerMetrics.getObjValue();
+        // don't store it, printing a log is enough
         break;
       default:
         throw new RuntimeException("Unknown message type");

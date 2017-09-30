@@ -33,10 +33,18 @@ public final class ProgressReporter {
   }
 
   /**
-   * Report its progress to {@link ProgressTracker}.
+   * Report its epoch progress to {@link ProgressTracker}.
    * @param epochIdx a current processing epoch index
    */
-  void report(final int epochIdx) throws NetworkException {
-    msgSender.sendProgressMsg(epochIdx);
+  void reportEpochProgress(final int epochIdx) throws NetworkException {
+    msgSender.sendEpochProgressMsg(epochIdx);
+  }
+
+  /**
+   * Report its mini-batch progress to {@link BatchProgressTracker}.
+   * @param miniBatchIdx a current processing mini-batch idx
+   */
+  void reportBatchProgress(final int miniBatchIdx) throws NetworkException {
+    msgSender.sendBatchProgressMsg(miniBatchIdx);
   }
 }

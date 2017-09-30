@@ -16,12 +16,14 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.network.MessageHandler;
+import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutorService;
 
 /**
  * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
@@ -29,10 +31,19 @@ import javax.inject.Inject;
 @EvaluatorSide
 public final class WorkerSideMsgHandler implements MessageHandler {
   private final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture;
+  private final InjectionFuture<ModelEvaluator> modelEvaluatorFuture;
+
+  private static final int NUM_RELEASE_MSG_THREADS = 8;
+  private static final int NUM_MODEL_EV_MSG_THREADS = 8;
+
+  private final ExecutorService releaseMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_RELEASE_MSG_THREADS);
+  private final ExecutorService modelEvalMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MODEL_EV_MSG_THREADS);
 
   @Inject
-  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture) {
+  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture,
+                               final InjectionFuture<ModelEvaluator> modelEvaluatorFuture) {
     this.workerGlobalBarrierFuture = workerGlobalBarrierFuture;
+    this.modelEvaluatorFuture = modelEvaluatorFuture;
   }
 
   @Override
@@ -42,7 +53,11 @@ public final class WorkerSideMsgHandler implements MessageHandler {
 
     switch (dolphinMsg.getType()) {
     case ReleaseMsg:
-      workerGlobalBarrierFuture.get().onReleaseMsg();
+      releaseMsgExecutor.submit(() -> workerGlobalBarrierFuture.get().onReleaseMsg());
+      break;
+
+    case ModelEvalAnsMsg:
+      modelEvalMsgExecutor.submit(() -> modelEvaluatorFuture.get().onMasterMsg(dolphinMsg.getModelEvalAnsMsg()));
       break;
     default:
       throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());
