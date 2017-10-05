@@ -321,7 +321,8 @@ public final class MigrationManagerTest {
     }
 
     @Override
-    public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId) {
+    public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId,
+                                 final double samplingRatio) {
 
     }
 

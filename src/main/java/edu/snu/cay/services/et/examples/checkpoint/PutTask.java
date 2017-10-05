@@ -30,8 +30,8 @@ import java.util.logging.Logger;
  */
 final class PutTask implements Task {
   private static final Logger LOG = Logger.getLogger(PutTask.class.getName());
-  static final String VALUE0 = "valueForKey0";
-  static final String VALUE1 = "valueForKey1";
+  static final String VALUE_PREFIX = "valueForKey";
+  static final int NUM_ITEMS = 100;
 
   private final String executorId;
 
@@ -46,13 +46,14 @@ final class PutTask implements Task {
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "Hello! I am {1}", new Object[]{executorId});
+    LOG.log(Level.INFO, "Hello! I am {0}", new Object[]{executorId});
     final Table<Long, String, ?> table = tableAccessor.getTable(CheckpointETDriver.TABLE_ID);
 
-    table.put(0L, VALUE0).get();
-    table.put(1L, VALUE1).get();
+    for (long key = 0; key < NUM_ITEMS; key++) {
+      table.put(key, VALUE_PREFIX + key).get();
+    }
 
-    LOG.log(Level.INFO, "Succeed to put all values");
+    LOG.log(Level.INFO, "Succeed to put {0} key-value items", NUM_ITEMS);
 
     return null;
   }

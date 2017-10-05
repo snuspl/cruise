@@ -57,7 +57,7 @@ public interface MessageSender {
   /**
    * Sends a ChkpStartMsg to an executor to checkpoint the local table blocks to a file in local file system.
    */
-  void sendChkpStartMsg(String chkpId, String executorId, String tableId);
+  void sendChkpStartMsg(String chkpId, String executorId, String tableId, double samplingRatio);
 
   /**
    * Sends a ChkpLoadMsg to an executor to load checkpoint to restore a table.

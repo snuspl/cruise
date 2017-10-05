@@ -311,7 +311,8 @@
   "name": "ChkpStartMsg",
   "fields":
   [
-    {"name": "tableId", "type": "string"}
+    {"name": "tableId", "type": "string"},
+    {"name": "samplingRatio", "type": "double"}
   ]
 },
 

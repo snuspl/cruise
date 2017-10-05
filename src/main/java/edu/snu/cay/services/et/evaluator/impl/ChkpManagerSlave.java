@@ -139,12 +139,14 @@ public final class ChkpManagerSlave {
    * More specifically, it checkpoints locally assigned blocks to a temporal file of local filesystem.
    * @param chkpId a checkpoint Id
    * @param tableId a table Id
+   * @param samplingRatio sampling ratio
    * @param <K> key type
    * @param <V> value type
    * @throws IOException when failed to write a checkpoint
    * @throws TableNotExistException when the table does not exist in this executor
    */
-  <K, V> void checkpoint(final String chkpId, final String tableId) throws IOException, TableNotExistException {
+  <K, V> void checkpoint(final String chkpId, final String tableId, final double samplingRatio)
+      throws IOException, TableNotExistException {
     final Path baseDir = new Path(tempPath, chkpId);
 
     LOG.log(Level.INFO, "Start checkpointing. chkpId: {0}, tableId: {1}, baseDir: {2}",
@@ -167,11 +169,18 @@ public final class ChkpManagerSlave {
         // prevent modifying value while doing chkp
         final Lock lock = tableComponents.getOwnershipCache().holdWriteLock(block.getId());
         try (FSDataOutputStream fos = fs.create(new Path(baseDir, Integer.toString(block.getId())))) {
-          fos.writeInt(block.getNumPairs());
-          block.iterator().forEachRemaining(kvEntry -> {
+          final int numItemsToChkp = (int) (block.getNumPairs() * samplingRatio);
+          fos.writeInt(numItemsToChkp);
+
+          LOG.log(Level.INFO, "blockId: {0}, numTotalItems: {1}, numItemsToChkp: {2}",
+              new Object[]{block.getId(), block.getNumPairs(), numItemsToChkp});
+
+          final Iterator<Map.Entry<K, V>> iter = block.iterator();
+          for (int i = 0; i < numItemsToChkp; i++) {
+            final Map.Entry<K, V> kvEntry = iter.next();
             kvuSerializer.getKeyCodec().encodeToStream(kvEntry.getKey(), fos);
             kvuSerializer.getValueCodec().encodeToStream(kvEntry.getValue(), fos);
-          });
+          }
         } catch (IOException e) {
           throw new RuntimeException(e);
         } finally {

@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.integration;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerET;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
+import edu.snu.cay.services.et.examples.checkpoint.CheckpointET;
 import edu.snu.cay.services.et.examples.simple.SimpleET;
 import edu.snu.cay.services.et.examples.userservice.ETCentCommExample;
 import org.apache.reef.client.LauncherStatus;
@@ -25,6 +26,8 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+
+import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 
@@ -64,5 +67,10 @@ public class ExampleTest {
         .build();
 
     ETCentCommExample.runCentCommExample(commandLineConf);
+  }
+
+  @Test
+  public void testCheckpointET() throws IOException, InjectionException {
+    assertEquals(LauncherStatus.COMPLETED, CheckpointET.runCheckpointET(new String[0]));
   }
 }

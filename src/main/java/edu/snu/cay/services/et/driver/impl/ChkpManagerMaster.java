@@ -121,7 +121,8 @@ public final class ChkpManagerMaster {
    * @param executors a set of executor ids
    * @return a checkpoint Id
    */
-  ListenableFuture<String> checkpoint(final TableConfiguration tableConf, final Set<String> executors) {
+  ListenableFuture<String> checkpoint(final TableConfiguration tableConf, final Set<String> executors,
+                                      final double samplingRatio) {
     final String checkpointId = tableConf.getId() + "-" + System.currentTimeMillis();
     LOG.log(Level.INFO, "Start checkpointing table {0} in executors: {1}. opId: {2}",
         new Object[]{tableConf.getId(), executors, checkpointId});
@@ -143,7 +144,7 @@ public final class ChkpManagerMaster {
     });
 
     executors.forEach(executorId ->
-        msgSenderFuture.get().sendChkpStartMsg(checkpointId, executorId, tableConf.getId()));
+        msgSenderFuture.get().sendChkpStartMsg(checkpointId, executorId, tableConf.getId(), samplingRatio));
 
     return resultFuture;
   }

@@ -274,7 +274,9 @@ public final class MessageHandlerImpl implements MessageHandler {
       switch (msg.getType()) {
       case ChkpStartMsg:
         try {
-          chkpManagerSlaveFuture.get().checkpoint(msg.getChkpId(), msg.getChkpStartMsg().getTableId());
+          final ChkpStartMsg chkpStartMsg = msg.getChkpStartMsg();
+          chkpManagerSlaveFuture.get().checkpoint(msg.getChkpId(),
+              chkpStartMsg.getTableId(), chkpStartMsg.getSamplingRatio());
         } catch (IOException | TableNotExistException e) {
           throw new RuntimeException(e);
         }

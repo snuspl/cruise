@@ -141,4 +141,13 @@ public interface AllocatedTable {
    * @return a future with a checkpoint Id
    */
   ListenableFuture<String> checkpoint();
+
+  /**
+   * Save a snapshot of current status of table, sampling data with the given ratio.
+   * Cannot proceed when there're ongoing migrations by {@link #moveBlocks}.
+   * This call will wait until ongoing migrations are completed.
+   * @param samplingRatio a ratio of table sampling
+   * @return a future with a checkpoint Id
+   */
+  ListenableFuture<String> checkpoint(double samplingRatio);
 }

@@ -27,6 +27,10 @@ import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
@@ -95,7 +99,7 @@ final class CheckpointETDriver {
       CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           // 1. Checkpoint a table after putting some value by running PutTask.
-          final AllocatedTable table0 = etMaster.createTable(buildTableConf(TABLE_ID), executors0).get();
+          final AllocatedTable originalTable = etMaster.createTable(buildTableConf(TABLE_ID), executors0).get();
 
           final Future<SubmittedTask> taskFuture = executors0.get(0).submitTask(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "PutTask")
@@ -104,10 +108,10 @@ final class CheckpointETDriver {
 
           TaskUtils.waitAndCheckTaskResult(Collections.singletonList(taskFuture), true);
 
-          final String chkpId = table0.checkpoint().get();
+          final String chkpId = originalTable.checkpoint().get();
           LOG.log(Level.INFO, "checkpointId: {0}", chkpId);
 
-          table0.drop().get();
+          originalTable.drop().get();
 
           // 2. Restore a table from the checkpoint into another set of executors.
           // Then check that table contents are correctly restored by running GetTask.
@@ -118,7 +122,7 @@ final class CheckpointETDriver {
             throw new RuntimeException(e);
           }
 
-          final AllocatedTable table1 = etMaster.createTable(chkpId, executors1).get();
+          final AllocatedTable tableFromLocalChkps = etMaster.createTable(chkpId, executors1).get();
 
           final AtomicInteger taskIdx = new AtomicInteger(0);
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
@@ -130,7 +134,7 @@ final class CheckpointETDriver {
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
           taskFutureList.clear();
 
-          table1.drop().get();
+          tableFromLocalChkps.drop().get();
 
           // 3. Close executors0, which have chkps temporally in their local file system.
           // The executors will commit chkps on their close.
@@ -145,7 +149,7 @@ final class CheckpointETDriver {
           });
 
           // 4. Restore a table once again to check that chkps are committed safely.
-          etMaster.createTable(chkpId, executors1).get();
+          final AllocatedTable tableFromCommittedChkps = etMaster.createTable(chkpId, executors1).get();
 
           executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
@@ -155,6 +159,31 @@ final class CheckpointETDriver {
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
           taskFutureList.clear();
 
+          // checkpoint the table with sampling rate 0.5
+          final double samplingRatio = 0.5;
+          final String sampledChkpId = tableFromCommittedChkps.checkpoint(samplingRatio).get();
+
+          tableFromCommittedChkps.drop().get();
+
+          // 5. Restore a table from the checkpoint with sampling rate 0.5
+          final AllocatedTable tableFromSampledChkp = etMaster.createTable(sampledChkpId, executors1).get();
+
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(
+              Configurations.merge(
+                  TaskConfiguration.CONF
+                      .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
+                      .set(TaskConfiguration.TASK, GetTask.class)
+                      .build(),
+                  Tang.Factory.getTang().newConfigurationBuilder()
+                      .bindNamedParameter(SamplingRatio.class, Double.toString(samplingRatio))
+                      .build())
+          )));
+
+          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          taskFutureList.clear();
+
+          tableFromSampledChkp.drop().get();
+
           executors1.forEach(AllocatedExecutor::close);
 
         } catch (InterruptedException | ExecutionException e) {
@@ -162,5 +191,9 @@ final class CheckpointETDriver {
         }
       });
     }
+  }
+
+  @NamedParameter(doc = "A sampling rate for a table checkpoint", default_value = "1.0")
+  final class SamplingRatio implements Name<Double> {
   }
 }

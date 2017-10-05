@@ -125,15 +125,17 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId) {
+  public void sendChkpStartMsg(final String chkpId, final String executorId, final String tableId,
+                               final double samplingRatio) {
     final byte[] innerMsg = AvroUtils.toBytes(
         TableChkpMsg.newBuilder()
             .setType(TableChkpMsgType.ChkpStartMsg)
             .setChkpId(chkpId)
             .setChkpStartMsg(
                 ChkpStartMsg.newBuilder()
-                .setTableId(tableId)
-                .build())
+                    .setTableId(tableId)
+                    .setSamplingRatio(samplingRatio)
+                    .build())
             .build(), TableChkpMsg.class);
 
     final ETMsg msg = ETMsg.newBuilder()

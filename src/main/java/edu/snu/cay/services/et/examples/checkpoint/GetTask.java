@@ -25,6 +25,9 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.services.et.examples.checkpoint.PutTask.NUM_ITEMS;
+import static edu.snu.cay.services.et.examples.checkpoint.PutTask.VALUE_PREFIX;
+
 /**
  * Task code that gets values from the table to confirm that the table has values put by {@link PutTask}.
  */
@@ -33,31 +36,50 @@ final class GetTask implements Task {
 
   private final String executorId;
 
+  private final double samplingRatio;
+
   private final TableAccessor tableAccessor;
 
   @Inject
   private GetTask(@Parameter(ExecutorIdentifier.class) final String executorId,
+                  @Parameter(CheckpointETDriver.SamplingRatio.class) final double samplingRatio,
                   final TableAccessor tableAccessor) {
     this.executorId = executorId;
+    this.samplingRatio = samplingRatio;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "Hello! I am {1}", new Object[]{executorId});
+    LOG.log(Level.INFO, "Hello! I am {0}", new Object[]{executorId});
     final Table<Long, String, ?> table = tableAccessor.getTable(CheckpointETDriver.TABLE_ID);
 
-    final String value0 = table.get(0L).get();
-    if (value0 == null || !value0.equals(PutTask.VALUE0)) {
-      throw new RuntimeException();
+    int itemCount = 0;
+    for (long key = 0; key < NUM_ITEMS; key++) {
+      final String value = table.get(key).get();
+
+      if (value != null) { // value can be null, if the checkpoint was done with sampling
+        itemCount++;
+
+        if (!value.equals(VALUE_PREFIX + key)) {
+          throw new RuntimeException("key-value mapping is incorrect");
+        }
+      }
     }
 
-    final String value1 = table.get(1L).get();
-    if (value1 == null || !value1.equals(PutTask.VALUE1)) {
-      throw new RuntimeException();
+    // check the number of items in a restored table
+    if (samplingRatio == 1.0) {
+      if (itemCount != NUM_ITEMS) {
+        throw new RuntimeException(String.format(
+            "Item count (%d) is different from what we expected (%d).", itemCount, NUM_ITEMS));
+      }
+    } else {
+      // item count may be different from the expectation because sampling is done separately for each block
+      LOG.log(Level.INFO, "Sampled items count:{0}, sampling rate: {1}, total: {2}",
+          new Object[]{itemCount, samplingRatio, NUM_ITEMS});
     }
 
-    LOG.log(Level.INFO, "Succeed to get all values");
+    LOG.log(Level.INFO, "Succeed to get {0} key-value items", itemCount);
 
     return null;
   }

@@ -289,7 +289,16 @@ public final class AllocatedTableImpl implements AllocatedTable {
 
   @Override
   public synchronized ListenableFuture<String> checkpoint() {
+    return checkpoint(1.0);
+  }
+
+  @Override
+  public ListenableFuture<String> checkpoint(final double samplingRatio) {
     stateMachine.checkState(State.INITIALIZED);
+
+    if (samplingRatio > 1 || samplingRatio <= 0) {
+      throw new IllegalArgumentException("Sample ratio should be a positive value that is less than and equal to 1.");
+    }
 
     // can proceed only when there's no ongoing checkpoints
     while (numOngoingMigrations.get() > 0) {
@@ -303,7 +312,8 @@ public final class AllocatedTableImpl implements AllocatedTable {
 
     numOngoingCheckpoints.incrementAndGet();
 
-    final ListenableFuture<String> future = chkpManagerMaster.checkpoint(tableConf, blockManager.getAssociatorIds());
+    final ListenableFuture<String> future =
+        chkpManagerMaster.checkpoint(tableConf, blockManager.getAssociatorIds(), samplingRatio);
     future.addListener(o -> {
       if (numOngoingCheckpoints.decrementAndGet() == 0) {
         synchronized (this) {
