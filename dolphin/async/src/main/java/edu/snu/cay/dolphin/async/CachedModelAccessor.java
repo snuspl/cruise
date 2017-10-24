@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -35,6 +36,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
 
   private final Table<K, V, P> modelTable;
 
+  private final Tracer pushTracer = new Tracer();
+  private final Tracer pullTracer = new Tracer();
+
   @Inject
   private CachedModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                               final TableAccessor tableAccessor) throws TableNotExistException {
@@ -46,7 +50,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   @Override
   public void push(final K key, final P deltaValue) {
     // TODO #00: update cache
+
+    pushTracer.startTimer();
     modelTable.updateNoReply(key, deltaValue);
+    pushTracer.recordTime(1);
   }
 
   @Override
@@ -59,7 +66,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
       // 2. not in cache
       final V pulledValue;
       try {
+        pullTracer.startTimer();
         pulledValue = modelTable.getOrInit(key).get();
+        pullTracer.recordTime(1);
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
@@ -88,6 +97,7 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         }
       }
 
+      pullTracer.startTimer();
       // pull non-cached values
       pullFutures.forEach((key, valueFuture) -> {
         final V value;
@@ -99,13 +109,22 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         cache.put(key, value);
         resultMap.put(key, value);
       });
+      pullTracer.recordTime(pullFutures.size());
       return new ArrayList<>(resultMap.values());
     }
   }
 
   @Override
   public Map<String, Double> getAndResetMetrics() {
-    return Collections.emptyMap();
+    final Map<String, Double> metrics = new HashMap<>();
+    metrics.put(METRIC_TOTAL_PULL_TIME_SEC, pullTracer.totalElapsedTime());
+    metrics.put(METRIC_TOTAL_PUSH_TIME_SEC, pushTracer.totalElapsedTime());
+    metrics.put(METRIC_AVG_PULL_TIME_SEC, pullTracer.avgTimePerElem());
+    metrics.put(METRIC_AVG_PUSH_TIME_SEC, pushTracer.avgTimePerElem());
+
+    pullTracer.resetTrace();
+    pushTracer.resetTrace();
+    return metrics;
   }
 
   private void refreshCache() {
