@@ -131,7 +131,7 @@ public final class ETDolphinLauncher {
               .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
               .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
               .bindImplementation(TrainingDataProvider.class, ETTrainingDataProvider.class)
-              .bindImplementation(ModelAccessor.class, ETModelAccessor.class)
+              .bindImplementation(ModelAccessor.class, CachedModelAccessor.class)
               .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
               .build());
