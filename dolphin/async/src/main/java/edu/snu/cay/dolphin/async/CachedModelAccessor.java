@@ -118,6 +118,31 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   }
 
   @Override
+  public List<V> pull(final List<K> keys, final Table aModelTable) {
+    final List<Future<V>> resultList = new ArrayList<>(keys.size());
+    keys.forEach(key -> resultList.add(aModelTable.getOrInit(key)));
+
+    final List<V> resultValues = new ArrayList<>(keys.size());
+    for (final Future<V> opResult : resultList) {
+      V result;
+      while (true) {
+        try {
+          result = opResult.get();
+          break;
+        } catch (InterruptedException e) {
+          // ignore and keep waiting
+        } catch (ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      resultValues.add(result);
+    }
+
+    return resultValues;
+  }
+
+  @Override
   public Map<String, Double> getAndResetMetrics() {
     final Map<String, Double> metrics = new HashMap<>();
     metrics.put(METRIC_TOTAL_PULL_TIME_SEC, pullTracer.totalElapsedTime());

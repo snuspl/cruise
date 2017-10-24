@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.services.et.evaluator.api.Table;
+
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +70,15 @@ public interface ModelAccessor<K, P, V> {
    *        Some positions in the list can be {@code null}, if the key has no associated value
    */
   List<V> pull(List<K> keys);
+
+  /**
+   * Do {@link #pull(List)} with a given table.
+   * @param keys a list of keys of model parameter
+   * @param aModelTable a table to read value from
+   * @return a list of values associated with the given {@code keys}.
+   *        Some positions in the list can be {@code null}, if the key has no associated value
+   */
+  List<V> pull(List<K> keys, Table aModelTable);
 
   /**
    * Fetches the collected metrics and reset the tracers for collecting metrics in the next round.

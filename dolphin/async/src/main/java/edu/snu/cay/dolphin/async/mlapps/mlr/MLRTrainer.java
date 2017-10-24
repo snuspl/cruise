@@ -266,7 +266,7 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Pull models one last time and perform validation.
    */
   private MLRModel pullModelsToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
-    final List<Vector> partitions = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+    final List<Vector> partitions = modelAccessor.pull(keys, modelTable);
 
     final MLRModel mlrModel = new MLRModel(new Vector[numClasses]);
     final Vector[] params = mlrModel.getParams();

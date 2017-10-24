@@ -206,7 +206,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   private NMFModel pullModelToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
     final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
-    final List<Vector> vectors = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+    final List<Vector> vectors = modelAccessor.pull(keys, modelTable);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
