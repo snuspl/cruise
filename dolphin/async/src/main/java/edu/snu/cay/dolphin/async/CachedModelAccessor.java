@@ -97,19 +97,22 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         }
       }
 
-      pullTracer.startTimer();
-      // pull non-cached values
-      pullFutures.forEach((key, valueFuture) -> {
-        final V value;
-        try {
-          value = valueFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-        cache.put(key, value);
-        resultMap.put(key, value);
-      });
-      pullTracer.recordTime(pullFutures.size());
+      if (!pullFutures.isEmpty()) {
+        pullTracer.startTimer();
+        // pull non-cached values
+        pullFutures.forEach((key, valueFuture) -> {
+          final V value;
+          try {
+            value = valueFuture.get();
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+          cache.put(key, value);
+          resultMap.put(key, value);
+        });
+        pullTracer.recordTime(pullFutures.size());
+      }
+
       return new ArrayList<>(resultMap.values());
     }
   }
@@ -132,6 +135,7 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
     keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
 
+    pullTracer.startTimer();
     pullFutures.forEach((key, pullFuture) -> {
       try {
         cache.put(key, pullFuture.get());
@@ -139,5 +143,6 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         throw new RuntimeException(e);
       }
     });
+    pullTracer.recordTime(pullFutures.size());
   }
 }
