@@ -45,9 +45,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   @Inject
   private CachedModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                               final TableAccessor tableAccessor,
-                              final Tables tables) throws TableNotExistException {
+                              final UpdateFunction<K, V, P> modelUpdateFunction) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);
-    this.modelUpdateFunction = (UpdateFunction<K, V, P>) tables.getTableComponents(modelTableId).getUpdateFunction();
+    this.modelUpdateFunction = modelUpdateFunction;
 
     // TODO #00: introduce a sophisticated cache refresh/eviction policy
     Executors.newSingleThreadScheduledExecutor()
