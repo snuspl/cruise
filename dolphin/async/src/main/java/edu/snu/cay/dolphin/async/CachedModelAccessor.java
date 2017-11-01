@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.evaluator.impl.Tables;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -35,25 +37,31 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   private final Map<K, V> cache = new ConcurrentHashMap<>();
 
   private final Table<K, V, P> modelTable;
+  private final UpdateFunction<K, V, P> modelUpdateFunction;
 
   private final Tracer pushTracer = new Tracer();
   private final Tracer pullTracer = new Tracer();
 
   @Inject
   private CachedModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                              final TableAccessor tableAccessor) throws TableNotExistException {
+                              final TableAccessor tableAccessor,
+                              final Tables tables) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);
+    this.modelUpdateFunction = (UpdateFunction<K, V, P>) tables.getTableComponents(modelTableId).getUpdateFunction();
+
+    // TODO #00: introduce a sophisticated cache refresh/eviction policy
     Executors.newSingleThreadScheduledExecutor()
-        .scheduleWithFixedDelay(this::refreshCache, 30, 10, TimeUnit.SECONDS);
+        .scheduleWithFixedDelay(this::refreshCache, 10, 10, TimeUnit.SECONDS);
   }
 
   @Override
   public void push(final K key, final P deltaValue) {
-    // TODO #00: update cache
-
     pushTracer.startTimer();
     modelTable.updateNoReply(key, deltaValue);
     pushTracer.recordTime(1);
+
+    // update local cache. oldValue always exists
+    cache.compute(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue));
   }
 
   @Override
@@ -157,17 +165,20 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
 
   private void refreshCache() {
     final Set<K> keys = cache.keySet();
-    final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
-    keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
 
-    pullTracer.startTimer();
-    pullFutures.forEach((key, pullFuture) -> {
-      try {
-        cache.put(key, pullFuture.get());
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
-    pullTracer.recordTime(pullFutures.size());
+    if (!keys.isEmpty()) {
+      pullTracer.startTimer();
+      final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
+      keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
+
+      pullFutures.forEach((key, pullFuture) -> {
+        try {
+          cache.put(key, pullFuture.get());
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      });
+      pullTracer.recordTime(pullFutures.size());
+    }
   }
 }
