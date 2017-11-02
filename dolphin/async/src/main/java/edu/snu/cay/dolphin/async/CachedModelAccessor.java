@@ -19,7 +19,6 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
-import edu.snu.cay.services.et.evaluator.impl.Tables;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.tang.annotations.Parameter;
 
