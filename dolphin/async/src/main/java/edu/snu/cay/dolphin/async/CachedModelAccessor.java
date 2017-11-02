@@ -28,9 +28,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- *
- * @param <K>
- * @param <V>
+ * A {@link ModelAccessor} implementation with model cache.
  */
 public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
@@ -54,6 +52,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         .scheduleWithFixedDelay(this::refreshCache, 10, 10, TimeUnit.SECONDS);
   }
 
+  /**
+   * Push a delta value for a key, applying the change to cache.
+   */
   @Override
   public void push(final K key, final P deltaValue) {
     pushTracer.startTimer();
@@ -64,6 +65,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     cache.compute(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue));
   }
 
+  /**
+   * Retrieve a value for a requested key.
+   * Pull value from servers, if cache does not have value for the key.
+   */
   @Override
   public V pull(final K key) {
     // 1. in cache
@@ -85,6 +90,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     }
   }
 
+  /**
+   * Retrieve values for requested keys.
+   * Pull values from servers, if cache does not have all values for the keys.
+   */
   @Override
   public List<V> pull(final List<K> keys) {
     // 1. all values are in cache
@@ -125,6 +134,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     }
   }
 
+  /**
+   * This method does not care about cache.
+   */
   @Override
   public List<V> pull(final List<K> keys, final Table aModelTable) {
     final List<Future<V>> resultList = new ArrayList<>(keys.size());
