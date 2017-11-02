@@ -124,6 +124,12 @@ public final class ETDolphinLauncher {
               .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
               .build());
 
+      final Injector workerParameterInjector = Tang.Factory.getTang().newInjector(workerParamConf);
+
+      final boolean modelCacheEnabled = workerParameterInjector.getNamedInstance(ModelCacheEnabled.class);
+      final Class<? extends ModelAccessor> modelAccessorClass =
+          modelCacheEnabled ? CachedModelAccessor.class : ETModelAccessor.class;
+
       // worker conf
       final Configuration workerConf = Configurations.merge(
           workerParamConf, userParamConf,
@@ -131,7 +137,7 @@ public final class ETDolphinLauncher {
               .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
               .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
               .bindImplementation(TrainingDataProvider.class, ETTrainingDataProvider.class)
-              .bindImplementation(ModelAccessor.class, CachedModelAccessor.class)
+              .bindImplementation(ModelAccessor.class, modelAccessorClass)
               .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
               .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
@@ -227,7 +233,8 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
 
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
-        HyperThreadEnabled.class, MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class);
+        HyperThreadEnabled.class, ModelCacheEnabled.class,
+        MaxNumEpochs.class, NumTotalMiniBatches.class, TestDataPath.class);
 
     // commonly used parameters for ML apps
     final List<Class<? extends Name<?>>> commonAppParamList = Arrays.asList(
