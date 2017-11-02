@@ -66,6 +66,7 @@
   <modules>
     <module>dolphin/async</module>
     <module>services/evaluator-manager</module>
+    <module>services/et</module>
     <module>utils</module>
     <module>common</module>
     <module>pregel</module>
