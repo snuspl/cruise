@@ -1,0 +1,606 @@
+/*
+ * Copyright (C) 2017 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+[
+/**
+ * An avro message format for representing a data key, which is for single-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataKey",
+  "fields":
+  [
+    {"name": "key", "type": "bytes"}
+  ]
+},
+
+/**
+ * An avro message format for representing a data value, which is for single-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataValue",
+  "fields":
+  [
+    {"name": "value", "type": "bytes"}
+  ]
+},
+
+/**
+ * An avro message format for representing data keys, which is for multi-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataKeys",
+  "fields":
+  [
+    {"name": "keys", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
+/**
+ * An avro message format for representing data values, which is for multi-key operation.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataValues",
+  "fields":
+  [
+    {"name": "values", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
+/**
+ * An avro message format for sending a data operation to remote executor.
+ * {@code dataValue} is used only for PUT and UPDATE operations.
+ * It's used for both single-key and multi-key operations.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableAccessReqMsg",
+  "fields":
+  [
+    {"name": "origId", "type": "string"},
+    {"name": "opType", "type": {"type": "enum",
+        "name": "OpType", "symbols": ["PUT", "PUT_IF_ABSENT", "GET", "GET_OR_INIT", "REMOVE", "UPDATE"]}},
+    {"name": "tableId", "type": "string"},
+    {"name": "dataKey", "type": ["null", "DataKey"], "default": null},
+    {"name": "dataValue", "type": ["null", "DataValue"], "default": null},
+    {"name": "dataKeys", "type": ["null", "DataKeys"], "default": null},
+    {"name": "dataValues", "type": ["null", "DataValues"], "default": null},
+    {"name": "replyRequired", "type": "boolean", "default": true},
+    {"name": "isSingleKey", "type": "boolean", "default": true}
+  ]
+},
+
+/**
+ * An avro message format for sending a result of data operation to the source executor.
+ * It's used for both single-key and multi-key operations.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableAccessResMsg",
+  "fields":
+  [
+    {"name": "isSuccess", "type": "boolean"},
+    {"name": "tableId", "type": "string"},
+    {"name": "dataValue", "type": ["null", "DataValue"], "default": null},
+    {"name": "dataKeys", "type": ["null", "DataKeys"], "default": null},
+    {"name": "dataValues", "type": ["null", "DataValues"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for remote access of Elastic Table.
+ * TableAccessReqMsg and TableAccessResMsg are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableAccessMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TableAccessMsgType",
+        "symbols": ["TableAccessReqMsg", "TableAccessResMsg"]}},
+    {"name": "operationId", "type": "long"},
+    {"name": "tableAccessReqMsg", "type": ["null", "TableAccessReqMsg"], "default": null},
+    {"name": "tableAccessResMsg", "type": ["null", "TableAccessResMsg"], "default": null}
+  ]
+},
+
+/**
+ * An avro message format for master to initialize a table in executors.
+ * It includes a table configuration info and an initial ownership info of the table.
+ * {@code blockOwners} is a list whose index is the block id and value is the executor id.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableInitMsg",
+  "fields":
+  [
+    {"name": "tableConf", "type": "string"},
+    {"name": "blockOwners", "type": {"type": "array", "items": "string"}}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for TableInitMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableInitAckMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"},
+    {"name": "tableId", "type" : "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to load data in executors.
+ * It includes an identifier of table and a serialized string of {@link HdfsSplitInfo} assigned to each executor.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableLoadMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"},
+    {"name": "fileSplit", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for TableLoadMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableLoadAckMsg",
+  "fields":
+  [
+    {"name": "executorId", "type": "string"},
+    {"name": "tableId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to drop a table in executors.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableDropMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for TableDropMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableDropAckMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"},
+    {"name": "tableId", "type" : "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to broadcast the change of block ownership
+ * upon the completion of migration to executors.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipUpdateMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "oldOwnerId", "type": "string"},
+    {"name": "newOwnerId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executor to request the up-to-date ownership status of a block.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipReqMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"}
+  ]
+},
+
+/**
+ * An avro message format for master to confirm that an executor is removed from ownership cache.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipSyncMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "deletedExecutorId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for OwnershipSyncMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipSyncAckMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "deletedExecutorId", "type" : "string"}
+  ]
+},
+
+/**
+ * The message protocol for master to manage tables in executors.
+ * TableInitMsg, TableInitAckMsg, TableDropMsg, TableDropAckMsg,
+ * OwnershipUpdateMsg, OwnershipSyncMsg, and OwnershipSyncAckMsg
+ * are all included as nullable fields, and an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableControlMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TableControlMsgType",
+        "symbols": ["TableInitMsg", "TableInitAckMsg", "TableLoadMsg", "TableLoadAckMsg",
+          "TableDropMsg", "TableDropAckMsg",
+          "OwnershipUpdateMsg", "OwnershipReqMsg", "OwnershipSyncMsg", "OwnershipSyncAckMsg"]}},
+    {"name": "operationId", "type": ["null", "long"], "default": null},
+    {"name": "tableInitMsg", "type": ["null", "TableInitMsg"], "default": null},
+    {"name": "tableInitAckMsg", "type": ["null", "TableInitAckMsg"], "default": null},
+    {"name": "tableLoadMsg", "type": ["null", "TableLoadMsg"], "default": null},
+    {"name": "tableLoadAckMsg", "type": ["null", "TableLoadAckMsg"], "default": null},
+    {"name": "tableDropMsg", "type": ["null", "TableDropMsg"], "default": null},
+    {"name": "tableDropAckMsg", "type": ["null", "TableDropAckMsg"], "default": null},
+    {"name": "ownershipUpdateMsg", "type": ["null", "OwnershipUpdateMsg"], "default": null},
+    {"name": "ownershipReqMsg", "type": ["null", "OwnershipReqMsg"], "default": null},
+    {"name": "ownershipSyncMsg", "type": ["null", "OwnershipSyncMsg"], "default": null},
+    {"name": "ownershipSyncAckMsg", "type": ["null", "OwnershipSyncAckMsg"], "default": null}
+  ]
+},
+
+/**
+ * An avro message format for master to start checkpointing a table in executors.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpStartMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"},
+    {"name": "samplingRatio", "type": "double"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send a reply msg for ChkpStartMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpDoneMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}}
+  ]
+},
+
+/**
+ * An avro message format for executors to notify master that it has committed local checkpoints.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpCommitMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"}
+  ]
+},
+
+/**
+ * An avro message format for master to start loading a checkpoint in executors.
+ * {@code blockOwners} is null, when {@code committed} is true.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpLoadMsg",
+  "fields":
+  [
+    {"name": "tableId", "type": "string"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+    {"name": "committed", "type": "boolean"},
+    {"name": "blockOwners", "type": ["null", {"type": "array", "items": "string"}], "default": null}
+  ]
+},
+
+/**
+ * An avro message format for executors to send a reply msg for ChkpLoadMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ChkpLoadDoneMsg",
+  "fields":
+  [
+    {"name": "executorId", "type" : "string"}
+  ]
+},
+
+/**
+ * The message protocol used for checkpointing in Elastic Table.
+ * ChkpStartMsg, ChkpLoadMsg, and ChkpCommitMsg, etc. are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TableChkpMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TableChkpMsgType",
+        "symbols": ["ChkpStartMsg", "ChkpDoneMsg", "ChkpLoadMsg", "ChkpLoadDoneMsg", "ChkpCommitMsg"]}},
+    {"name": "chkpId", "type": "string"},
+    {"name": "chkpStartMsg", "type": ["null", "ChkpStartMsg"], "default": null},
+    {"name": "chkpDoneMsg", "type": ["null", "ChkpDoneMsg"], "default": null},
+    {"name": "chkpLoadMsg", "type": ["null", "ChkpLoadMsg"], "default": null},
+    {"name": "chkpLoadDoneMsg", "type": ["null", "ChkpLoadDoneMsg"], "default": null},
+    {"name": "chkpCommitMsg", "type": ["null", "ChkpCommitMsg"], "default": null}
+  ]
+},
+
+/**
+ * Request message from master to sender executor, which initiates data migration.
+ * The message contains an array of block ids to migrate.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MoveInitMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"}
+  ]
+},
+
+/**
+ * Message for transferring ownership of the block from sender to receiver of migration.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "oldOwnerId", "type": "string"},
+    {"name": "newOwnerId", "type": "string"}
+  ]
+},
+
+/**
+ * Response message for OwnershipMsg.
+ * An ownership receiver sends it to the ownership sender.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipAckMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "oldOwnerId", "type": "string"},
+    {"name": "newOwnerId", "type": "string"}
+  ]
+},
+
+/**
+ * A message from migration sender to master that indicates that
+ * the ownership migration of a block is completed.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipMovedMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"}
+  ]
+},
+
+/**
+ * Message for transferring data of the block from sender to receiver of migration.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "numTotalItems", "type": "int"},
+    {"name": "numItems", "type": "int"},
+    {"name": "kvPairs", "type": "bytes"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"}
+  ]
+},
+
+/**
+ * Response message for DataMsg.
+ * A data receiver sends it to the data sender.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataAckMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"}
+  ]
+},
+
+/**
+ * A message from migration sender to master that indicates that
+ * the data migration of a block is completed.
+ * By setting the third field to true, the ownership and data is migrated together,
+ * which is optimized for immutable tables.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "DataMovedMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "moveOwnershipTogether", "type": "boolean"}
+  ]
+},
+
+/**
+ * The message protocol used for migration of Elastic Table.
+ * MoveInitMsg, OwnershipMsg, and DataMsg, etc. are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MigrationMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
+        "symbols": ["MoveInitMsg", "OwnershipMsg", "OwnershipAckMsg", "OwnershipMovedMsg",
+         "DataMsg", "DataAckMsg", "DataMovedMsg"]}},
+    {"name": "operationId", "type": "long"},
+    {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
+    {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
+    {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null},
+    {"name": "ownershipMovedMsg", "type": ["null", "OwnershipMovedMsg"], "default": null},
+    {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
+    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
+    {"name": "dataMovedMsg", "type": ["null", "DataMovedMsg"], "default": null}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricControlMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "MetricControlType",
+        "symbols": ["Start", "Stop"]}},
+    {"name": "serializedMetricConf", "type": ["null", "string"], "default": null}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricReportMsg",
+  "fields":
+  [
+    {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
+    {"name": "countSentGetReq", "type": {"type": "map", "values": "int"}},
+    {"name": "bytesReceivedGetResp", "type": {"type": "map", "values": "long"}},
+    {"name": "hostname", "type": "string", "default": ""},
+    {"name": "customMetrics", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
+/**
+ * The message protocol used for collecting metrics.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "MetricMsgType",
+        "symbols": ["MetricControlMsg", "MetricReportMsg"]}},
+    {"name": "metricControlMsg", "type": ["null", "MetricControlMsg"], "default": null},
+    {"name": "metricReportMsg", "type": ["null", "MetricReportMsg"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for Elastic Table.
+ * Messages are categorized into following types:
+ * (1) TableAccessMsg: Messages regarding remote table access.
+ * (2) TableControlMsg: Messages to manage tables in executors.
+ * (3) TableChkpMsg: Messages regarding to talbe checkpoint.
+ * (4) MigrationMsg: Messages used for data migration.
+ * (5) MetricMsg: Messages for collecting metrics from executors.
+ * They are all included as nullable fields, and an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "ETMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "ETMsgType",
+        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg"]}},
+    {"name": "innerMsg", "type": "bytes"}
+  ]
+}
+]
