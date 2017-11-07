@@ -33,6 +33,8 @@ import java.util.concurrent.*;
  * A {@link ModelAccessor} implementation with model cache.
  */
 public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
+  private static final int MODEL_REFRESH_SEC = 10; // TODO #1254: introduce a sophisticated cache policy
+  private static final int CACHE_CONCURRENCY_WRITES = 4;
 
   private final LoadingCache<K, V> modelLoadingCache;
 
@@ -50,12 +52,32 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     this.modelUpdateFunction = modelUpdateFunction;
 
     this.modelLoadingCache = initCache();
+
+    Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(() -> {
+      final Set<K> keys = modelLoadingCache.asMap().keySet();
+
+      if (!keys.isEmpty()) {
+        pullTracer.startTimer();
+        final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
+        keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
+
+        pullFutures.forEach((key, pullFuture) -> {
+          try {
+            modelLoadingCache.put(key, pullFuture.get());
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+        });
+        pullTracer.recordTime(keys.size());
+      }
+
+    }, 0, MODEL_REFRESH_SEC, TimeUnit.SECONDS);
   }
 
   private LoadingCache<K, V> initCache() {
     return CacheBuilder.newBuilder()
-        .refreshAfterWrite(10, TimeUnit.SECONDS) // TODO #1254: introduce a sophisticated cache refresh/eviction policy
-        .concurrencyLevel(4)
+        .concurrencyLevel(CACHE_CONCURRENCY_WRITES)
+//        .maximumSize(0)
         .build(new CacheLoader<K, V>() {
           @Override
           public V load(final K key) throws Exception {
