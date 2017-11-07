@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
@@ -31,7 +34,7 @@ import java.util.concurrent.*;
  */
 public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
-  private final Map<K, V> cache = new ConcurrentHashMap<>();
+  private final LoadingCache<K, V> modelLoadingCache;
 
   private final Table<K, V, P> modelTable;
   private final UpdateFunction<K, V, P> modelUpdateFunction;
@@ -46,9 +49,40 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     this.modelTable = tableAccessor.getTable(modelTableId);
     this.modelUpdateFunction = modelUpdateFunction;
 
-    // TODO #00: introduce a sophisticated cache refresh/eviction policy
-    Executors.newSingleThreadScheduledExecutor()
-        .scheduleWithFixedDelay(this::refreshCache, 10, 10, TimeUnit.SECONDS);
+    this.modelLoadingCache = initCache();
+  }
+
+  private LoadingCache<K, V> initCache() {
+    return CacheBuilder.newBuilder()
+        .refreshAfterWrite(10, TimeUnit.SECONDS) // TODO #1254: introduce a sophisticated cache refresh/eviction policy
+        .concurrencyLevel(4)
+        .build(new CacheLoader<K, V>() {
+          @Override
+          public V load(final K key) throws Exception {
+            pullTracer.startTimer();
+            final Future<V> pullFuture = modelTable.getOrInit(key);
+            final V value = pullFuture.get();
+            pullTracer.recordTime(1);
+            return value;
+          }
+
+          @Override
+          public Map<K, V> loadAll(Iterable<? extends K> keys) throws Exception {
+            final List<Future<V>> pullFutureList = new ArrayList<>();
+            keys.forEach(key -> {
+              pullFutureList.add(modelTable.getOrInit(key));// TODO: ET#176 support multi-get operation
+            });
+
+            final Map<K, V> resultKVMap = new HashMap<>(pullFutureList.size());
+
+            int i = 0;
+            for (final K key : keys) {
+              resultKVMap.put(key, pullFutureList.get(i++).get());
+            }
+
+            return resultKVMap;
+          }
+        });
   }
 
   /**
@@ -60,8 +94,9 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     modelTable.updateNoReply(key, deltaValue);
     pushTracer.recordTime(1);
 
-    // update local cache. oldValue always exists
-    cache.compute(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue));
+    // update value in cache. this modification will not cause entry loading in cache.
+    modelLoadingCache.asMap().
+        computeIfPresent(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue));
   }
 
   /**
@@ -70,22 +105,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
    */
   @Override
   public V pull(final K key) {
-    // 1. in cache
-    final V cachedValue = cache.get(key);
-    if (cachedValue != null) {
-      return cachedValue;
-    } else {
-      // 2. not in cache
-      final V pulledValue;
-      try {
-        pullTracer.startTimer();
-        pulledValue = modelTable.getOrInit(key).get();
-        pullTracer.recordTime(1);
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      cache.put(key, pulledValue);
-      return pulledValue;
+    try {
+      return modelLoadingCache.get(key);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -95,41 +118,14 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
    */
   @Override
   public List<V> pull(final List<K> keys) {
-    // 1. all values are in cache
-    if (cache.keySet().containsAll(keys)) {
-      final List<V> resultValues = new ArrayList<>(keys.size());
-      keys.forEach(key -> resultValues.add(cache.get(key)));
-      return resultValues;
-    } else {
-      // 2. some values are not in cache
-      final Map<K, V> resultMap = new HashMap<>(keys.size());
-      final Map<K, Future<V>> pullFutures = new HashMap<>();
-      for (final K key : keys) {
-        final V value = cache.get(key);
-        if (value == null) {
-          pullFutures.put(key, modelTable.getOrInit(key));
-        } else {
-          resultMap.put(key, value);
-        }
-      }
+    try {
+      final Map<K, V> kvMap = modelLoadingCache.getAll(keys);
+      final List<V> valueList = new ArrayList<>(keys.size());
+      keys.forEach(key -> valueList.add(kvMap.get(key)));
 
-      if (!pullFutures.isEmpty()) {
-        pullTracer.startTimer();
-        // pull non-cached values
-        pullFutures.forEach((key, valueFuture) -> {
-          final V value;
-          try {
-            value = valueFuture.get();
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-          cache.put(key, value);
-          resultMap.put(key, value);
-        });
-        pullTracer.recordTime(pullFutures.size());
-      }
-
-      return new ArrayList<>(resultMap.values());
+      return valueList;
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -172,24 +168,5 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
     pullTracer.resetTrace();
     pushTracer.resetTrace();
     return metrics;
-  }
-
-  private void refreshCache() {
-    final Set<K> keys = cache.keySet();
-
-    if (!keys.isEmpty()) {
-      pullTracer.startTimer();
-      final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
-      keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
-
-      pullFutures.forEach((key, pullFuture) -> {
-        try {
-          cache.put(key, pullFuture.get());
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      });
-      pullTracer.recordTime(pullFutures.size());
-    }
   }
 }
