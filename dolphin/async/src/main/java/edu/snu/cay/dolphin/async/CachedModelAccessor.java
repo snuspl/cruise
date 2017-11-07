@@ -67,10 +67,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
           }
 
           @Override
-          public Map<K, V> loadAll(Iterable<? extends K> keys) throws Exception {
+          public Map<K, V> loadAll(final Iterable<? extends K> keys) throws Exception {
             final List<Future<V>> pullFutureList = new ArrayList<>();
             keys.forEach(key -> {
-              pullFutureList.add(modelTable.getOrInit(key));// TODO: ET#176 support multi-get operation
+              pullFutureList.add(modelTable.getOrInit(key)); // TODO #176: ET. support multi-get operation
             });
 
             final Map<K, V> resultKVMap = new HashMap<>(pullFutureList.size());
