@@ -53,17 +53,21 @@ final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
   public void onException(final Throwable throwable, final SocketAddress socketAddress,
                           final Message<ETMsg> stringMessage) {
     for (final ETMsg msg : stringMessage.getData()) {
-      LOG.log(Level.WARNING, "Failure on sending message: " + msg + " to SockAddr: " + socketAddress, throwable);
-
       // handle failed table access request msgs, which may fail by reconfiguration
       if (msg.getType().equals(ETMsgType.TableAccessMsg)) {
         final TableAccessMsg tableAccessMsg = AvroUtils.fromBytes(msg.getInnerMsg().array(), TableAccessMsg.class);
         if (tableAccessMsg.getType().equals(TableAccessMsgType.TableAccessReqMsg)) {
           final TableAccessReqMsg tableAccessReqMsg = tableAccessMsg.getTableAccessReqMsg();
+          LOG.log(Level.INFO, String.format("Failure on sending TableAccessReqMsg. tableId: %s, targetAddr: %s",
+              tableAccessReqMsg.getTableId(), socketAddress);
+
           remoteAccessOpSender.onFailedMsg(tableAccessReqMsg.getTableId(), tableAccessReqMsg.getDataKey(),
               tableAccessReqMsg.getReplyRequired(), tableAccessMsg.getOperationId(), msg);
+          return;
         }
       }
+
+      LOG.log(Level.WARNING, "Failure on sending message: " + msg + " to SockAddr: " + socketAddress, throwable);
     }
   }
 }
