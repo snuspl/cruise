@@ -109,7 +109,6 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
       return valueList;
 
-
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }

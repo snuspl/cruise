@@ -375,7 +375,6 @@ public final class RemoteAccessOpSender {
       }
       dataOpMetadata.getValues().forEach(value ->
           encodedValues.add(ByteBuffer.wrap(valueCodec.encode(value))));
-      dataValues.setValues(encodedValues);
 
     } else if (dataOpMetadata.getOpType().equals(OpType.UPDATE)) {
       if (dataOpMetadata.getUpdateValues().isEmpty()) {
@@ -385,10 +384,9 @@ public final class RemoteAccessOpSender {
       }
       dataOpMetadata.getUpdateValues().forEach(updateValue ->
           encodedValues.add(ByteBuffer.wrap(updateValueCodec.encode(updateValue))));
-      dataValues.setValues(encodedValues);
-    } else {
-      dataValues.setValues(encodedValues);
     }
+
+    dataValues.setValues(encodedValues);
 
     return Pair.of(dataKeys, dataValues);
   }
