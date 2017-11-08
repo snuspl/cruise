@@ -41,6 +41,8 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   private final Table<K, V, P> modelTable;
   private final UpdateFunction<K, V, P> modelUpdateFunction;
 
+  private final ScheduledExecutorService refreshExecutor;
+
   private final Tracer pushTracer = new Tracer();
   private final Tracer pullTracer = new Tracer();
 
@@ -53,7 +55,8 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
 
     this.modelLoadingCache = initCache();
 
-    Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(() -> {
+    refreshExecutor = Executors.newSingleThreadScheduledExecutor();
+    refreshExecutor.scheduleWithFixedDelay(() -> {
       final Set<K> keys = modelLoadingCache.asMap().keySet();
 
       if (!keys.isEmpty()) {
@@ -72,6 +75,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
       }
 
     }, 0, MODEL_REFRESH_SEC, TimeUnit.SECONDS);
+  }
+
+  public void stopRefreshingCache() {
+    refreshExecutor.shutdown();
   }
 
   private LoadingCache<K, V> initCache() {

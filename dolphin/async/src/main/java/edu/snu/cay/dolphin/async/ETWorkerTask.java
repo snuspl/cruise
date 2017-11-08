@@ -146,6 +146,11 @@ final class ETWorkerTask<V> implements Task {
     workerGlobalBarrier.await();
 
     trainer.cleanup();
+
+    if (modelAccessor instanceof CachedModelAccessor) {
+      ((CachedModelAccessor) modelAccessor).stopRefreshingCache();
+    }
+
     return null;
   }
   
