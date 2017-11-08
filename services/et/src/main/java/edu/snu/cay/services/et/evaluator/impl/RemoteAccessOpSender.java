@@ -367,7 +367,7 @@ public final class RemoteAccessOpSender {
 
     // use encodedValues for both data value and update value
     final List<ByteBuffer> encodedValues = new ArrayList<>();
-    if (dataOpMetadata.getOpType().equals(OpType.PUT)) {
+    if (dataOpMetadata.getOpType().equals(OpType.PUT) || dataOpMetadata.getOpType().equals(OpType.PUT_IF_ABSENT)) {
       if (dataOpMetadata.getValues().isEmpty()) {
         LOG.log(Level.SEVERE, "Data value is empty for PUT({0})", dataOpMetadata.getKeys());
         throw new RuntimeException(String.format("Data value is empty for PUT(%s)",
@@ -386,12 +386,10 @@ public final class RemoteAccessOpSender {
       dataOpMetadata.getUpdateValues().forEach(updateValue ->
           encodedValues.add(ByteBuffer.wrap(updateValueCodec.encode(updateValue))));
       dataValues.setValues(encodedValues);
-
     } else {
-      //TODO #176: support multi-key versions of other op types (e.g. get, remove):372
-      LOG.log(Level.SEVERE, "This operation has wrong Op type");
-      throw new RuntimeException("This operation has wrong Op type.");
+      dataValues.setValues(encodedValues);
     }
+
     return Pair.of(dataKeys, dataValues);
   }
 
