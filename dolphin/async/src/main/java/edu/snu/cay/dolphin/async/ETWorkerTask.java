@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.metric.MetricCollector;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -38,7 +37,6 @@ final class ETWorkerTask<V> implements Task {
   private final String taskId;
   private final int startingEpoch;
   private final int maxNumEpochs;
-  private final boolean offlineModelEval;
 
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
@@ -58,7 +56,6 @@ final class ETWorkerTask<V> implements Task {
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                       @Parameter(DolphinParameters.OfflineModelEvaluation.class) final boolean offlineModelEval,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<V> trainingDataProvider,
@@ -69,7 +66,6 @@ final class ETWorkerTask<V> implements Task {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
-    this.offlineModelEval = offlineModelEval;
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
@@ -77,7 +73,6 @@ final class ETWorkerTask<V> implements Task {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
-    LOG.log(Level.INFO, "offlineModelEval: {0}", offlineModelEval);
   }
 
   @Override
@@ -133,12 +128,9 @@ final class ETWorkerTask<V> implements Task {
         }
       }
 
-      if (!offlineModelEval) {
-        final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-        final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
-
-        sendEpochMetrics(epochResult, epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
-      }
+      final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+      trainer.onEpochFinished(epochData, epochIdx);
+      sendEpochMetrics(epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers
@@ -196,27 +188,19 @@ final class ETWorkerTask<V> implements Task {
   }
 
   /**
-   * @param epochResult Encapsulates the result of an epoch.
    * @param epochIdx Index of the epoch
    * @param numBatchesPerEpoch Index of the mini-batch
    * @param processedDataItemCount The number of items processed in the epoch
    * @param epochElapsedTime The elapsed time in the epoch in total, including time for computing the objective value.
    * @param perOpTimeInEpoch The elapsed time per operation in the epoch (i.e., computation, pull and push)
    */
-  private void sendEpochMetrics(final EpochResult epochResult,
-                                final int epochIdx, final int numBatchesPerEpoch,
+  private void sendEpochMetrics(final int epochIdx, final int numBatchesPerEpoch,
                                 final int processedDataItemCount,
                                 final double epochElapsedTime,
                                 final PerOpTimeInEpoch perOpTimeInEpoch) {
-    // Build App-specific metrics (e.g., Loss, log-likelihood)
-    final Metrics appMetrics = Metrics.newBuilder()
-        .setData(epochResult.getAppMetrics())
-        .build();
-
     // Build metrics in the epoch
     final EpochMetrics epochMetrics = EpochMetrics.newBuilder()
         .setEpochCompTimeSec(perOpTimeInEpoch.getTotalCompTime())
-        .setEpochCustomMetrics(appMetrics)
         .setEpochIdx(epochIdx)
         .setEpochPullTimeSec(perOpTimeInEpoch.getTotalPullTime())
         .setEpochPushTimeSec(perOpTimeInEpoch.getTotalPushTime())

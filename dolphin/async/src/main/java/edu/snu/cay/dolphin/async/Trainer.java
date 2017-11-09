@@ -58,19 +58,18 @@ public interface Trainer<D> {
   /**
    * EventHandler that is called when an epoch is finished.
    * @param epochTrainingData the training data that has been processed in the epoch
-   * @param testData the test data to evaluate the model computed in the epoch
    * @param epochIdx the index of the epoch
-   * @return a result of the epoch
    */
-  EpochResult onEpochFinished(Collection<D> epochTrainingData, Collection<D> testData, int epochIdx);
+  void onEpochFinished(Collection<D> epochTrainingData, int epochIdx);
 
   /**
-   * Evaluate a model with a given input data.
+   * Evaluate a model with a given input data and test data.
    * @param inputData the data that it evaluates the model with
+   * @param testData the test data to evaluate the model computed in the epoch
    * @param modelTable a model table to evaluate
    * @return the result value of evaluation
    */
-  Map<CharSequence, Double> evaluateModel(Collection<D> inputData, Table modelTable);
+  Map<CharSequence, Double> evaluateModel(Collection<D> inputData, Collection<D> testData, Table modelTable);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

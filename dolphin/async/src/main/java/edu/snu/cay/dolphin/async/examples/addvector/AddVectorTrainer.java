@@ -121,13 +121,14 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
-                                     final int epochIdx) {
-    return EpochResult.EMPTY_RESULT;
+  public void onEpochFinished(final Collection epochTrainingData,
+                              final int epochIdx) {
+
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection inputData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection inputData, final Collection testData,
+                                                 final Table modelTable) {
     throw new NotImplementedException("This method is not supported yet.");
   }
 

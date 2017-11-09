@@ -20,10 +20,8 @@ import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.services.et.evaluator.api.Table;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -170,17 +168,8 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<LassoData> epochTrainingData,
-                                     final Collection<LassoData> testData,
-                                     final int epochIdx) {
-    // Calculate the loss value.
-    pullModels();
-
-    final double trainingLoss = computeLoss(epochTrainingData);
-    final double testLoss = computeLoss(testData);
-
-    LOG.log(Level.INFO, "Training Loss: {0}, Test Loss: {1}", new Object[] {trainingLoss, testLoss});
-    
+  public void onEpochFinished(final Collection<LassoData> epochTrainingData,
+                              final int epochIdx) {
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", newModel.get(i));
@@ -193,14 +182,25 @@ final class LassoTrainer implements Trainer<LassoData> {
       LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
-
-    return buildEpochResult(trainingLoss, testLoss);
   }
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<LassoData> inputData,
+                                                 final Collection<LassoData> testData,
                                                  final Table modelTable) {
-    throw new NotImplementedException("This method is not supported yet.");
+    // Calculate the loss value.
+    pullModels(modelTable);
+
+    final double trainingLoss = computeLoss(inputData);
+    final double testLoss = computeLoss(testData);
+
+    LOG.log(Level.INFO, "Training Loss: {0}, Test Loss: {1}", new Object[] {trainingLoss, testLoss});
+
+    final Map<CharSequence, Double> map = new HashMap<>();
+    map.put("training_loss", trainingLoss);
+    map.put("test_loss", trainingLoss);
+
+    return map;
   }
 
   /**
@@ -228,6 +228,15 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private void pullModels() {
     final List<Vector> partialModels = modelAccessor.pull(modelPartitionIndices);
+    oldModel = vectorFactory.concatDense(partialModels);
+    newModel = oldModel.copy();
+  }
+
+    /**
+   * Pull up-to-date model parameters from server.
+   */
+  private void pullModels(final Table modelTable) {
+    final List<Vector> partialModels = ((ETModelAccessor) modelAccessor).pull(modelPartitionIndices, modelTable);
     oldModel = vectorFactory.concatDense(partialModels);
     newModel = oldModel.copy();
   }
@@ -280,13 +289,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     return squaredErrorSum;
   }
-  
-  private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
-    return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
-        .addAppMetric(MetricKeys.TEST_LOSS, testLoss)
-        .build();
-  }
+
   /**
    * @return {@code true} if the value is close to 0.
    */
