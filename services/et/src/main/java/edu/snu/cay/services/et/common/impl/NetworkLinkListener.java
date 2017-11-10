@@ -59,7 +59,7 @@ final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
         if (tableAccessMsg.getType().equals(TableAccessMsgType.TableAccessReqMsg)) {
           final TableAccessReqMsg tableAccessReqMsg = tableAccessMsg.getTableAccessReqMsg();
           LOG.log(Level.INFO, String.format("Failure on sending TableAccessReqMsg. tableId: %s, targetAddr: %s",
-              tableAccessReqMsg.getTableId(), socketAddress);
+              tableAccessReqMsg.getTableId(), socketAddress));
 
           remoteAccessOpSender.onFailedMsg(tableAccessReqMsg.getTableId(), tableAccessReqMsg.getDataKey(),
               tableAccessReqMsg.getReplyRequired(), tableAccessMsg.getOperationId(), msg);
