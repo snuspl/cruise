@@ -129,6 +129,15 @@ public interface Table<K, V, U> {
   Future<V> update(K key, @Nonnull U updateValue);
 
   /**
+   * See {@link #update}.
+   * It returns immediately without waiting for the result.
+   * Update value should be non-null value.
+   * @param key global unique identifier of item
+   * @param updateValue update value
+   */
+  void updateNoReply(K key, @Nonnull U updateValue);
+
+  /**
    * It is a multi-key version of {@link #update}.
    * Update values associated with the specified keys using {@link UpdateFunction}.
    * It returns a {@link Future} of result, which
@@ -138,16 +147,19 @@ public interface Table<K, V, U> {
    * @param kuList a key-updateValue pair list
    * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
    */
-  Future<Map<K, V>> multiUpdate(List<Pair<K, U>> kuList);
+  Future<Map<K, V>> multiUpdate(Map<K, U> kuMap);
 
   /**
-   * See {@link #update}.
-   * It returns immediately without waiting for the result.
-   * Update value should be non-null value.
-   * @param key global unique identifier of item
-   * @param updateValue update value
+   * It is a multi-key version of {@link #update}.
+   * Update values associated with the specified keys using {@link UpdateFunction}.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result from the object when the request is complete.
+   * Note that it doesn't support updating null value to any key.
+   * Update values should be non-null value.
+   * @param kuList a key-updateValue pair list
+   * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
    */
-  void updateNoReply(K key, @Nonnull U updateValue);
+  void multiUpdateNoReply(Map<K, U> kuMap);
 
   /**
    * Removes association for the specified key.

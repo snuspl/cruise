@@ -310,62 +310,6 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
-  public Future<Map<K, V>> multiUpdate(final List<Pair<K, U>> kuList) {
-
-    final Map<Integer, List<Pair<K, U>>> blockToPairListMap = new HashMap<>();
-    for (final Pair<K, U> kuPair : kuList) {
-      if (kuPair.getRight() == null) {
-        throw new NullPointerException(NULL_VALUE_ERR_MSG);
-      }
-
-      final K key = kuPair.getLeft();
-      final int blockId = blockPartitioner.getBlockId(key);
-      blockToPairListMap.putIfAbsent(blockId, new ArrayList<>());
-      blockToPairListMap.get(blockId).add(kuPair);
-    }
-
-    final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
-    blockToPairListMap.forEach((blockId, kuPairList) -> {
-      final Pair<Optional<String>, Lock> remoteIdWithLock =
-          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
-      final Optional<String> remoteIdOptional;
-      remoteIdOptional = remoteIdWithLock.getKey();
-      try {
-        // execute operation in local
-        if (!remoteIdOptional.isPresent()) {
-          final Map<K, V> localResultMap = new HashMap<>();
-          for (final Pair<K, U> pair : kuPairList) {
-            final V output = tablet.update(blockId, pair.getKey(), pair.getValue());
-            if (output != null) {
-              localResultMap.put(pair.getKey(), output);
-            }
-          }
-          aggregateDataOpResult.onCompleted(localResultMap, true);
-        } else {
-
-          final List<K> keyList = new ArrayList<>(kuPairList.size());
-          final List<U> updateValueList = new ArrayList<>(kuPairList.size());
-          kuPairList.forEach(pair -> {
-            keyList.add(pair.getKey());
-            updateValueList.add(pair.getValue());
-          });
-
-          // send operation to remote
-          remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.UPDATE, tableId, blockId, keyList, Collections.emptyList(),
-              updateValueList, remoteIdOptional.get(), true, tableComponents, aggregateDataOpResult);
-        }
-      } catch (BlockNotExistsException e) {
-        throw new RuntimeException(e);
-      } finally {
-        final Lock ownershipLock = remoteIdWithLock.getValue();
-        ownershipLock.unlock();
-      }
-    });
-
-    return aggregateDataOpResult;
-  }
-
-  @Override
   public void updateNoReply(final K key, @Nonnull final U updateValue) {
     updateInternal(key, updateValue, false);
   }
@@ -404,6 +348,73 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
       final Lock ownershipLock = remoteIdWithLock.getValue();
       ownershipLock.unlock();
     }
+  }
+
+  @Override
+  public Future<Map<K, V>> multiUpdate(final Map<K, U> kuMap) {
+    return multiUpdateInternal(kuMap, true);
+  }
+
+  @Override
+  public void multiUpdateNoReply(final Map<K, U> kuMap) {
+    multiUpdateInternal(kuMap, false);
+  }
+
+  private DataOpResult<Map<K, V>> multiUpdateInternal(final Map<K, U> kuMap, final boolean replyRequired) {
+
+    final Map<Integer, Map<K, U>> blockToSubMaps = new HashMap<>();
+
+    for (final Map.Entry<K, U> kuEntry : kuMap.entrySet()) {
+      if (kuEntry.getValue() == null) {
+        throw new NullPointerException(NULL_VALUE_ERR_MSG);
+      }
+
+      final K key = kuEntry.getKey();
+      final int blockId = blockPartitioner.getBlockId(key);
+      blockToSubMaps.putIfAbsent(blockId, new HashMap<>());
+      blockToSubMaps.get(blockId).put(key, kuEntry.getValue());
+    }
+
+    final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToSubMaps.size());
+    blockToSubMaps.forEach((blockId, subMap) -> {
+      final Pair<Optional<String>, Lock> remoteIdWithLock =
+          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
+      final Optional<String> remoteIdOptional;
+      remoteIdOptional = remoteIdWithLock.getKey();
+      try {
+        // execute operation in local
+        if (!remoteIdOptional.isPresent()) {
+          final Map<K, V> localResultMap = new HashMap<>();
+
+          for (final Map.Entry<K, U> kuEntry : subMap.entrySet()) {
+            final V output = tablet.update(blockId, kuEntry.getKey(), kuEntry.getValue());
+            if (output != null) {
+              localResultMap.put(kuEntry.getKey(), output);
+            }
+          }
+          aggregateDataOpResult.onCompleted(localResultMap, true);
+        } else {
+
+          final List<K> keyList = new ArrayList<>(subMap.size());
+          final List<U> updateValueList = new ArrayList<>(subMap.size());
+          subMap.forEach((key, value) -> {
+            keyList.add(key);
+            updateValueList.add(value);
+          });
+
+          // send operation to remote
+          remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.UPDATE, tableId, blockId, keyList, Collections.emptyList(),
+              updateValueList, remoteIdOptional.get(), replyRequired, tableComponents, aggregateDataOpResult);
+        }
+      } catch (BlockNotExistsException e) {
+        throw new RuntimeException(e);
+      } finally {
+        final Lock ownershipLock = remoteIdWithLock.getValue();
+        ownershipLock.unlock();
+      }
+    });
+
+    return aggregateDataOpResult;
   }
 
   @Override
