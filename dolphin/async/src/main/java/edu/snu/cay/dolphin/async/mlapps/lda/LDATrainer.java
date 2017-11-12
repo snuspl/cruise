@@ -110,8 +110,7 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<Document> epochTrainingData,
-                              final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
 
   }
 

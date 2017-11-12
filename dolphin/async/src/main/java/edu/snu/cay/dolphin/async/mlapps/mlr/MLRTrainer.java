@@ -228,8 +228,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<MLRData> epochTrainingData,
-                              final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final float prevStepSize = stepSize;
       stepSize *= decayRate;

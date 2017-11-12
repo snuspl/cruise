@@ -201,13 +201,10 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   /**
    * Print the predicted value or label of each data in the epoch.
-   *
-   * @param epochTrainingData the training data that has been processed in the epoch
    * @param epochIdx the index of the epoch
    */
   @Override
-  public void onEpochFinished(final Collection<GBTData> epochTrainingData,
-                              final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
 
   }
 

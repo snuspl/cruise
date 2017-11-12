@@ -168,8 +168,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<LassoData> epochTrainingData,
-                              final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", newModel.get(i));

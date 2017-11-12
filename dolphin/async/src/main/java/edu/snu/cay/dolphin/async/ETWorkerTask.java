@@ -99,8 +99,7 @@ final class ETWorkerTask<V> implements Task {
       final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
       trainingDataProvider.prepareDataForEpoch();
 
-      final Collection<V> epochData = new LinkedList<>();
-
+      int numProcessedDataInEpoch = 0;
       int miniBatchIdx = 0;
       while (true) {
         final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData();
@@ -119,7 +118,7 @@ final class ETWorkerTask<V> implements Task {
         sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch, epochIdx, miniBatchIdx, miniBatchData.size(),
             miniBatchElapsedTime, trainingDataProvider.getNumBatchesPerEpoch());
         
-        epochData.addAll(miniBatchData);
+        numProcessedDataInEpoch += miniBatchData.size();
         miniBatchIdx++;
 
         if (abortFlag.get()) {
@@ -129,8 +128,8 @@ final class ETWorkerTask<V> implements Task {
       }
 
       final double epochElapsedTimeSec = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-      trainer.onEpochFinished(epochData, epochIdx);
-      sendEpochMetrics(epochIdx, miniBatchIdx, epochData.size(), epochElapsedTimeSec, perOpTimeInEpoch);
+      trainer.onEpochFinished(epochIdx);
+      sendEpochMetrics(epochIdx, miniBatchIdx, numProcessedDataInEpoch, epochElapsedTimeSec, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers

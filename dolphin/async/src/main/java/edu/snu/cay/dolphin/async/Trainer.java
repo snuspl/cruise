@@ -57,10 +57,9 @@ public interface Trainer<D> {
 
   /**
    * EventHandler that is called when an epoch is finished.
-   * @param epochTrainingData the training data that has been processed in the epoch
    * @param epochIdx the index of the epoch
    */
-  void onEpochFinished(Collection<D> epochTrainingData, int epochIdx);
+  void onEpochFinished(int epochIdx);
 
   /**
    * Evaluate a model with a given input data and test data.

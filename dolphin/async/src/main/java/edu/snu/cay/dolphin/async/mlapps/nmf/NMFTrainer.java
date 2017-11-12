@@ -175,8 +175,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<NMFData> epochTrainingData,
-                                     final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final float prevStepSize = stepSize;
       stepSize *= decayRate;
