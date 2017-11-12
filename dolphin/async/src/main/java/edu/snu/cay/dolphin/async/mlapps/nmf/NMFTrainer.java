@@ -175,29 +175,23 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<NMFData> epochTrainingData,
-                                     final Collection<NMFData> testData,
-                                     final int epochIdx) {
-    LOG.log(Level.INFO, "Pull model to compute loss value");
-    final NMFModel model = pullModels(getKeys(epochTrainingData));
-
-    LOG.log(Level.INFO, "Start computing loss value");
-    final float trainingLoss = computeLoss(epochTrainingData, model);
-
+  public void onEpochFinished(final int epochIdx) {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final float prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
-
-    return buildEpochResult(trainingLoss);
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> inputData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection<NMFData> inputData,
+                                                 final Collection<NMFData> testData,
+                                                 final Table modelTable) {
+    LOG.log(Level.INFO, "Pull model to compute loss value");
     final NMFModel model = pullModelToEvaluate(getKeys(inputData), modelTable);
 
+    LOG.log(Level.INFO, "Start computing loss value");
     final Map<CharSequence, Double> map = new HashMap<>();
     map.put("loss", (double) computeLoss(inputData, model));
 
@@ -396,11 +390,5 @@ final class NMFTrainer implements Trainer<NMFData> {
     } else {
       grad.addi(newGrad);
     }
-  }
-  
-  private EpochResult buildEpochResult(final float trainingLoss) {
-    return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
-        .build();
   }
 }

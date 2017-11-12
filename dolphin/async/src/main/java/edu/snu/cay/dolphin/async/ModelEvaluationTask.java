@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -27,19 +28,24 @@ final class ModelEvaluationTask implements Task {
   private static final Logger LOG = Logger.getLogger(ModelEvaluationTask.class.getName());
 
   private final ModelEvaluator modelEvaluator;
+  private final TestDataProvider testDataProvider;
   private final Trainer trainer;
 
   @Inject
   private ModelEvaluationTask(final ModelEvaluator modelEvaluator,
+                              final TestDataProvider testDataProvider,
                               final Trainer trainer) {
     this.modelEvaluator = modelEvaluator;
+    this.testDataProvider = testDataProvider;
     this.trainer = trainer;
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
+    final List testData = testDataProvider.getTestData();
+
     // evaluate all check-pointed models
-    modelEvaluator.evaluate(trainer);
+    modelEvaluator.evaluate(trainer, testData);
 
     return null;
   }

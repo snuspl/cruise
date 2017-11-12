@@ -155,8 +155,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
       final K key = kvPair.getLeft();
       final int blockId = blockPartitioner.getBlockId(key);
-      blockToPairListMap.putIfAbsent(blockId, new ArrayList<>());
-      blockToPairListMap.get(blockId).add(kvPair);
+      blockToPairListMap.computeIfAbsent(blockId, b -> new ArrayList<>()).add(kvPair);
     }
 
     final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
@@ -271,6 +270,49 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   @Override
+  public Future<Map<K, V>> multiGet(final List<K> keys) {
+    final Map<Integer, List<K>> blockToKeyListMap = new HashMap<>();
+    for (final K key : keys) {
+      final int blockId = blockPartitioner.getBlockId(key);
+      blockToKeyListMap.computeIfAbsent(blockId, b -> new ArrayList<>()).add(key);
+    }
+
+    final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToKeyListMap.size());
+    blockToKeyListMap.forEach((blockId, keyList) -> {
+      final Pair<Optional<String>, Lock> remoteIdWithLock =
+          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
+      final Optional<String> remoteIdOptional;
+      remoteIdOptional = remoteIdWithLock.getKey();
+      try {
+        // execute operation in local
+        if (!remoteIdOptional.isPresent()) {
+          final Map<K, V> localResultMap = new HashMap<>();
+          for (final K key : keyList) {
+            final V output = tablet.get(blockId, key);
+            if (output != null) {
+              localResultMap.put(key, output);
+            }
+          }
+          aggregateDataOpResult.onCompleted(localResultMap, true);
+        } else {
+
+          // send operation to remote
+          remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.GET, tableId, blockId, keyList,
+              Collections.emptyList(), Collections.emptyList(), remoteIdOptional.get(),
+              true, tableComponents, aggregateDataOpResult);
+        }
+      } catch (BlockNotExistsException e) {
+        throw new RuntimeException(e);
+      } finally {
+        final Lock ownershipLock = remoteIdWithLock.getValue();
+        ownershipLock.unlock();
+      }
+    });
+
+    return aggregateDataOpResult;
+  }
+
+  @Override
   public Future<V> getOrInit(final K key) {
     final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
 
@@ -302,6 +344,49 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
       ownershipLock.unlock();
     }
 
+  }
+
+  @Override
+  public Future<Map<K, V>> multiGetOrInit(final List<K> keys) {
+    final Map<Integer, List<K>> blockToKeyListMap = new HashMap<>();
+    for (final K key : keys) {
+      final int blockId = blockPartitioner.getBlockId(key);
+      blockToKeyListMap.computeIfAbsent(blockId, b -> new ArrayList<>()).add(key);
+    }
+
+    final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToKeyListMap.size());
+    blockToKeyListMap.forEach((blockId, keyList) -> {
+      final Pair<Optional<String>, Lock> remoteIdWithLock =
+          tableComponents.getOwnershipCache().resolveExecutorWithLock(blockId);
+      final Optional<String> remoteIdOptional;
+      remoteIdOptional = remoteIdWithLock.getKey();
+      try {
+        // execute operation in local
+        if (!remoteIdOptional.isPresent()) {
+          final Map<K, V> localResultMap = new HashMap<>();
+          for (final K key : keyList) {
+            final V output = tablet.get(blockId, key);
+            if (output != null) {
+              localResultMap.put(key, output);
+            }
+          }
+          aggregateDataOpResult.onCompleted(localResultMap, true);
+        } else {
+
+          // send operation to remote
+          remoteAccessOpSender.sendMultiKeyOpToRemote(OpType.GET_OR_INIT, tableId, blockId, keyList,
+              Collections.emptyList(), Collections.emptyList(), remoteIdOptional.get(),
+              true, tableComponents, aggregateDataOpResult);
+        }
+      } catch (BlockNotExistsException e) {
+        throw new RuntimeException(e);
+      } finally {
+        final Lock ownershipLock = remoteIdWithLock.getValue();
+        ownershipLock.unlock();
+      }
+    });
+
+    return aggregateDataOpResult;
   }
 
   @Override

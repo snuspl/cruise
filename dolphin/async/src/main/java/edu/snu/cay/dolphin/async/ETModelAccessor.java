@@ -94,28 +94,18 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   }
 
   @Override
-  public List<V> pull(final List<K> keys, final Table aModelTable) {
-    final List<Future<V>> resultList = new ArrayList<>(keys.size());
-    keys.forEach(key -> resultList.add(aModelTable.getOrInit(key)));
+  public List<V> pull(final List<K> keys, final Table<K, V, P> aModelTable) {
+    try {
+      final Map<K, V> result = aModelTable.multiGetOrInit(keys).get();
 
-    final List<V> resultValues = new ArrayList<>(keys.size());
-    for (final Future<V> opResult : resultList) {
-      V result;
-      while (true) {
-        try {
-          result = opResult.get();
-          break;
-        } catch (InterruptedException e) {
-          // ignore and keep waiting
-        } catch (ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      final List<V> valueList = new ArrayList<>(keys.size());
+      keys.forEach(key -> valueList.add(result.get(key)));
 
-      resultValues.add(result);
+      return valueList;
+
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
     }
-
-    return resultValues;
   }
 
   @Override

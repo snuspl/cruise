@@ -100,6 +100,17 @@ public interface Table<K, V, U> {
   Future<V> get(K key);
 
   /**
+   * Retrieves the values to which the specified keys are associated.
+   * or {@code null} for the keys that this table contains no value.
+   * It returns a {@link Future} of result,
+   * which allows users to retrieve the result from the object when the request is complete.
+   * @param keys keys with which values are to be associated
+   * @return {@link Future} that will provide the map containing values to which the specified keys are associated,
+   *         or {@code null} if no value is associated with the given keys
+   */
+  Future<Map<K, V>> multiGet(List<K> keys);
+
+  /**
    * Retrieves the value to which the specified key is associated.
    * If this table contains no value for the key, it returns a value of {@link UpdateFunction#initValue(K)}
    * after associating this value with the key.
@@ -110,6 +121,18 @@ public interface Table<K, V, U> {
    *         or a value obtained by {@link UpdateFunction#initValue(K)} if there is no mapping for the key
    */
   Future<V> getOrInit(K key);
+
+  /**
+   * Retrieves the values to which the specified keys are associated.
+   * For the entries that this table has not added yet, {@link UpdateFunction#initValue(K)} are associated and inserted
+   * to the table with the keys.
+   * It returns a {@link Future} of result,
+   * which allows users to retrieve the result from the object when the request is complete.
+   * @param keys keys with which values are to be associated
+   * @return {@link Future} that will provide the map containing values to which the specified keys are associated,
+   *         or values obtained by {@link UpdateFunction#initValue(K)} for the keys that have no mapping
+   */
+  Future<Map<K, V>> multiGetOrInit(List<K> keys);
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.

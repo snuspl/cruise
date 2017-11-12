@@ -78,7 +78,7 @@ public interface ModelAccessor<K, P, V> {
    * @return a list of values associated with the given {@code keys}.
    *        Some positions in the list can be {@code null}, if the key has no associated value
    */
-  List<V> pull(List<K> keys, Table aModelTable);
+  List<V> pull(List<K> keys, Table<K, V, P> aModelTable);
 
   /**
    * Fetches the collected metrics and reset the tracers for collecting metrics in the next round.

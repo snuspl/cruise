@@ -97,19 +97,10 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
 
           @Override
           public Map<K, V> loadAll(final Iterable<? extends K> keys) throws Exception {
-            final List<Future<V>> pullFutureList = new ArrayList<>();
-            keys.forEach(key -> {
-              pullFutureList.add(modelTable.getOrInit(key)); // TODO #176: ET. support multi-get operation
-            });
+            final List<K> keyList = new ArrayList<>();
+            keys.forEach(keyList::add);
 
-            final Map<K, V> resultKVMap = new HashMap<>(pullFutureList.size());
-
-            int i = 0;
-            for (final K key : keys) {
-              resultKVMap.put(key, pullFutureList.get(i++).get());
-            }
-
-            return resultKVMap;
+            return modelTable.multiGetOrInit(keyList).get();
           }
         });
   }
@@ -162,28 +153,18 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
    * This method does not care about cache.
    */
   @Override
-  public List<V> pull(final List<K> keys, final Table aModelTable) {
-    final List<Future<V>> resultList = new ArrayList<>(keys.size());
-    keys.forEach(key -> resultList.add(aModelTable.getOrInit(key)));
+  public List<V> pull(final List<K> keys, final Table<K, V, P> aModelTable) {
+    try {
+      final Map<K, V> result = aModelTable.multiGetOrInit(keys).get();
 
-    final List<V> resultValues = new ArrayList<>(keys.size());
-    for (final Future<V> opResult : resultList) {
-      V result;
-      while (true) {
-        try {
-          result = opResult.get();
-          break;
-        } catch (InterruptedException e) {
-          // ignore and keep waiting
-        } catch (ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      final List<V> valueList = new ArrayList<>(keys.size());
+      keys.forEach(key -> valueList.add(result.get(key)));
 
-      resultValues.add(result);
+      return valueList;
+
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
     }
-
-    return resultValues;
   }
 
   @Override
