@@ -29,6 +29,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,7 +66,7 @@ final class ModelEvaluator {
   /**
    * Evaluate all checkpointed models.
    */
-  void evaluate(final Trainer trainer) {
+  void evaluate(final Trainer trainer, final List testData) {
     int modelCount = 0;
     while (askMasterForCheckpointedModel()) {
 
@@ -81,7 +82,7 @@ final class ModelEvaluator {
 
       final Collection trainingData = inputTable.getLocalTablet().getDataMap().values();
 
-      final Map<CharSequence, Double> objValue = trainer.evaluateModel(trainingData, modelTable);
+      final Map<CharSequence, Double> objValue = trainer.evaluateModel(trainingData, testData, modelTable);
 
       final DolphinWorkerMetrics metrics = DolphinWorkerMetrics.newBuilder()
           .setType(WorkerMetricsType.ModelEvalMetrics)
