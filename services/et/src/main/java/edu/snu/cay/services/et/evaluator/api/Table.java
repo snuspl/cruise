@@ -165,22 +165,20 @@ public interface Table<K, V, U> {
    * Update values associated with the specified keys using {@link UpdateFunction}.
    * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
-   * Note that it doesn't support updating null value to any key.
+   * Note that it does not support updating null value to any key.
    * Update values should be non-null value.
-   * @param kuList a key-updateValue pair list
+   * @param kuMap a mapping between keys and updateValues
    * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
    */
   Future<Map<K, V>> multiUpdate(Map<K, U> kuMap);
 
   /**
    * It is a multi-key version of {@link #update}.
+   * It returns immediately without waiting for the result.
    * Update values associated with the specified keys using {@link UpdateFunction}.
-   * It returns a {@link Future} of result, which
-   * allows users to retrieve the result from the object when the request is complete.
-   * Note that it doesn't support updating null value to any key.
+   * Note that it does not support updating null value to any key.
    * Update values should be non-null value.
-   * @param kuList a key-updateValue pair list
-   * @return {@link Future} that will provide the {@link Map} which updated values associated with the specified keys.
+   * @param kuMap a mapping between keys and updateValues
    */
   void multiUpdateNoReply(Map<K, U> kuMap);
 

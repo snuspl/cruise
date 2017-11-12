@@ -55,9 +55,8 @@ public interface ModelAccessor<K, P, V> {
   void push(K key, P deltaValue);
 
   /**
-   * Updates a value associated with a {@code key} using a {@code deltaValue}.
-   * @param key key of model parameter
-   * @param deltaValue value to push to the servers
+   * Updates the values associated with the keys using deltaValues.
+   * @param keyToDeltaValueMap a mapping between keys and values to push to the servers
    */
   void push(Map<K, P> keyToDeltaValueMap);
 

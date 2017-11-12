@@ -203,7 +203,6 @@ final class LDATrainer implements Trainer<Document> {
 
     final Map<Integer, int[]> keyToChangesMap = new HashMap<>(changedTopicCount.rowKeySet().size());
 
-
     for (final int changedWord : changedTopicCount.rowKeySet()) {
       final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCount.row(changedWord);
       final int numChangedTopics = changedTopicCountsForWord.size();
@@ -219,7 +218,6 @@ final class LDATrainer implements Trainer<Document> {
       }
 
       keyToChangesMap.put(changedWord, parameters);
-
     }
 
     modelAccessor.push(keyToChangesMap);
