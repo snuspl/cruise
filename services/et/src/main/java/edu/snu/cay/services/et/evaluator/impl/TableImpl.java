@@ -155,8 +155,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
       final K key = kvPair.getLeft();
       final int blockId = blockPartitioner.getBlockId(key);
-      blockToPairListMap.computeIfAbsent(blockId, b -> new ArrayList<>());
-      blockToPairListMap.get(blockId).add(kvPair);
+      blockToPairListMap.computeIfAbsent(blockId, b -> new ArrayList<>()).add(kvPair);
     }
 
     final DataOpResult<Map<K, V>> aggregateDataOpResult = new MultiKeyDataOpResult<>(blockToPairListMap.size());
