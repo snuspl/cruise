@@ -200,6 +200,9 @@ final class LDATrainer implements Trainer<Document> {
 
   private void pushAndResetGradients(final TopicChanges topicChanges) {
     final Table<Integer, Integer, Integer> changedTopicCount = topicChanges.getTable();
+
+    final Map<Integer, int[]> keyToChangesMap = new HashMap<>(changedTopicCount.rowKeySet().size());
+
     for (final int changedWord : changedTopicCount.rowKeySet()) {
       final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCount.row(changedWord);
       final int numChangedTopics = changedTopicCountsForWord.size();
@@ -214,8 +217,10 @@ final class LDATrainer implements Trainer<Document> {
         i++;
       }
 
-      modelAccessor.push(changedWord, parameters);
+      keyToChangesMap.put(changedWord, parameters);
     }
+
+    modelAccessor.push(keyToChangesMap);
     changedTopicCount.clear();
   }
 

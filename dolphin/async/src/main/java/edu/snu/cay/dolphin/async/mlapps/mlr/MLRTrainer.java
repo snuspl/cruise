@@ -361,12 +361,16 @@ final class MLRTrainer implements Trainer<MLRData> {
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       final Vector gradient = gradients[classIndex];
 
+      final Map<Integer, Vector> keyToGradientMap = new HashMap<>(numPartitionsPerClass);
+
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-        modelAccessor.push(classIndex * numPartitionsPerClass + partitionIndex,
+        keyToGradientMap.put(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
+
+      modelAccessor.push(keyToGradientMap);
     }
   }
 
