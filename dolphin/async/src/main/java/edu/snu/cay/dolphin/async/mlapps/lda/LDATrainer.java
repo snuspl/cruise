@@ -110,23 +110,13 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<Document> epochTrainingData,
-                                     final Collection<Document> testData,
-                                     final int epochIdx) {
+  public void onEpochFinished(final int epochIdx) {
 
-    LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    final List<int[]> wordTopicCounts = modelAccessor.pull(vocabList);
-    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
-
-    LOG.log(Level.INFO, "Start computing log likelihood");
-    final double docLLH = statCalculator.computeDocLLH(epochTrainingData);
-    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
-
-    return buildEpochResult(docLLH, wordLLH);
   }
 
   @Override
   public Map<CharSequence, Double> evaluateModel(final Collection<Document> inputData,
+                                                 final Collection<Document> testData,
                                                  final edu.snu.cay.services.et.evaluator.api.Table modelTable) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
@@ -252,12 +242,5 @@ final class LDATrainer implements Trainer<Document> {
     result.add(numVocabs);
 
     return result;
-  }
-  
-  private EpochResult buildEpochResult(final double docLLH, final double wordLLH) {
-    return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.DOC_LLH, docLLH)
-        .addAppMetric(MetricKeys.WORD_LLH, wordLLH)
-        .build();
   }
 }

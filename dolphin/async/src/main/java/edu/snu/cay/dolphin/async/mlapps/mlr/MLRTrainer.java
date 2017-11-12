@@ -228,37 +228,33 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<MLRData> epochTrainingData,
-                                     final Collection<MLRData> testData,
-                                     final int epochIdx) {
-    LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels();
-
-    LOG.log(Level.INFO, "Start computing loss value");
-    final Vector[] params = model.getParams();
-    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, params);
-    final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy = computeLoss(testData, params);
-
+  public void onEpochFinished(final int epochIdx) {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final float prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
-
-    return buildEpochResult(trainingLossRegLossAvgAccuracy, testLossRegLossAvgAccuracy);
   }
 
   @Override
-  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> inputData, final Table modelTable) {
+  public Map<CharSequence, Double> evaluateModel(final Collection<MLRData> inputData,
+                                                 final Collection<MLRData> testData,
+                                                 final Table modelTable) {
+    LOG.log(Level.INFO, "Pull model to compute loss value");
     final MLRModel mlrModel = pullModelsToEvaluate(classPartitionIndices, modelTable);
-    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy =
-        computeLoss(inputData, mlrModel.getParams());
+
+    LOG.log(Level.INFO, "Start computing loss value");
+    final Tuple3<Float, Float, Float> trainingLossRegLossAvgAccuracy = computeLoss(inputData, mlrModel.getParams());
+    final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy = computeLoss(testData, mlrModel.getParams());
 
     final Map<CharSequence, Double> map = new HashMap<>();
     map.put("loss", (double) trainingLossRegLossAvgAccuracy.getFirst());
     map.put("regLoss", (double) trainingLossRegLossAvgAccuracy.getSecond());
     map.put("avgAccuracy", (double) trainingLossRegLossAvgAccuracy.getThird());
+    map.put("testLoss", (double) testLossRegLossAvgAccuracy.getFirst());
+    map.put("testRegLoss", (double) testLossRegLossAvgAccuracy.getSecond());
+    map.put("testAvgAccuracy", (double) testLossRegLossAvgAccuracy.getThird());
     return map;
   }
   
@@ -465,17 +461,5 @@ final class MLRTrainer implements Trainer<MLRData> {
       }
     }
     return new Pair<>(maxIndex, maxValue);
-  }
-  
-  private EpochResult buildEpochResult(final Tuple3<Float, Float, Float> traininglossRegLossAvgAccuracy,
-                                       final Tuple3<Float, Float, Float> testLossRegLossAvgAccuracy) {
-    return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.TRAINING_LOSS, traininglossRegLossAvgAccuracy.getFirst())
-        .addAppMetric(MetricKeys.TRAINING_REG_LOSS_AVG, traininglossRegLossAvgAccuracy.getSecond())
-        .addAppMetric(MetricKeys.TRAINING_ACCURACY, traininglossRegLossAvgAccuracy.getThird())
-        .addAppMetric(MetricKeys.TEST_LOSS, testLossRegLossAvgAccuracy.getFirst())
-        .addAppMetric(MetricKeys.TEST_REG_LOSS_AVG, testLossRegLossAvgAccuracy.getSecond())
-        .addAppMetric(MetricKeys.TEST_ACCURACY, testLossRegLossAvgAccuracy.getThird())
-        .build();
   }
 }
