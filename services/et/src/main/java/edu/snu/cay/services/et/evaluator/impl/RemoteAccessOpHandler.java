@@ -271,6 +271,24 @@ final class RemoteAccessOpHandler {
         }
         isSuccess[0] = true;
         break;
+      case GET:
+        opMetadata.getKeys().forEach(key -> {
+          final V localOutput = block.get(key);
+          if (localOutput != null) {
+            outputs.add(Pair.of(key, localOutput));
+          }
+        });
+        isSuccess[0] = true;
+        break;
+      case GET_OR_INIT:
+        opMetadata.getKeys().forEach(key -> {
+          final V localOutput = block.getOrInit(key);
+          if (localOutput != null) {
+            outputs.add(Pair.of(key, localOutput));
+          }
+        });
+        isSuccess[0] = true;
+        break;
       case UPDATE:
         for (int index = 0; index < opMetadata.getKeys().size(); index++) {
           final K key = opMetadata.getKeys().get(index);
@@ -279,7 +297,7 @@ final class RemoteAccessOpHandler {
         }
         isSuccess[0] = true;
         break;
-        //TODO #176: support multi-key versions of other op types (e.g. get, remove):372
+        //TODO #176: support multi-key versions of other op types (e.g. put_if_absent, remove)
       default:
         LOG.log(Level.WARNING, "Undefined type of opMetaData.");
         isSuccess[0] = false;
@@ -384,11 +402,17 @@ final class RemoteAccessOpHandler {
         updateValueList = Collections.emptyList();
         dataValues.getValues().forEach(value -> valueList.add(valueCodec.decode(value.array())));
         break;
+      case GET:
+      case GET_OR_INIT:
+        valueList = Collections.emptyList();
+        updateValueList = Collections.emptyList();
+        break;
       case UPDATE:
         valueList = Collections.emptyList();
         updateValueList = new ArrayList<>();
         dataValues.getValues().forEach(value -> updateValueList.add(updateValueCodec.decode(value.array())));
         break;
+        //TODO #176: support multi-key versions of other op types (e.g. put_if_absent, remove)
       default:
         throw new RuntimeException("Undefined type of OpMetadata");
       }
