@@ -60,18 +60,16 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
       final Set<K> keys = modelLoadingCache.asMap().keySet();
 
       if (!keys.isEmpty()) {
-        pullTracer.startTimer();
-        final Map<K, Future<V>> pullFutures = new HashMap<>(keys.size());
-        keys.forEach(key -> pullFutures.put(key, modelTable.getOrInit(key)));
+        final List<K> keyList = new ArrayList<>(keys.size());
+        try {
+          pullTracer.startTimer();
+          final Map<K, V> kvMap = modelTable.multiGetOrInit(keyList).get();
+          pullTracer.recordTime(keys.size());
 
-        pullFutures.forEach((key, pullFuture) -> {
-          try {
-            modelLoadingCache.put(key, pullFuture.get());
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        });
-        pullTracer.recordTime(keys.size());
+          kvMap.forEach(modelLoadingCache::put);
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
       }
 
     }, 0, MODEL_REFRESH_SEC, TimeUnit.SECONDS);
