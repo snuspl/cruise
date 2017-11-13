@@ -119,6 +119,17 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
         computeIfPresent(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue));
   }
 
+  @Override
+  public void push(final Map<K, P> keyToDeltaValueMap) {
+    pushTracer.startTimer();
+    modelTable.multiUpdateNoReply(keyToDeltaValueMap);
+    pushTracer.recordTime(keyToDeltaValueMap.size());
+
+    // update value in cache. this modification will not cause entry loading in cache.
+    keyToDeltaValueMap.forEach((key, deltaValue) -> modelLoadingCache.asMap().
+        computeIfPresent(key, (k, oldValue) -> modelUpdateFunction.updateValue(k, oldValue, deltaValue)));
+  }
+
   /**
    * Retrieve a value for a requested key.
    * Pull value from servers, if cache does not have value for the key.
