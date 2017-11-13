@@ -98,7 +98,11 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
             final List<K> keyList = new ArrayList<>();
             keys.forEach(keyList::add);
 
-            return modelTable.multiGetOrInit(keyList).get();
+            pullTracer.startTimer();
+            final Map<K, V> kvMap = modelTable.multiGetOrInit(keyList).get();
+            pullTracer.recordTime(kvMap.size());
+
+            return kvMap;
           }
         });
   }
