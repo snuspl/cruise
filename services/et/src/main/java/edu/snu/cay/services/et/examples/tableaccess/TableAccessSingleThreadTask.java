@@ -411,17 +411,17 @@ final class TableAccessSingleThreadTask implements Task {
         final int keySizePerOperation = NUM_OPERATIONS / NUM_MULTI_OPERATIONS;
         final List<List<Integer>> subIndexLists = Lists.partition(indexList, keySizePerOperation);
         for (final List<Integer> subIndexList : subIndexLists) {
-          final List<Pair<Long, String>> kuPairList = new ArrayList<>(subIndexList.size());
+          final Map<Long, String> kuMap = new HashMap<>(subIndexList.size());
           final Map<Long, String> expectedValueMap = new HashMap<>(subIndexList.size());
 
           for (final int index : subIndexList) {
             final long key = getKeyByTestType(index);
             final String expectedValue = getExpectedValue(key, true, false);
-            kuPairList.add(Pair.of(key, UPDATE_PREFIX));
+            kuMap.put(key, UPDATE_PREFIX);
             expectedValueMap.put(key, expectedValue);
           }
 
-          final Map<Long, String> updateValueMap = table.multiUpdate(kuPairList).get();
+          final Map<Long, String> updateValueMap = table.multiUpdate(kuMap).get();
           updateValueMap.forEach((key, updatedValue) -> {
             if (!expectedValueMap.get(key).equals(updatedValue)) {
               LOG.log(Level.SEVERE, "ExpectedValueSet doesn't contain the Result value {0}", updatedValue);

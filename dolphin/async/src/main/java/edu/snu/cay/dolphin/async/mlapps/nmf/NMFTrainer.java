@@ -321,9 +321,8 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private void pushAndResetGradients(final Map<Integer, Vector> gradients) {
     // push gradients
-    for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
-      modelAccessor.push(entry.getKey(), entry.getValue());
-    }
+    modelAccessor.push(gradients);
+
     // clear gradients
     gradients.clear();
   }
