@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.ModelHolder;
+import edu.snu.cay.dolphin.async.core.worker.ModelHolder;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.ThreadUtils;

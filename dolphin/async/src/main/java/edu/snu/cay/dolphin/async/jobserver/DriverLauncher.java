@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import edu.snu.cay.dolphin.async.JobMessageLogger;
+import edu.snu.cay.dolphin.async.client.JobMessageLogger;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.*;
 import org.apache.reef.tang.Configuration;

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
+import edu.snu.cay.dolphin.async.client.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;

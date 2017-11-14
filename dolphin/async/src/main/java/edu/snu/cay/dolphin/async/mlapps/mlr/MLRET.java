@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
-import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.client.ETDolphinConfiguration;
+import edu.snu.cay.dolphin.async.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.utils.IntegerCodec;
 import edu.snu.cay.utils.LongCodec;

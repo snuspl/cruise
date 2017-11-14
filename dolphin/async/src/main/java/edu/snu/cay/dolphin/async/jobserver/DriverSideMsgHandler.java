@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.jobserver;
 
-import edu.snu.cay.dolphin.async.DolphinMaster;
+import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;

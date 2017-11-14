@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.plan;
 
-import edu.snu.cay.dolphin.async.DolphinDriver;
-import edu.snu.cay.dolphin.async.DolphinMaster;
+import edu.snu.cay.dolphin.async.core.driver.DolphinDriver;
+import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.optimizer.api.DataInfo;
 import edu.snu.cay.dolphin.async.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
