@@ -93,7 +93,7 @@ final class ETWorkerTask<V> implements Task {
 
     for (int epochIdx = startingEpoch; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
-      progressReporter.reportEpochProgress(epochIdx);
+      progressReporter.reportEpochStart(epochIdx);
 
       final long epochStartTime = System.currentTimeMillis();
       final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
@@ -108,13 +108,14 @@ final class ETWorkerTask<V> implements Task {
         }
 
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
-        progressReporter.reportBatchProgress(miniBatchIdx);
 
         modelAccessor.getAndResetMetrics();
         final long miniBatchStartTime = System.currentTimeMillis();
         trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-  
+
+        progressReporter.reportBatchFinish(miniBatchIdx);
+
         sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch, epochIdx, miniBatchIdx, miniBatchData.size(),
             miniBatchElapsedTime, trainingDataProvider.getNumBatchesPerEpoch());
         
