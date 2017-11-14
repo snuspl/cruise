@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.client;
 
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;

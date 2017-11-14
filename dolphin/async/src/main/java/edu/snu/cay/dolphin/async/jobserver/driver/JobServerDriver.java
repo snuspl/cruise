@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.*;
@@ -189,7 +189,7 @@ public final class JobServerDriver {
   /**
    * A driver start handler for showing network information to client.
    */
-  final class StartHandler implements EventHandler<StartTime> {
+  public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
       sendMessageToClient("Now, Job Server is ready to receive commands");
@@ -363,7 +363,7 @@ public final class JobServerDriver {
    *    SUBMIT                    to submit a new job.
    *    SHUTDOWN                  to shutdown the job server.
    */
-  final class ClientMessageHandler implements EventHandler<byte[]> {
+  public final class ClientMessageHandler implements EventHandler<byte[]> {
 
     @Override
     public synchronized void onNext(final byte[] bytes) {
@@ -410,7 +410,7 @@ public final class JobServerDriver {
   /**
    * Handler for FailedContext, which throws RuntimeException to shutdown the entire job.
    */
-  final class FailedContextHandler implements EventHandler<FailedContext> {
+  public final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
       // TODO #677: Handle failure from Evaluators properly
@@ -421,7 +421,7 @@ public final class JobServerDriver {
   /**
    * Handler for FailedEvaluator, which throws RuntimeException to shutdown the entire job.
    */
-  final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
+  public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       // TODO #677: Handle failure from Evaluators properly
@@ -432,7 +432,7 @@ public final class JobServerDriver {
   /**
    * Handler for FailedTask, which throws RuntimeException to shutdown the entire job.
    */
-  final class FailedTaskHandler implements EventHandler<FailedTask> {
+  public final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
       // TODO #677: Handle failure from Evaluators properly

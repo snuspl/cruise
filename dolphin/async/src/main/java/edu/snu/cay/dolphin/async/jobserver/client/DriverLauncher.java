@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.client;
 
 import edu.snu.cay.dolphin.async.client.JobMessageLogger;
+import edu.snu.cay.dolphin.async.jobserver.driver.JobServerDriver;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.*;
 import org.apache.reef.tang.Configuration;

@@ -21,30 +21,30 @@ import org.apache.reef.tang.annotations.NamedParameter;
 /**
  * Parameters used in JobServer.
  */
-final class Parameters {
-  static final String SUBMIT_COMMAND = "SUBMIT";
-  static final String SHUTDOWN_COMMAND = "SHUTDOWN";
-  static final String COMMAND_DELIMITER = " ";
+public final class Parameters {
+  public static final String SUBMIT_COMMAND = "SUBMIT";
+  public static final String SHUTDOWN_COMMAND = "SHUTDOWN";
+  public static final String COMMAND_DELIMITER = " ";
 
-  static final int PORT_NUMBER = 7008;
+  public static final int PORT_NUMBER = 7008;
 
   private Parameters() {
 
   }
 
   @NamedParameter(doc = "An identifier of App.")
-  final class AppIdentifier implements Name<String> {
+  public final class AppIdentifier implements Name<String> {
 
   }
 
   @NamedParameter(doc = "The number of total available resources in a cluster",
       short_name = "num_total_resources")
-  final class NumTotalResources implements Name<Integer> {
+  public final class NumTotalResources implements Name<Integer> {
   }
 
   @NamedParameter(doc = "A class of the scheduler",
       short_name = "scheduler",
-      default_value = "edu.snu.cay.dolphin.async.jobserver.FIFOJobScheduler")
-  final class SchedulerClass implements Name<String> {
+      default_value = "edu.snu.cay.dolphin.async.jobserver.driver.FIFOJobScheduler")
+  public final class SchedulerClass implements Name<String> {
   }
 }

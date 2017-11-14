@@ -13,9 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.client;
 
 import edu.snu.cay.common.param.Parameters.*;
+import edu.snu.cay.dolphin.async.jobserver.*;
+import edu.snu.cay.dolphin.async.jobserver.driver.DriverSideMsgHandler;
+import edu.snu.cay.dolphin.async.jobserver.driver.JobScheduler;
+import edu.snu.cay.dolphin.async.jobserver.driver.JobServerDriver;
+import edu.snu.cay.dolphin.async.jobserver.driver.JobServerStatusManager;
 import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;

@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 
 import edu.snu.cay.dolphin.async.client.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.jobserver.JobLauncher;
+import edu.snu.cay.dolphin.async.jobserver.client.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeListCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;

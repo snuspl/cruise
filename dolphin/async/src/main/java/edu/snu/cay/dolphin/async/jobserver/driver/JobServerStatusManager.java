@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import org.apache.reef.runtime.common.driver.idle.DriverIdleManager;
 import org.apache.reef.runtime.common.driver.idle.DriverIdlenessSource;
 import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.tang.InjectionFuture;
-import edu.snu.cay.dolphin.async.jobserver.JobServerDriver.ClientMessageHandler;
 
 import javax.inject.Inject;
 
 /**
  * It determines a termination of job server.
- * If {@link ClientMessageHandler} receives command to shut down the job server.
+ * If {@link JobServerDriver.ClientMessageHandler} receives command to shut down the job server.
  * The server calls {@link #finishJobServer()}.
  */
 public final class JobServerStatusManager implements DriverIdlenessSource {

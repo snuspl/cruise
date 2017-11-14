@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
@@ -29,7 +29,7 @@ import javax.inject.Inject;
  * Therefore, it routes messages to an appropriate {@link DolphinMaster}
  * based on {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId} embedded in incoming {@link DolphinMsg}.
  */
-final class DriverSideMsgHandler implements MessageHandler {
+public final class DriverSideMsgHandler implements MessageHandler {
 
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 

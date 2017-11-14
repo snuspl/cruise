@@ -13,28 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
-
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
-
 /**
- * Client for shutting down running job server. This is called by {#stop_jobserver.sh}
+ * Classes for the driver of the dolphin jobserver, which supports multiple dolphin jobs concurrently.
  */
-public final class JobServerCloser {
-
-  private JobServerCloser() {
-  }
-
-  public static void main(final String[] args) {
-
-    try {
-      final Injector injector = Tang.Factory.getTang().newInjector();
-      final CommandSender commandSender = injector.getInstance(CommandSender.class);
-      commandSender.sendShutdownCommand();
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-}
+package edu.snu.cay.dolphin.async.jobserver.driver;

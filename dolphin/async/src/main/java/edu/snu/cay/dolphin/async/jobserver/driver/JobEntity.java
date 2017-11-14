@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;

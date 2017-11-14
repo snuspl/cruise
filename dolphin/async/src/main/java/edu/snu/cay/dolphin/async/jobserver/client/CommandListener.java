@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.jobserver;
+package edu.snu.cay.dolphin.async.jobserver.client;
 
+import edu.snu.cay.dolphin.async.jobserver.driver.JobServerDriver;
+import edu.snu.cay.dolphin.async.jobserver.Parameters;
 import org.apache.reef.client.RunningJob;
 
 import javax.inject.Inject;
