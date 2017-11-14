@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.core.master;
+package edu.snu.cay.dolphin.async.core.worker;
 
-import edu.snu.cay.dolphin.async.core.worker.ETWorkerTask;
 import org.apache.reef.task.events.CloseEvent;
 import org.apache.reef.wake.EventHandler;
 
