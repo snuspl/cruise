@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
-import edu.snu.cay.dolphin.async.client.ETDolphinConfiguration;
-import edu.snu.cay.dolphin.async.client.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.core.client.ETDolphinConfiguration;
+import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import org.apache.reef.client.LauncherStatus;

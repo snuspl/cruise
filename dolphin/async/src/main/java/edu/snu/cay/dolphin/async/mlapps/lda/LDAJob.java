@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
-import edu.snu.cay.dolphin.async.client.ETDolphinConfiguration;
+import edu.snu.cay.dolphin.async.core.client.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.jobserver.client.JobLauncher;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.Beta;

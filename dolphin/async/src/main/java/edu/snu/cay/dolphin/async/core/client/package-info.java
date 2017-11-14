@@ -16,4 +16,4 @@
 /**
  * Classes for the client-side of the {@code dolphin-async} framework.
  */
-package edu.snu.cay.dolphin.async.client;
+package edu.snu.cay.dolphin.async.core.client;

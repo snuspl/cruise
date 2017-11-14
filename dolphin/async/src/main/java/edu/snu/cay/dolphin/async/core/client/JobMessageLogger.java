@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.client;
+package edu.snu.cay.dolphin.async.core.client;
 
 import org.apache.reef.client.JobMessage;
 import org.apache.reef.wake.EventHandler;

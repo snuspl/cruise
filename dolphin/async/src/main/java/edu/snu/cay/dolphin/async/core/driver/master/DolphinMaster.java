@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.core.driver.master;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.client.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.core.server.ETServerTask;
 import edu.snu.cay.dolphin.async.core.worker.ETWorkerTask;
 import edu.snu.cay.dolphin.async.core.worker.ModelEvaluationTask;
