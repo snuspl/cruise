@@ -16,9 +16,9 @@
 package edu.snu.cay.dolphin.async.optimizer.impl;
 
 import edu.snu.cay.dolphin.async.*;
-import edu.snu.cay.dolphin.async.core.driver.master.ETTaskRunner;
-import edu.snu.cay.dolphin.async.core.driver.master.ProgressTracker;
-import edu.snu.cay.dolphin.async.core.driver.master.WorkerStateManager;
+import edu.snu.cay.dolphin.async.core.master.ETTaskRunner;
+import edu.snu.cay.dolphin.async.core.master.ProgressTracker;
+import edu.snu.cay.dolphin.async.core.master.WorkerStateManager;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;

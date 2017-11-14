@@ -18,7 +18,7 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.core.driver.DolphinDriver;
 import edu.snu.cay.dolphin.async.core.driver.DriverSideMsgHandler;
-import edu.snu.cay.dolphin.async.core.driver.master.ProgressTracker;
+import edu.snu.cay.dolphin.async.core.master.ProgressTracker;
 import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;

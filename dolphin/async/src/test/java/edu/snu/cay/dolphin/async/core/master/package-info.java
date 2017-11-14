@@ -16,4 +16,4 @@
 /**
  * Tests for dolphin-async.
  */
-package edu.snu.cay.dolphin.async.core.driver.master;
+package edu.snu.cay.dolphin.async.core.master;

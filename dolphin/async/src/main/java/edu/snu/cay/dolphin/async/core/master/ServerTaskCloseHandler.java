@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.core.driver.master;
+package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.core.server.ETServerTask;
 import org.apache.reef.task.events.CloseEvent;

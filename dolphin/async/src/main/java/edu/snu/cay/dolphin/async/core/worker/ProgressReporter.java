@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
-import edu.snu.cay.dolphin.async.core.driver.master.BatchProgressTracker;
-import edu.snu.cay.dolphin.async.core.driver.master.ProgressTracker;
+import edu.snu.cay.dolphin.async.core.master.BatchProgressTracker;
+import edu.snu.cay.dolphin.async.core.master.ProgressTracker;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 

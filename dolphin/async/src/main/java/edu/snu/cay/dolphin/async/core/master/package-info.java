@@ -16,4 +16,4 @@
 /**
  * Classes for the master-side of the {@code dolphin-async} framework.
  */
-package edu.snu.cay.dolphin.async.core.driver.master;
+package edu.snu.cay.dolphin.async.core.master;

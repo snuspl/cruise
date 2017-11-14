@@ -19,7 +19,7 @@ import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
-import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
+import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.jobserver.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;

@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.core.driver;
 
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
+import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.io.network.Message;

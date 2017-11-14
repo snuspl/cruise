@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.plan.impl;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.core.driver.DolphinDriver;
-import edu.snu.cay.dolphin.async.core.driver.master.DolphinMaster;
+import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.optimizer.impl.OptimizerType;
 import edu.snu.cay.dolphin.async.plan.api.Plan;
 import edu.snu.cay.dolphin.async.plan.api.TransferStep;
