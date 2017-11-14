@@ -35,7 +35,7 @@ public final class BatchProgressTracker {
 
   private final ModelChkpManager modelChkpManager;
 
-  private final int numEpochs;
+  private final int totalMiniBatchesToRun;
   private final int numMiniBatchesInEpoch;
 
   private final boolean offlineModelEval;
@@ -52,28 +52,26 @@ public final class BatchProgressTracker {
                                  final boolean offlineModelEval,
                                final ModelChkpManager modelChkpManager) {
     this.modelChkpManager = modelChkpManager;
-    this.numEpochs = numEpochs;
+    this.totalMiniBatchesToRun = numEpochs * numMiniBatchesInEpoch;
     this.numMiniBatchesInEpoch = numMiniBatchesInEpoch;
     this.offlineModelEval = offlineModelEval;
   }
 
   synchronized void onProgressMsg(final ProgressMsg msg) {
     final String workerId = msg.getExecutorId().toString();
-    final int totalMiniBatchCount = miniBatchCounter.getAndIncrement();
-
-    final int epochIdx = totalMiniBatchCount / numMiniBatchesInEpoch;
-    final int batchIdx = totalMiniBatchCount % numMiniBatchesInEpoch;
+    final int miniBatchIdx = miniBatchCounter.getAndIncrement();
 
     if (offlineModelEval) {
-      if (batchIdx == 0 && epochIdx > 0) {
+      if (miniBatchIdx % numMiniBatchesInEpoch == numMiniBatchesInEpoch - 1) {
+        LOG.log(Level.INFO, "Checkpoint model table. EpochIdx: {0}", miniBatchIdx / numMiniBatchesInEpoch);
         modelChkpManager.createCheckpoint();
       }
     }
 
     workerIdToBatchProgress.compute(workerId, (id, batchCount) -> batchCount == null ? 1 : batchCount + 1);
 
-    LOG.log(Level.INFO, "Epoch started: {0} / {1}. Batch started: {2} / {3}.",
-        new Object[]{epochIdx + 1, numEpochs, batchIdx + 1, numMiniBatchesInEpoch});
+    LOG.log(Level.INFO, "Batch progress: {0} / {1}.",
+        new Object[]{miniBatchIdx, totalMiniBatchesToRun});
     LOG.log(Level.INFO, "Committed Batches per workers: {0}", workerIdToBatchProgress);
   }
 }
