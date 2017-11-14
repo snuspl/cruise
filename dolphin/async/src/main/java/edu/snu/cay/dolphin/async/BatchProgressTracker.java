@@ -59,19 +59,18 @@ public final class BatchProgressTracker {
 
   synchronized void onProgressMsg(final ProgressMsg msg) {
     final String workerId = msg.getExecutorId().toString();
-    final int miniBatchIdx = miniBatchCounter.getAndIncrement();
+    final int miniBatchIdx = miniBatchCounter.incrementAndGet();
+    LOG.log(Level.INFO, "Batch progress: {0} / {1}.",
+        new Object[]{miniBatchIdx, totalMiniBatchesToRun});
 
     if (offlineModelEval) {
-      if (miniBatchIdx % numMiniBatchesInEpoch == numMiniBatchesInEpoch - 1) {
+      if (miniBatchIdx % numMiniBatchesInEpoch == 0) {
         LOG.log(Level.INFO, "Checkpoint model table. EpochIdx: {0}", miniBatchIdx / numMiniBatchesInEpoch);
         modelChkpManager.createCheckpoint();
       }
     }
 
     workerIdToBatchProgress.compute(workerId, (id, batchCount) -> batchCount == null ? 1 : batchCount + 1);
-
-    LOG.log(Level.INFO, "Batch progress: {0} / {1}.",
-        new Object[]{miniBatchIdx, totalMiniBatchesToRun});
     LOG.log(Level.INFO, "Committed Batches per workers: {0}", workerIdToBatchProgress);
   }
 }
