@@ -16,7 +16,9 @@
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.core.worker.ETModelAccessor;
+import edu.snu.cay.dolphin.async.core.worker.ModelAccessor;
+import edu.snu.cay.dolphin.async.core.worker.Trainer;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.utils.CatchableExecutors;

@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
+import edu.snu.cay.dolphin.async.core.worker.ModelAccessor;
+import edu.snu.cay.dolphin.async.core.worker.Trainer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
