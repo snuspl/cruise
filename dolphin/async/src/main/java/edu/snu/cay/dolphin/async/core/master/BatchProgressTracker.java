@@ -34,7 +34,7 @@ import java.util.logging.Level;
  */
 public final class BatchProgressTracker {
   private final JobLogger jobLogger;
-  
+
   private final ModelChkpManager modelChkpManager;
 
   private final int totalMiniBatchesToRun;

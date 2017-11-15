@@ -58,7 +58,7 @@ import static edu.snu.cay.dolphin.async.core.worker.ETWorkerTask.TASK_ID_PREFIX;
  */
 public final class DolphinMaster {
   private final JobLogger jobLogger;
-  
+
   private final ModelChkpManager modelChkpManager;
   private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
