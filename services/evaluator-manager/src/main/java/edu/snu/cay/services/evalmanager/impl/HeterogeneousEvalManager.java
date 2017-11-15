@@ -115,6 +115,44 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
   /**
    * {@inheritDoc}
    */
+  public synchronized void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
+                                              final String[] nodeNames,
+                                              final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
+                                              final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+    while (true) {
+      try {
+        ongoingEvaluatorRequest.get().await();
+        break;
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for ongoing request to be finished", e);
+      }
+    }
+
+    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores in nodes: {3}...",
+        new Object[]{evalNum, megaBytes, cores, nodeNames});
+
+    for (int i = 0; i < evalNum; i++) {
+      final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
+      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
+    }
+    final EvaluatorRequest.Builder requestBuilder = EvaluatorRequest.newBuilder()
+        .setNumber(evalNum)
+        .setNumberOfCores(cores)
+        .setMemory(megaBytes);
+
+    for (final String nodeName : nodeNames) {
+      requestBuilder.addNodeName(nodeName);
+    }
+
+    final EvaluatorRequest request = requestBuilder.build();
+
+    ongoingEvaluatorRequest.set(new CountDownLatch(request.getNumber()));
+    evaluatorRequestor.submit(request);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
   public void onEvaluatorAllocated(final AllocatedEvaluator allocatedEvaluator) {
     final Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>> handlers
         = pendingEvalRequests.remove();
