@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.core.master;
 import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.ProgressMsg;
 import edu.snu.cay.utils.CatchableExecutors;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
@@ -27,7 +26,6 @@ import java.util.concurrent.ExecutorService;
 /**
  * A master-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
-@DriverSide
 public final class MasterSideMsgHandler {
   private final InjectionFuture<WorkerStateManager> workerStateManagerFuture;
   private final InjectionFuture<ProgressTracker> progressTrackerFuture;

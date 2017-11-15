@@ -20,7 +20,6 @@ import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.ModelEvalAnsMsg;
 import edu.snu.cay.dolphin.async.dolphinMsgType;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -32,7 +31,6 @@ import java.util.logging.Logger;
 /**
  * Master-side message sender.
  */
-@DriverSide
 final class MasterSideMsgSender {
   private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
 

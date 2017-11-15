@@ -21,7 +21,6 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -40,7 +39,6 @@ import java.util.logging.Logger;
  * It responds to the change of the entry of worker/server executors.
  * It also tracks active worker tasks for {@link #waitAndGetTaskResult()}.
  */
-@DriverSide
 public final class ETTaskRunner {
   private static final Logger LOG = Logger.getLogger(ETTaskRunner.class.getName());
 

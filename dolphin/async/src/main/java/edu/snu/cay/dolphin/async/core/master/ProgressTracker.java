@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.core.master;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.ProgressMsg;
 import edu.snu.cay.utils.StateMachine;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.ProgressProvider;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,7 +36,6 @@ import java.util.logging.Logger;
  * It also provides progress info to REEF by implementing {@link ProgressProvider}
  * and to a client through {@link JobMessageObserver}.
  */
-@DriverSide
 @ThreadSafe
 public final class ProgressTracker implements ProgressProvider {
   private static final Logger LOG = Logger.getLogger(ProgressTracker.class.getName());

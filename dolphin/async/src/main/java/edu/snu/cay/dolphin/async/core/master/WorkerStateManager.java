@@ -19,7 +19,6 @@ import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.SyncMsg;
 import edu.snu.cay.dolphin.async.core.worker.WorkerGlobalBarrier;
 import edu.snu.cay.utils.StateMachine;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -40,7 +39,6 @@ import java.util.logging.Logger;
  * and before cleanup (STATE_RUN -> STATE_CLEANUP).
  * To achieve this, it maintains a global state to be matched with their own local states.
  */
-@DriverSide
 @ThreadSafe
 @Private
 public final class WorkerStateManager {
