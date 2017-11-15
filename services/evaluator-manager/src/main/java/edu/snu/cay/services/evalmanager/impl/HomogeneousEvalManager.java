@@ -85,26 +85,11 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     this.numEvalCores = numEvalCores;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  @Override
   public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores...",
-        new Object[]{evalNum, evalMemSizeInMB, numEvalCores});
-
-    for (int i = 0; i < evalNum; i++) {
-      final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
-      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
-    }
-    final EvaluatorRequest request = EvaluatorRequest.newBuilder()
-        .setNumber(evalNum)
-        .setNumberOfCores(numEvalCores)
-        .setMemory(evalMemSizeInMB)
-        .build();
-
-    evaluatorRequestor.submit(request);
+    allocateEvaluators(evalNum, megaBytes, cores, new String[0], evaluatorAllocatedHandler, contextActiveHandlerList);
   }
 
   /**

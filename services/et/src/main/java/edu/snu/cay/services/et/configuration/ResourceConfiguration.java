@@ -65,7 +65,7 @@ public final class ResourceConfiguration {
   public static final class Builder implements org.apache.reef.util.Builder<ResourceConfiguration> {
     private Integer numCores;
     private Integer memSizeInMB;
-    private String[] hostNames;
+    private String[] nodeNames = new String[0];
 
     private Builder() {
     }
@@ -80,8 +80,8 @@ public final class ResourceConfiguration {
       return this;
     }
 
-    public Builder setHostNames(final String[] hostNames) {
-      this.hostNames = hostNames;
+    public Builder setNodeNames(final String[] nodeNames) {
+      this.nodeNames = nodeNames;
       return this;
     }
 
@@ -89,8 +89,9 @@ public final class ResourceConfiguration {
     public ResourceConfiguration build() {
       BuilderUtils.notNull(numCores);
       BuilderUtils.notNull(memSizeInMB);
+      BuilderUtils.notNull(nodeNames);
 
-      return new ResourceConfiguration(numCores, memSizeInMB, hostNames);
+      return new ResourceConfiguration(numCores, memSizeInMB, nodeNames);
     }
   }
 }
