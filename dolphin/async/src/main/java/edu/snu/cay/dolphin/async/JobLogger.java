@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 import sun.misc.JavaLangAccess;
 import sun.misc.SharedSecrets;
@@ -30,7 +32,7 @@ import java.util.logging.Logger;
  * A logger for dolphin jobs, which distinguishes jobs with the injected
  * {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId}.
  * This class internally uses {@link Logger} instance and configure it to
- * write logs to an additional file that is dedicated to a job.
+ * write logs to an additional file that is dedicated to a job, if {@link LogSeparationEnabled} is true.
  * While relaying log messages to the {@link Logger},
  * it appends job id to log messages.
  */
@@ -39,10 +41,14 @@ public final class JobLogger {
   private final Logger logger;
 
   @Inject
-  private JobLogger(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId) throws IOException {
+  private JobLogger(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
+                    @Parameter(LogSeparationEnabled.class) final boolean logSeparationEnabled) throws IOException {
     this.msgPrefix = "[JobId: " + dolphinJobId + "] ";
     this.logger = Logger.getLogger(JobLogger.class.getName() + "." + dolphinJobId);
-    logger.addHandler(new FileHandler(dolphinJobId + ".log"));
+
+    if (logSeparationEnabled) {
+      logger.addHandler(new FileHandler(dolphinJobId + ".log"));
+    }
   }
 
   /**
@@ -122,5 +128,10 @@ public final class JobLogger {
         cname.startsWith("java.util.logging.LoggingProxyImpl") ||
         cname.startsWith("sun.util.logging.") ||
         cname.startsWith(JobLogger.class.getName())); // modified line
+  }
+
+  @NamedParameter(doc = "Whether the log separation for each job is enabled.",
+      default_value = "false")
+  public final class LogSeparationEnabled implements Name<Boolean> {
   }
 }

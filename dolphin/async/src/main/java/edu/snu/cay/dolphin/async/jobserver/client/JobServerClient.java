@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.jobserver.client;
 
 import edu.snu.cay.common.param.Parameters.*;
+import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.dolphin.async.jobserver.*;
 import edu.snu.cay.dolphin.async.jobserver.driver.DriverSideMsgHandler;
 import edu.snu.cay.dolphin.async.jobserver.driver.JobScheduler;
@@ -169,6 +170,7 @@ public final class JobServerClient {
 
     final Configuration jobServerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
+        .bindNamedParameter(JobLogger.LogSeparationEnabled.class, Boolean.toString(true))
         .bindImplementation(JobScheduler.class, (Class<? extends JobScheduler>)
             Class.forName(driverParamInjector.getNamedInstance(Parameters.SchedulerClass.class)))
         .build();
