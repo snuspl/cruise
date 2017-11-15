@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static edu.snu.cay.dolphin.async.core.server.ETServerTask.SERVER_TASK_ID_PREFIX;
 import static edu.snu.cay.dolphin.async.core.worker.ETWorkerTask.TASK_ID_PREFIX;
@@ -58,8 +57,8 @@ import static edu.snu.cay.dolphin.async.core.worker.ETWorkerTask.TASK_ID_PREFIX;
  * A Dolphin master, which runs a dolphin job with given executors and tables.
  */
 public final class DolphinMaster {
-  private static final Logger LOG = Logger.getLogger(DolphinMaster.class.getName());
-
+  private final JobLogger jobLogger;
+  
   private final ModelChkpManager modelChkpManager;
   private final MetricManager metricManager;
   private final ETTaskRunner taskRunner;
@@ -79,7 +78,8 @@ public final class DolphinMaster {
   private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
 
   @Inject
-  private DolphinMaster(final MetricManager metricManager,
+  private DolphinMaster(final JobLogger jobLogger,
+                        final MetricManager metricManager,
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final ModelChkpManager modelChkpManager,
                         final ETTaskRunner taskRunner,
@@ -93,6 +93,7 @@ public final class DolphinMaster {
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
+    this.jobLogger = jobLogger;
     this.modelChkpManager = modelChkpManager;
     this.metricManager = metricManager;
     this.taskRunner = taskRunner;
@@ -223,6 +224,6 @@ public final class DolphinMaster {
         throw new RuntimeException(String.format("Task %s has been failed", taskId));
       }
     });
-    LOG.log(Level.INFO, "Worker tasks completes successfully");
+    jobLogger.log(Level.INFO, "Worker tasks completes successfully");
   }
 }

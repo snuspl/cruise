@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -35,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Tracks and maintains checkpoints of model table(s) during training.
@@ -44,7 +44,7 @@ import java.util.logging.Logger;
  */
 @NotThreadSafe
 final class ModelChkpManager {
-  private static final Logger LOG = Logger.getLogger(ModelChkpManager.class.getName());
+  private final JobLogger jobLogger;
 
   private final LinkedList<Future<String>[]> checkpointIdFutures = new LinkedList<>();
 
@@ -66,11 +66,13 @@ final class ModelChkpManager {
   private final ExecutorService executor = CatchableExecutors.newSingleThreadExecutor();
 
   @Inject
-  private ModelChkpManager(final InjectionFuture<ETMaster> etMasterFuture,
+  private ModelChkpManager(final JobLogger jobLogger,
+                           final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
                            final InjectionFuture<JobMessageObserver> jobMessageObserverFuture,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
+    this.jobLogger = jobLogger;
     this.etMasterFuture = etMasterFuture;
     this.jobMessageObserverFuture = jobMessageObserverFuture;
     this.msgSender = msgSender;
@@ -101,7 +103,7 @@ final class ModelChkpManager {
   void onWorkerMsg() {
     final int numWorkersSentMsg = workerCount.incrementAndGet();
 
-    LOG.log(Level.INFO, "Msg from a worker. [{0} / {1}]", new Object[]{numWorkersSentMsg, runningWorkers.size()});
+    jobLogger.log(Level.INFO, "Msg from a worker. [{0} / {1}]", new Object[]{numWorkersSentMsg, runningWorkers.size()});
 
     if (numWorkersSentMsg == runningWorkers.size()) {
       workerCount.set(0); // reset
@@ -123,7 +125,7 @@ final class ModelChkpManager {
     }
 
     if (checkpointIdFutures.isEmpty()) {
-      LOG.log(Level.INFO, "No more checkpoints.");
+      jobLogger.log(Level.INFO, "No more checkpoints.");
       return false;
     }
 
@@ -161,7 +163,7 @@ final class ModelChkpManager {
       final AllocatedTable restoredInputTable = inputTableFuture.get();
 
 
-      LOG.log(Level.INFO, "Table {0} and {1} are restored from checkpoint.",
+      jobLogger.log(Level.INFO, "Table {0} and {1} are restored from checkpoint.",
           new Object[]{restoredModelTable.getId(), restoredInputTable.getId()});
 
     } catch (InterruptedException | ExecutionException e) {
@@ -182,9 +184,11 @@ final class ModelChkpManager {
       final int idx = chkpCounter.getAndIncrement();
 
       inputChkpIdFuture.addListener(chkpId ->
-          LOG.log(Level.INFO, "{0}-th input checkpoint is created. Checkpoint Id: {1}", new Object[] {idx, chkpId}));
+          jobLogger.log(Level.INFO, "{0}-th input checkpoint is created. Checkpoint Id: {1}",
+              new Object[] {idx, chkpId}));
       modelChkpIdFuture.addListener(chkpId ->
-          LOG.log(Level.INFO, "{0}-th model checkpoint is created. Checkpoint Id: {1}", new Object[]{idx, chkpId}));
+          jobLogger.log(Level.INFO, "{0}-th model checkpoint is created. Checkpoint Id: {1}",
+              new Object[]{idx, chkpId}));
 
       final Future[] chkpFuture = {inputChkpIdFuture, modelChkpIdFuture};
       checkpointIdFutures.add(chkpFuture);
@@ -206,6 +210,6 @@ final class ModelChkpManager {
         throw new RuntimeException(e);
       }
     });
-    LOG.log(Level.INFO, "All checkpoints completed. NumCheckpoints: {0}", checkpointIdFutures.size());
+    jobLogger.log(Level.INFO, "All checkpoints completed. NumCheckpoints: {0}", checkpointIdFutures.size());
   }
 }
