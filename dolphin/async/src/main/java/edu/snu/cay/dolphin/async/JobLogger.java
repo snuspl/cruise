@@ -111,8 +111,6 @@ public final class JobLogger {
         }
       }
     }
-    // We haven't found a suitable frame, so just punt.  This is
-    // OK as we are only committed to making a "best effort" here.
   }
 
   /**
