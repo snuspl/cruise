@@ -29,9 +29,10 @@ import java.util.logging.Logger;
 /**
  * A logger for dolphin jobs, which distinguishes jobs with the injected
  * {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId}.
- * It relays log messages to the {@link Logger} to
- * 1) append job id to log messages and
- * 2) write logs to an additional file that is dedicated to a job.
+ * This class internally uses {@link Logger} instance and configure it to
+ * write logs to an additional file that is dedicated to a job.
+ * While relaying log messages to the {@link Logger},
+ * it appends job id to log messages.
  */
 public final class JobLogger {
   private final String msgPrefix;
@@ -77,6 +78,7 @@ public final class JobLogger {
   }
 
   /**
+   * Infer caller's class and method name and set them to the given {@link LogRecord}.
    * Borrowed from {@link LogRecord}.
    */
   private void inferCaller(final LogRecord lr) {
@@ -121,6 +123,6 @@ public final class JobLogger {
     return (cname.equals("java.util.logging.Logger") ||
         cname.startsWith("java.util.logging.LoggingProxyImpl") ||
         cname.startsWith("sun.util.logging.") ||
-        cname.startsWith(JobLogger.class.getName())); // modified
+        cname.startsWith(JobLogger.class.getName())); // modified line
   }
 }
