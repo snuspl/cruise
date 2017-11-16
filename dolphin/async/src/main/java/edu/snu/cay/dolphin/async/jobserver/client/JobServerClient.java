@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.jobserver.client;
 
 import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.dolphin.async.jobserver.*;
 import edu.snu.cay.dolphin.async.jobserver.driver.DriverSideMsgHandler;
 import edu.snu.cay.dolphin.async.jobserver.driver.JobScheduler;
