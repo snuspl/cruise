@@ -101,8 +101,6 @@
 
     <!-- Checks for imports                              -->
     <!-- See http://checkstyle.sf.net/config_imports.html -->
-    <!-- Rejects all sun.* packages -->
-    <module name="IllegalImport"/>
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
 

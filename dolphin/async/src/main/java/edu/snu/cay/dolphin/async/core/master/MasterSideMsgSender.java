@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.master;
 
-import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.ModelEvalAnsMsg;
-import edu.snu.cay.dolphin.async.dolphinMsgType;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -26,13 +23,12 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Master-side message sender.
  */
 final class MasterSideMsgSender {
-  private static final Logger LOG = Logger.getLogger(MasterSideMsgSender.class.getName());
+  private final JobLogger jobLogger;
 
   private final String dolphinJobId;
 
@@ -40,9 +36,10 @@ final class MasterSideMsgSender {
   private final NetworkConnection<DolphinMsg> networkConnection;
 
   @Inject
-  private MasterSideMsgSender(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
+  private MasterSideMsgSender(final JobLogger jobLogger,
+                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
                               final NetworkConnection<DolphinMsg> networkConnection) {
-    LOG.log(Level.INFO, "the constructor of MasterSideMsgSender");
+    this.jobLogger = jobLogger;
     this.networkConnection = networkConnection;
     this.dolphinJobId = dolphinJobId;
     this.releaseMsg = DolphinMsg.newBuilder()
@@ -59,7 +56,7 @@ final class MasterSideMsgSender {
     try {
       networkConnection.send(workerId, releaseMsg);
     } catch (NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send release msg to worker %s.", workerId), e);
+      jobLogger.log(Level.INFO, String.format("Fail to send release msg to worker %s.", workerId), e);
     }
   }
 
@@ -79,7 +76,7 @@ final class MasterSideMsgSender {
     try {
       networkConnection.send(workerId, msg);
     } catch (NetworkException e) {
-      LOG.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
+      jobLogger.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
     }
   }
 }

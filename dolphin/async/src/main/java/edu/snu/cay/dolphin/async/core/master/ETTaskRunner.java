@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
@@ -32,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A class for running tasks in server and worker executors.
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * It also tracks active worker tasks for {@link #waitAndGetTaskResult()}.
  */
 public final class ETTaskRunner {
-  private static final Logger LOG = Logger.getLogger(ETTaskRunner.class.getName());
+  private final JobLogger jobLogger;
 
   private final ETMaster etMaster;
 
@@ -56,16 +56,18 @@ public final class ETTaskRunner {
   private final Map<String, SubmittedTask> executorIdToTask = new ConcurrentHashMap<>();
 
   @Inject
-  private ETTaskRunner(final InjectionFuture<DolphinMaster> dolphinMasterFuture,
+  private ETTaskRunner(final JobLogger jobLogger,
+                       final InjectionFuture<DolphinMaster> dolphinMasterFuture,
                        final JobMessageObserver jobMessageObserver,
                        final ETMaster etMaster,
                        final WorkerStateManager workerStateManager,
                        @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+    this.jobLogger = jobLogger;
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.etDolphinMasterFuture = dolphinMasterFuture;
     this.workerStateManager = workerStateManager;
-    LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
+    jobLogger.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
   }
 
   /**
@@ -94,7 +96,7 @@ public final class ETTaskRunner {
       }
     });
 
-    LOG.log(Level.INFO, "Wait for workers to finish run stage");
+    jobLogger.log(Level.INFO, "Wait for workers to finish run stage");
 
     workerStateManager.waitWorkersToFinishRunStage();
 
@@ -104,7 +106,7 @@ public final class ETTaskRunner {
     servers.clear();
     servers.addAll(serverExecutors.values());
 
-    LOG.log(Level.INFO, "Wait and get task results");
+    jobLogger.log(Level.INFO, "Wait and get task results");
     // waiting for to complete
     return waitAndGetTaskResult();
   }
@@ -175,7 +177,7 @@ public final class ETTaskRunner {
       }
     });
 
-    LOG.log(Level.INFO, "Task finished");
+    jobLogger.log(Level.INFO, "Task finished");
     return taskResultList;
   }
 }

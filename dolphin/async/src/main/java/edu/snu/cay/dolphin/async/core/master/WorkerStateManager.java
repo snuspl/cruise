@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.dolphin.async.SyncMsg;
 import edu.snu.cay.dolphin.async.core.worker.WorkerGlobalBarrier;
 import edu.snu.cay.utils.StateMachine;
@@ -31,7 +32,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A driver-side component that coordinates synchronization between the driver and workers.
@@ -42,7 +42,7 @@ import java.util.logging.Logger;
 @ThreadSafe
 @Private
 public final class WorkerStateManager {
-  private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
+  private final JobLogger jobLogger;
 
   private final MasterSideMsgSender msgSender;
 
@@ -85,12 +85,14 @@ public final class WorkerStateManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private WorkerStateManager(final MasterSideMsgSender msgSender,
+  private WorkerStateManager(final JobLogger jobLogger,
+                             final MasterSideMsgSender msgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
+    this.jobLogger = jobLogger;
     this.msgSender = msgSender;
     this.numWorkers = numWorkers;
-    LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
+    jobLogger.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
     this.stateMachine = initStateMachine();
   }
@@ -156,11 +158,11 @@ public final class WorkerStateManager {
   public synchronized boolean tryEnterOptimization() {
     final State curState = (State) stateMachine.getCurrentState();
     if (!curState.equals(State.RUN)) {
-      LOG.log(Level.INFO, "Fail to enter Optimization state. Current state: {0}", curState);
+      jobLogger.log(Level.INFO, "Fail to enter Optimization state. Current state: {0}", curState);
       return false;
     } else {
       stateMachine.setState(State.OPTIMIZE);
-      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.OPTIMIZE));
+      jobLogger.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.OPTIMIZE));
       return true;
     }
   }
@@ -175,8 +177,8 @@ public final class WorkerStateManager {
                                                   final Set<String> deletedWorkers) {
     stateMachine.checkState(State.OPTIMIZE);
 
-    LOG.log(Level.INFO, "Added {0} Workers: {1}", new Object[] {addedWorkers.size(), addedWorkers});
-    LOG.log(Level.INFO, "Deleted {0} Workers: {1}", new Object[] {deletedWorkers.size(), deletedWorkers});
+    jobLogger.log(Level.INFO, "Added {0} Workers: {1}", new Object[] {addedWorkers.size(), addedWorkers});
+    jobLogger.log(Level.INFO, "Deleted {0} Workers: {1}", new Object[] {deletedWorkers.size(), deletedWorkers});
 
     if (!runningWorkerIds.containsAll(deletedWorkers) ||
         !Collections.disjoint(addedWorkers, deletedWorkers) ||
@@ -190,11 +192,11 @@ public final class WorkerStateManager {
     runningWorkerIds.removeAll(deletedWorkers);
     blockedWorkerIds.removeAll(deletedWorkers); // workers who has been deleted at the cleanup barrier
 
-    LOG.log(Level.INFO, "The number of running workers changes by optimization. {0} -> {1}",
+    jobLogger.log(Level.INFO, "The number of running workers changes by optimization. {0} -> {1}",
         new Object[]{numRunningWorkersBefore, runningWorkerIds.size()});
 
     stateMachine.setState(State.RUN);
-    LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.OPTIMIZE, State.RUN));
+    jobLogger.log(Level.INFO, String.format("State transition: %s -> %s", State.OPTIMIZE, State.RUN));
     if (!blockedWorkerIds.isEmpty()) {
       transitToNextState(); // go to RUN_FINISHING
     }
@@ -212,16 +214,16 @@ public final class WorkerStateManager {
     case INIT:
       finishInitLatch.countDown();
       stateMachine.setState(State.RUN);
-      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.INIT, State.RUN));
+      jobLogger.log(Level.INFO, String.format("State transition: %s -> %s", State.INIT, State.RUN));
       break;
     case RUN:
       finishRunLatch.countDown();
       stateMachine.setState(State.RUN_FINISHING);
-      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.RUN_FINISHING));
+      jobLogger.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.RUN_FINISHING));
       break;
     case RUN_FINISHING:
       stateMachine.setState(State.CLEANUP);
-      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN_FINISHING, State.CLEANUP));
+      jobLogger.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN_FINISHING, State.CLEANUP));
       break;
     case CLEANUP:
       throw new RuntimeException(String.format("No more transition is allowed after %s state", State.CLEANUP));
@@ -234,7 +236,7 @@ public final class WorkerStateManager {
    * Release all blocked workers.
    */
   private synchronized void releaseWorkers() {
-    LOG.log(Level.INFO, "Release {0} blocked workers: {1}",
+    jobLogger.log(Level.INFO, "Release {0} blocked workers: {1}",
         new Object[]{blockedWorkerIds.size(), blockedWorkerIds});
     // broadcast responses to blocked workers
     for (final String workerId : blockedWorkerIds) {
@@ -259,7 +261,7 @@ public final class WorkerStateManager {
    */
   private synchronized void blockWorker(final String workerId) {
     blockedWorkerIds.add(workerId);
-    LOG.log(Level.INFO, "Block worker {0}. [{1} / {2}]",
+    jobLogger.log(Level.INFO, "Block worker {0}. [{1} / {2}]",
         new Object[]{workerId, blockedWorkerIds.size(), runningWorkerIds.size()});
   }
 
@@ -287,7 +289,7 @@ public final class WorkerStateManager {
         // collect worker ids until it reaches NumWorkers
         runningWorkerIds.add(workerId);
 
-        LOG.log(Level.INFO, "Worker {0} is initialized. [{1} / {2}]",
+        jobLogger.log(Level.INFO, "Worker {0} is initialized. [{1} / {2}]",
             new Object[]{workerId, runningWorkerIds.size(), numWorkers});
 
         // all worker finishes their initialization and is waiting for response to enter the run stage
@@ -302,7 +304,7 @@ public final class WorkerStateManager {
     case RUN:
       if (localState.equals(WorkerGlobalBarrier.State.RUN)) {
         // the first worker that finishes RUN phase will make it transit to RUN_FINISHING state
-        LOG.log(Level.INFO, "One worker finishes RUN stage.");
+        jobLogger.log(Level.INFO, "One worker finishes RUN stage.");
         transitToNextState();
 
         blockWorker(workerId);
@@ -353,7 +355,7 @@ public final class WorkerStateManager {
 
     workerIdToNetworkId.putIfAbsent(workerId, networkId);
 
-    LOG.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
+    jobLogger.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
     onWorkerMsg(workerId, localState);
   }
 }
