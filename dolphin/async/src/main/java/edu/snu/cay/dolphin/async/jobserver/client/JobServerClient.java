@@ -170,7 +170,6 @@ public final class JobServerClient {
 
     final Configuration jobServerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(DriverIdleSources.class, JobServerStatusManager.class)
-        .bindNamedParameter(JobLogger.LogSeparationEnabled.class, Boolean.toString(true))
         .bindImplementation(JobScheduler.class, (Class<? extends JobScheduler>)
             Class.forName(driverParamInjector.getNamedInstance(Parameters.SchedulerClass.class)))
         .build();
