@@ -23,10 +23,12 @@ import org.apache.reef.util.BuilderUtils;
 public final class ResourceConfiguration {
   private final int numCores;
   private final int memSizeInMB;
+  private final String[] nodeNames;
 
-  private ResourceConfiguration(final int numCores, final int memSizeInMB) {
+  private ResourceConfiguration(final int numCores, final int memSizeInMB, final String[] nodeNames) {
     this.numCores = numCores;
     this.memSizeInMB = memSizeInMB;
+    this.nodeNames = nodeNames;
   }
 
   /**
@@ -44,6 +46,13 @@ public final class ResourceConfiguration {
   }
 
   /**
+   * @return an array of node names to allocate an executor on
+   */
+  public String[] getNodeNames() {
+    return nodeNames;
+  }
+
+  /**
    * @return a builder
    */
   public static Builder newBuilder() {
@@ -56,6 +65,7 @@ public final class ResourceConfiguration {
   public static final class Builder implements org.apache.reef.util.Builder<ResourceConfiguration> {
     private Integer numCores;
     private Integer memSizeInMB;
+    private String[] nodeNames = new String[0];
 
     private Builder() {
     }
@@ -70,12 +80,18 @@ public final class ResourceConfiguration {
       return this;
     }
 
+    public Builder setNodeNames(final String[] nodeNames) {
+      this.nodeNames = nodeNames;
+      return this;
+    }
+
     @Override
     public ResourceConfiguration build() {
       BuilderUtils.notNull(numCores);
       BuilderUtils.notNull(memSizeInMB);
+      BuilderUtils.notNull(nodeNames);
 
-      return new ResourceConfiguration(numCores, memSizeInMB);
+      return new ResourceConfiguration(numCores, memSizeInMB, nodeNames);
     }
   }
 }

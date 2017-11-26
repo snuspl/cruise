@@ -121,6 +121,7 @@ final class ExecutorManager {
 
     final int numCores = resConf.getNumCores();
     final int memSizeInMB = resConf.getMemSizeInMB();
+    final String[] nodeNames = resConf.getNodeNames();
 
     final ListenableFuture<List<AllocatedExecutor>> executorListFuture = new AggregateFuture<>(num);
 
@@ -135,7 +136,7 @@ final class ExecutorManager {
       ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
     });
 
-    evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
+    evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores, nodeNames,
         new AllocatedEvalHandler(userContextConf,
             Configurations.merge(remoteAccessConf, userServiceConf), memSizeInMB),
         activeCtxHandlers);
