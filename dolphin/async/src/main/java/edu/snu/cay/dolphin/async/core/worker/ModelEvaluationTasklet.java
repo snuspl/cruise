@@ -15,11 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
-import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
-import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -38,13 +34,10 @@ public final class ModelEvaluationTasklet implements Tasklet {
   @Inject
   private ModelEvaluationTasklet(final ModelEvaluator modelEvaluator,
                                  final TestDataProvider testDataProvider,
-                                 final Trainer trainer,
-                                 @Parameter(EvaluatorIdentifier.class) final String evaluatorId,
-                                 final NetworkConnection<DolphinMsg> networkConnection) {
+                                 final Trainer trainer) {
     this.modelEvaluator = modelEvaluator;
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
-    networkConnection.setup(evaluatorId);
   }
 
   @Override

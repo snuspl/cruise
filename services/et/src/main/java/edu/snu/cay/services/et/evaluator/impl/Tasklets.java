@@ -31,17 +31,19 @@ import java.util.logging.Logger;
 /**
  * Created by xyzi on 25/11/2017.
  */
-public final class TaskletRuntime {
-  private static final Logger LOG = Logger.getLogger(TaskletRuntime.class.getName());
+public final class Tasklets {
+  private static final Logger LOG = Logger.getLogger(Tasklets.class.getName());
   private static final int NUM_TASKLETS = 4;
   private final Injector taskletBaseInjector;
   private final MessageSender msgSender;
 
+  private final AtomicBoolean closeFlag = new AtomicBoolean(false);
+
   private final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(NUM_TASKLETS);
 
   @Inject
-  private TaskletRuntime(final Injector taskletBaseInjector,
-                         final MessageSender msgSender) {
+  private Tasklets(final Injector taskletBaseInjector,
+                   final MessageSender msgSender) {
     this.taskletBaseInjector = taskletBaseInjector;
     this.msgSender = msgSender;
   }
@@ -75,8 +77,6 @@ public final class TaskletRuntime {
   public void stopTasklet(final String taskletId) {
 
   }
-
-  private final AtomicBoolean closeFlag = new AtomicBoolean(false);
 
   public void close() {
     closeFlag.set(true);

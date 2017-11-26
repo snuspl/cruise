@@ -67,7 +67,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final ExecutorService taskletMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TASKLET_MSG_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
-  private final InjectionFuture<TaskletRuntime> taskletRuntimeFuture;
+  private final InjectionFuture<Tasklets> taskletRuntimeFuture;
 
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
@@ -79,7 +79,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
-                             final InjectionFuture<TaskletRuntime> taskletRuntimeFuture,
+                             final InjectionFuture<Tasklets> taskletRuntimeFuture,
                              final ConfigurationSerializer confSerializer,
                              final InjectionFuture<MessageSender> msgSenderFuture,
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,

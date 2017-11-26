@@ -196,6 +196,11 @@ public final class JobServerDriver {
     }
   }
 
+  private AtomicBoolean first = new AtomicBoolean(true);
+
+  private List<AllocatedExecutor> cachedServers;
+  private List<AllocatedExecutor> cachedWorkers;
+
   /**
    * Executes a job.
    */
@@ -207,15 +212,35 @@ public final class JobServerDriver {
     LOG.log(Level.INFO, jobStartMsg);
 
     LOG.log(Level.INFO, "Preparing executors and tables for job: {0}", jobId);
-    final Future<List<AllocatedExecutor>> serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
-        jobEntity.getServerExecutorConf());
-    final Future<List<AllocatedExecutor>> workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),
-        jobEntity.getWorkerExecutorConf());
+    final Future<List<AllocatedExecutor>> serversFuture;
+    final Future<List<AllocatedExecutor>> workersFuture;
+
+    final boolean firstJob;
+    if (first.compareAndSet(true, false)) {
+      serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
+          jobEntity.getServerExecutorConf());
+      workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),
+          jobEntity.getWorkerExecutorConf());
+      firstJob = true;
+    } else {
+      serversFuture = null;
+      workersFuture = null;
+      firstJob = false;
+    }
 
     new Thread(() -> {
       try {
-        final List<AllocatedExecutor> servers = serversFuture.get();
-        final List<AllocatedExecutor> workers = workersFuture.get();
+        final List<AllocatedExecutor> servers;
+        final List<AllocatedExecutor> workers;
+        if (firstJob) {
+          servers = serversFuture.get();
+          workers = workersFuture.get();
+          cachedServers = servers;
+          cachedWorkers = workers;
+        } else {
+          servers = cachedServers;
+          workers = cachedWorkers;
+        }
 
         final Future<AllocatedTable> modelTableFuture = etMaster.createTable(jobEntity.getServerTableConf(), servers);
         final Future<AllocatedTable> inputTableFuture = etMaster.createTable(jobEntity.getWorkerTableConf(), workers);
@@ -232,9 +257,6 @@ public final class JobServerDriver {
           dolphinMasterMap.put(jobId, dolphinMaster);
 
           dolphinMaster.start(servers, workers, modelTable, inputTable);
-
-          workers.forEach(AllocatedExecutor::close);
-          servers.forEach(AllocatedExecutor::close);
 
         } finally {
           final String jobFinishMsg = String.format("Job execution has been finished. JobId: %s", jobId);
@@ -319,10 +341,10 @@ public final class JobServerDriver {
         numWorkerSenderThreads, workerSenderQueueSize, numWorkerHandlerThreads, workerHandlerQueueSize);
 
     final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
-            .setResourceConf(workerResourceConf)
-            .setRemoteAccessConf(workerRemoteAccessConf)
-            .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(reefJobId, dolphinJobId))
-            .build();
+        .setResourceConf(workerResourceConf)
+        .setRemoteAccessConf(workerRemoteAccessConf)
+        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(reefJobId, dolphinJobId))
+        .build();
     final TableConfiguration workerTableConf = buildWorkerTableConf(inputTableId,
         workerInjector, numWorkerBlocks, userParamConf);
     final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
@@ -349,6 +371,10 @@ public final class JobServerDriver {
 
     sendMessageToClient(shutdownMsg);
     LOG.log(Level.INFO, shutdownMsg);
+
+    cachedWorkers.forEach(AllocatedExecutor::close);
+    cachedServers.forEach(AllocatedExecutor::close);
+
     if (isClosed.compareAndSet(false, true)) {
       jobServerStatusManager.finishJobServer();
     }

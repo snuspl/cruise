@@ -15,17 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
-import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.BatchMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.EpochMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsType;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.metric.MetricCollector;
-import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -65,8 +62,6 @@ public final class WorkerTasklet<V> implements Tasklet {
   private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskId,
                         @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                         @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                        @Parameter(EvaluatorIdentifier.class) final String evaluatorId,
-                        final NetworkConnection<DolphinMsg> networkConnection,
                         final ProgressReporter progressReporter,
                         final WorkerGlobalBarrier workerGlobalBarrier,
                         final TrainingDataProvider<V> trainingDataProvider,
@@ -84,7 +79,6 @@ public final class WorkerTasklet<V> implements Tasklet {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
-    networkConnection.setup(evaluatorId);
   }
 
   @Override

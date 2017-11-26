@@ -66,6 +66,9 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
 
   @Override
   public void setup(final String endPointId) {
+    if (connectionFactory != null) {
+      return;
+    }
     final Identifier connectionFactoryId = identifierFactory.getNewInstance(reefJobId);
     final Identifier localEndPointId = identifierFactory.getNewInstance(endPointId);
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryId, codec,
