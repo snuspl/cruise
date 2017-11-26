@@ -501,4 +501,53 @@ public final class MessageSenderImpl implements MessageSender {
 
     networkConnection.send(driverId, msg);
   }
+
+  @Override
+  public void sendTaskletStartResMsg(final String taskletId) {
+    final TaskletStartMsg taskletStartMsg = TaskletStartMsg.newBuilder()
+        .setType(TaskletStartMsgType.Res)
+        .setTaskletId(taskletId)
+        .build();
+
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+        .setType(TaskletMsgType.TaskletStartMsg)
+        .setTaskletStartMsg(taskletStartMsg)
+        .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletStartRes message", e);
+    }
+  }
+
+  @Override
+  public void sendTaskletStopResMsg(final String taskletId, final boolean isSuccess) {
+    final TaskletStopMsg taskletStopMsg = TaskletStopMsg.newBuilder()
+        .setType(TaskletStopMsgType.Res)
+        .setTaskletId(taskletId)
+        .setIsSuccess(isSuccess)
+        .build();
+
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletStopMsg)
+            .setTaskletStopMsg(taskletStopMsg)
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletStopRes message", e);
+    }
+  }
 }

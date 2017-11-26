@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
@@ -100,4 +101,8 @@ public interface MessageSender {
    * Sends a TableAccessReqMsg, which redirects the failed access request to the up-to-date owner if possible.
    */
   void sendTableAccessReqMsg(String destId, long opId, TableAccessReqMsg tableAccessReqMsg) throws NetworkException;
+
+  void sendTaskletStartReqMsg(String executorId, String taskletId, Configuration taskletConf);
+
+  void sendTaskletStopReqMsg(String executorId, String taskletId);
 }

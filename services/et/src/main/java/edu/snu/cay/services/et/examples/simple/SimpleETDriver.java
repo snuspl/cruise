@@ -23,7 +23,7 @@ import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
@@ -126,7 +126,7 @@ final class SimpleETDriver {
           orderedTable.subscribe(subscribers).get();
 
           final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(associators.size() + subscribers.size());
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(associators.size() + subscribers.size());
 
           // 1. First run a put task in a subscriber
           taskFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF

@@ -17,12 +17,12 @@ package edu.snu.cay.services.et.examples.userservice;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.RunningTask;
@@ -94,14 +94,14 @@ final class ETCentCommExampleDriver {
         CatchableExecutors.newSingleThreadExecutor().submit(() -> {
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executors.size());
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(executors.size());
           executors.forEach(executor -> taskFutureList.add(executor.submitTask(
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
                   .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
                   .build())));
 
-          waitAndCheckTaskResult(taskFutureList);
+          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
 
           executors.forEach(AllocatedExecutor::close);
         });
@@ -109,20 +109,6 @@ final class ETCentCommExampleDriver {
         throw new RuntimeException(e);
       }
     }
-  }
-
-  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskResultFutureList) {
-    taskResultFutureList.forEach(taskResultFuture -> {
-      try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (!taskResult.isSuccess()) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
   }
 
   final class RunningTaskHandler implements EventHandler<RunningTask> {

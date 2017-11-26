@@ -219,8 +219,7 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId, jobId))
+        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(jobId, jobId))
         .build();
   }
 
@@ -228,8 +227,6 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
         .setRemoteAccessConf(serverRemoteAccessConf)
-        .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId, jobId))
         .build();
   }
 
@@ -302,6 +299,7 @@ public final class DolphinDriver {
               workers.forEach(AllocatedExecutor::close);
               servers.forEach(AllocatedExecutor::close);
             }
+
           } catch (Exception e) {
             LOG.log(Level.SEVERE, "Exception while running a job", e);
             throw new RuntimeException(e);

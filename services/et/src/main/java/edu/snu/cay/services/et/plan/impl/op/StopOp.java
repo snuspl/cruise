@@ -19,14 +19,14 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 
+import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * An operation for stopping a running task on an executor.
@@ -50,18 +50,19 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException(e);
     }
 
-    final Optional<SubmittedTask> task = executor.getRunningTask();
-    if (!task.isPresent()) {
+    final Collection<RunningTasklet> tasklets = executor.getRunningTasks().values();
+    if (tasklets.isEmpty()) {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
-    final SubmittedTask submittedTask = task.get();
+    // assume there's only one tasklet
+    final RunningTasklet runningTasklet = tasklets.iterator().next();
 
-    submittedTask.stop();
+    runningTasklet.stop();
 
     final ResultFuture<OpResult> opResultFuture = new ResultFuture<>();
 
-    submittedTask.getTaskResultFuture()
+    runningTasklet.getTaskResultFuture()
         .addListener(taskResult -> {
           // TODO #181: add a listener to sync
           // need to complete this op after metric service is stopped at executor

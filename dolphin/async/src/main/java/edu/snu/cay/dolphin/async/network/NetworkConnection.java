@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.network;
 
-import edu.snu.cay.services.et.exceptions.AlreadyConnectedException;
 import edu.snu.cay.services.et.exceptions.NotConnectedException;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -29,9 +28,8 @@ public interface NetworkConnection<T> {
 
   /**
    * Establish a connection to Dolphin network layer.
-   * @throws AlreadyConnectedException when a network connection already exists
    */
-  void setup(String localEndpointId) throws AlreadyConnectedException;
+  void setup(String localEndpointId);
 
   /**
    * Send msg through connection.

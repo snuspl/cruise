@@ -27,7 +27,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
@@ -125,10 +125,10 @@ public final class PregelDriver {
 
           vertexTable.load(executors, masterConfInjector.getNamedInstance(InputPath.class)).get();
 
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>();
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>();
           executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
 
-          for (final Future<SubmittedTask> submittedTaskFuture : taskFutureList) {
+          for (final Future<RunningTasklet> submittedTaskFuture : taskFutureList) {
             submittedTaskFuture.get().getTaskResult();
           }
           executors.forEach(AllocatedExecutor::close);

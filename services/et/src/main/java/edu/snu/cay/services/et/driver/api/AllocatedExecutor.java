@@ -16,11 +16,12 @@
 package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,15 +37,15 @@ public interface AllocatedExecutor {
   /**
    * Assign task to executor.
    * @param taskConf task configuration.
-   * @return a {@link ListenableFuture} of {@link TaskResult}
+   * @return a {@link ListenableFuture} of {@link TaskletResult}
    */
-  ListenableFuture<SubmittedTask> submitTask(Configuration taskConf);
+  ListenableFuture<RunningTasklet> submitTask(Configuration taskConf);
 
   /**
-   * @return an {@link Optional} with a {@link SubmittedTask} submitted by {@link #submitTask(Configuration)}
+   * @return an {@link Optional} with a {@link RunningTasklet} submitted by {@link #submitTask(Configuration)}
    * It's emtpy when there's no running task.
    */
-  Optional<SubmittedTask> getRunningTask();
+  Map<String, RunningTasklet> getRunningTasks();
 
   /**
    * Closes the executor.

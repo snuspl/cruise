@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.ContextStopHandler;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
@@ -65,6 +66,7 @@ final class ExecutorManager {
 
   private final CallbackRegistry callbackRegistry;
 
+  private final MessageSender msgSender;
   private final EvaluatorManager evaluatorManager;
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -84,6 +86,7 @@ final class ExecutorManager {
   @Inject
   private ExecutorManager(final CallbackRegistry callbackRegistry,
                           final EvaluatorManager evaluatorManager,
+                          final MessageSender msgSender,
                           final NameServer nameServer,
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
@@ -95,6 +98,7 @@ final class ExecutorManager {
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.callbackRegistry = callbackRegistry;
     this.evaluatorManager = evaluatorManager;
+    this.msgSender = msgSender;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.identifierFactory = identifierFactory;
@@ -127,7 +131,7 @@ final class ExecutorManager {
     final AtomicInteger executorIdxCounter = new AtomicInteger(0);
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
     activeCtxHandlers.add(activeContext -> {
-      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, callbackRegistry);
+      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, msgSender, callbackRegistry);
       executors.put(allocatedExecutor.getId(), allocatedExecutor);
       LOG.log(Level.INFO, "A new Executor {0} is allocated ({1}/{2}).",
           new Object[]{allocatedExecutor.getId(), executorIdxCounter.incrementAndGet(), num});

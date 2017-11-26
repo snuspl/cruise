@@ -19,8 +19,8 @@ import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.InjectionFuture;
@@ -53,7 +53,7 @@ public final class ETTaskRunner {
   private final Map<String, AllocatedExecutor> workerExecutors = new ConcurrentHashMap<>();
   private final Map<String, AllocatedExecutor> serverExecutors = new ConcurrentHashMap<>();
 
-  private final Map<String, SubmittedTask> executorIdToTask = new ConcurrentHashMap<>();
+  private final Map<String, RunningTasklet> executorIdToTask = new ConcurrentHashMap<>();
 
   @Inject
   private ETTaskRunner(final JobLogger jobLogger,
@@ -74,19 +74,19 @@ public final class ETTaskRunner {
    * Runs tasks on worker executors. It returns when all the worker task finish.
    * With optimization, the number of workers changes during runtime by {@link #updateExecutorEntry}.
    * @param workers a set of initial worker executors
-   * @return a list of {@link TaskResult}
+   * @return a list of {@link TaskletResult}
    */
-  public List<TaskResult> run(final List<AllocatedExecutor> workers,
-                              final List<AllocatedExecutor> servers) {
+  public List<TaskletResult> run(final List<AllocatedExecutor> workers,
+                                 final List<AllocatedExecutor> servers) {
     workers.forEach(worker -> workerExecutors.put(worker.getId(), worker));
     servers.forEach(server -> serverExecutors.put(server.getId(), server));
 
     // submit dummy tasks to servers
-    servers.forEach(server -> server.submitTask(etDolphinMasterFuture.get().getServerTaskConf()));
+    servers.forEach(server -> server.submitTask(etDolphinMasterFuture.get().getServerTaskletConf()));
 
-    final Map<String, Future<SubmittedTask>> executorIdToTaskFuture = new HashMap<>(workers.size());
+    final Map<String, Future<RunningTasklet>> executorIdToTaskFuture = new HashMap<>(workers.size());
     workers.forEach(worker -> executorIdToTaskFuture.put(worker.getId(),
-        worker.submitTask(etDolphinMasterFuture.get().getWorkerTaskConf())));
+        worker.submitTask(etDolphinMasterFuture.get().getWorkerTaskletConf())));
 
     executorIdToTaskFuture.forEach((executorId, taskFuture) -> {
       try {
@@ -124,15 +124,15 @@ public final class ETTaskRunner {
     final int numPrevServers = serverExecutors.size();
 
     for (final String addedWorker : addedWorkers) {
-      final SubmittedTask task;
+      final RunningTasklet task;
       final AllocatedExecutor executor;
       try {
         executor = etMaster.getExecutor(addedWorker);
-        final Optional<SubmittedTask> taskOptional = executor.getRunningTask();
-        if (!taskOptional.isPresent()) {
+        final Collection<RunningTasklet> tasklets = executor.getRunningTasks().values();
+        if (tasklets.isEmpty()) {
           throw new RuntimeException(String.format("Task is not running on the executor %s", addedWorker));
         }
-        task = taskOptional.get();
+        task = tasklets.iterator().next(); // assume there're only one tasklet
       } catch (ExecutorNotExistException e) {
         throw new RuntimeException(e);
       }
@@ -166,18 +166,18 @@ public final class ETTaskRunner {
     }
   }
 
-  private List<TaskResult> waitAndGetTaskResult() {
-    final List<TaskResult> taskResultList = new ArrayList<>(executorIdToTask.size());
+  private List<TaskletResult> waitAndGetTaskResult() {
+    final List<TaskletResult> taskletResultList = new ArrayList<>(executorIdToTask.size());
 
     executorIdToTask.values().forEach(task -> {
       try {
-        taskResultList.add(task.getTaskResult());
+        taskletResultList.add(task.getTaskResult());
       } catch (InterruptedException e) {
         throw new RuntimeException("Exception while waiting for the task results", e);
       }
     });
 
     jobLogger.log(Level.INFO, "Task finished");
-    return taskResultList;
+    return taskletResultList;
   }
 }

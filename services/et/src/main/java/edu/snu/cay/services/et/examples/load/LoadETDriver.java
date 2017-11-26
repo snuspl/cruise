@@ -22,7 +22,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.api.BulkDataLoader;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
@@ -152,7 +152,7 @@ final class LoadETDriver {
             etMaster.addExecutors(NUM_EXECUTORS, executorConf);
 
         final List<AllocatedExecutor> executors = executorsFuture.get();
-        final List<Future<SubmittedTask>> taskFutureList = Lists.newArrayList();
+        final List<Future<RunningTasklet>> taskFutureList = Lists.newArrayList();
         CatchableExecutors.newSingleThreadExecutor().submit(() -> {
 
           try {
@@ -176,14 +176,14 @@ final class LoadETDriver {
 
             // 1. test load test that table data has both key and value.
             executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf(true))));
-            for (final Future<SubmittedTask> taskFuture : taskFutureList) {
+            for (final Future<RunningTasklet> taskFuture : taskFutureList) {
               taskFuture.get().getTaskResult();
             }
             taskFutureList.clear();
 
             // 2. test load test that table data has only value.
             executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf(false))));
-            for (final Future<SubmittedTask> taskFuture : taskFutureList) {
+            for (final Future<RunningTasklet> taskFuture : taskFutureList) {
               taskFuture.get().getTaskResult();
             }
             taskFutureList.clear();

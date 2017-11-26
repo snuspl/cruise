@@ -22,7 +22,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
@@ -101,7 +101,7 @@ final class CheckpointETDriver {
           // 1. Checkpoint a table after putting some value by running PutTask.
           final AllocatedTable originalTable = etMaster.createTable(buildTableConf(TABLE_ID), executors0).get();
 
-          final Future<SubmittedTask> taskFuture = executors0.get(0).submitTask(TaskConfiguration.CONF
+          final Future<RunningTasklet> taskFuture = executors0.get(0).submitTask(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "PutTask")
               .set(TaskConfiguration.TASK, PutTask.class)
               .build());
@@ -125,7 +125,7 @@ final class CheckpointETDriver {
           final AllocatedTable tableFromLocalChkps = etMaster.createTable(chkpId, executors1).get();
 
           final AtomicInteger taskIdx = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
           executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)

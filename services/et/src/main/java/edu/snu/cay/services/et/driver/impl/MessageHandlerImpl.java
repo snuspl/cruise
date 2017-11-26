@@ -17,6 +17,8 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.common.impl.CallbackRegistry;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
@@ -66,6 +68,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<TableManager> tableManagerFuture;
   private final InjectionFuture<MessageSender> messageSenderFuture;
   private final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture;
+  private final InjectionFuture<CallbackRegistry> callbackRegistryFuture;
 
   /**
    * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
@@ -82,7 +85,8 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<MetricReceiver> metricReceiver,
                              final InjectionFuture<MessageSender> messageSenderFuture,
                              final InjectionFuture<FallbackManager> fallbackManagerFuture,
-                             final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture) {
+                             final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture,
+                             final InjectionFuture<CallbackRegistry> callbackRegistryFuture) {
     this.driverId = driverId;
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
@@ -91,6 +95,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     this.tableManagerFuture = tableManagerFuture;
     this.messageSenderFuture = messageSenderFuture;
     this.chkpManagerMasterFuture = chkpManagerMasterFuture;
+    this.callbackRegistryFuture = callbackRegistryFuture;
   }
 
   @Override
@@ -117,6 +122,10 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TableAccessMsg:
       onTableAccessMsg(msg.getSrcId().toString(),
           AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableAccessMsg.class));
+      break;
+
+    case TaskletMsg:
+      onTaskletMsg(msg.getSrcId().toString(), AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TaskletMsg.class));
       break;
 
     default:
@@ -280,5 +289,36 @@ public final class MessageHandlerImpl implements MessageHandler {
       }
       return;
     });
+  }
+
+  private void onTaskletMsg(final String executorId, final TaskletMsg msg) {
+    switch (msg.getType()) {
+    case TaskletStartMsg:
+      final TaskletStartMsg taskletStartMsg = msg.getTaskletStartMsg();
+      if (taskletStartMsg.getType() == TaskletStartMsgType.Res) {
+        final String taskletId = taskletStartMsg.getTaskletId();
+        final ResultFuture<TaskletResult> taskResultFuture = new ResultFuture<>();
+        callbackRegistryFuture.get().register(TaskletResult.class, taskletId, taskResultFuture::onCompleted);
+
+        final RunningTasklet runningTasklet = new RunningTasklet(executorId, taskletId,
+            taskResultFuture, messageSenderFuture.get());
+        callbackRegistryFuture.get().onCompleted(RunningTasklet.class, taskletId, runningTasklet);
+      } else {
+        throw new RuntimeException();
+      }
+      break;
+    case TaskletStopMsg:
+      final TaskletStopMsg taskletStopMsg = msg.getTaskletStopMsg();
+      if (taskletStopMsg.getType() == TaskletStopMsgType.Res) {
+        final String taskletId = taskletStopMsg.getTaskletId();
+        final TaskletResult taskletResult = new TaskletResult(taskletId, taskletStopMsg.getIsSuccess());
+        callbackRegistryFuture.get().onCompleted(TaskletResult.class, taskletId, taskletResult);
+      } else {
+        throw new RuntimeException();
+      }
+      break;
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
+    }
   }
 }

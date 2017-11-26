@@ -24,7 +24,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
@@ -186,7 +186,7 @@ final class TableAccessETDriver {
       table.subscribe(subscribers).get();
 
       // launch tasks to executors
-      final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
+      final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
       int taskIdx = 0;
       for (final AllocatedExecutor testExecutor : executorsToSubmitTask) {
         final Configuration taskParamsConf = getTaskParamsConf(taskIdx, tableId,

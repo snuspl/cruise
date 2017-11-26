@@ -583,6 +583,57 @@
 },
 
 /**
+ * The message protocol used for collecting metrics.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletStartMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletStartMsgType",
+        "symbols": ["Req", "Res"]}},
+    {"name": "taskletId", "type": "string"},
+    {"name": "taskConf", "type": ["null", "string"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for collecting metrics.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletStopMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletStopMsgType",
+        "symbols": ["Req", "Res"]}},
+    {"name": "taskletId", "type": "string"},
+    {"name": "isSuccess", "type": ["null", "boolean"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for collecting metrics.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletMsgType",
+        "symbols": ["TaskletStartMsg", "TaskletStopMsg"]}},
+    {"name": "taskletStartMsg", "type": ["null", "TaskletStartMsg"], "default": null},
+    {"name": "taskletStopMsg", "type": ["null", "TaskletStopMsg"], "default": null}
+  ]
+},
+
+/**
  * The message protocol used for Elastic Table.
  * Messages are categorized into following types:
  * (1) TableAccessMsg: Messages regarding remote table access.
@@ -599,7 +650,7 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "ETMsgType",
-        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg"]}},
+        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg", "TaskletMsg"]}},
     {"name": "innerMsg", "type": "bytes"}
   ]
 }

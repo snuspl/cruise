@@ -15,15 +15,23 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
+import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.metric.avro.*;
+import edu.snu.cay.dolphin.async.metric.avro.BatchMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.EpochMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsType;
+import edu.snu.cay.dolphin.async.network.NetworkConnection;
+import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.metric.MetricCollector;
-import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
+import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,9 +39,9 @@ import java.util.logging.Logger;
 /**
  * REEF Task for running Dolphin trainers on ET.
  */
-public final class ETWorkerTask<V> implements Task {
-  private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
-  public static final String TASK_ID_PREFIX = "ETWorkerTask";
+public final class WorkerTasklet<V> implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(WorkerTasklet.class.getName());
+  public static final String TASKLET_ID_PREFIX = "ETWorkerTask";
 
   private final String taskId;
   private final int startingEpoch;
@@ -54,16 +62,18 @@ public final class ETWorkerTask<V> implements Task {
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
   @Inject
-  private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
-                       @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
-                       @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                       final ProgressReporter progressReporter,
-                       final WorkerGlobalBarrier workerGlobalBarrier,
-                       final TrainingDataProvider<V> trainingDataProvider,
-                       final ModelAccessor modelAccessor,
-                       final TestDataProvider<V> testDataProvider,
-                       final Trainer<V> trainer,
-                       final MetricCollector metricCollector) {
+  private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskId,
+                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
+                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                        @Parameter(EvaluatorIdentifier.class) final String evaluatorId,
+                        final NetworkConnection<DolphinMsg> networkConnection,
+                        final ProgressReporter progressReporter,
+                        final WorkerGlobalBarrier workerGlobalBarrier,
+                        final TrainingDataProvider<V> trainingDataProvider,
+                        final ModelAccessor modelAccessor,
+                        final TestDataProvider<V> testDataProvider,
+                        final Trainer<V> trainer,
+                        final MetricCollector metricCollector) {
     this.taskId = taskId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
@@ -74,10 +84,11 @@ public final class ETWorkerTask<V> implements Task {
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
+    networkConnection.setup(evaluatorId);
   }
 
   @Override
-  public byte[] call(final byte[] memento) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
 
     final List<V> testData = testDataProvider.getTestData();
@@ -125,7 +136,7 @@ public final class ETWorkerTask<V> implements Task {
 
         if (abortFlag.get()) {
           LOG.log(Level.INFO, "The task is getting closed.");
-          return null;
+          return;
         }
       }
 
@@ -139,7 +150,7 @@ public final class ETWorkerTask<V> implements Task {
     workerGlobalBarrier.await();
 
     trainer.cleanup();
-    return null;
+    return;
   }
   
   /**
@@ -224,6 +235,7 @@ public final class ETWorkerTask<V> implements Task {
    * Called when the Task is requested to close.
    * The {@link #abortFlag} is set true, so the task terminates execution.
    */
+  @Override
   public void close() {
     LOG.log(Level.INFO, "Requested to close!");
     abortFlag.set(true);

@@ -16,44 +16,56 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
-import org.apache.reef.driver.task.RunningTask;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
+import edu.snu.cay.services.et.driver.api.MessageSender;
 
 import java.util.concurrent.ExecutionException;
 
 /**
  * Represents a submitted task.
  */
-public final class SubmittedTask {
-  private final RunningTask runningTask;
-  private final ListenableFuture<TaskResult> resultFuture;
+public final class RunningTasklet {
+  private final String executorId;
+  private final String taskletId;
+  private final ResultFuture<TaskletResult> taskResultFuture;
 
-  SubmittedTask(final RunningTask runningTask,
-                final ListenableFuture<TaskResult> resultFuture) {
-    this.runningTask = runningTask;
-    this.resultFuture = resultFuture;
+  private final MessageSender msgSender;
+
+  RunningTasklet(final String executorId,
+                 final String taskletId,
+                 final ResultFuture<TaskletResult> taskResultFuture,
+                 final MessageSender msgSender) {
+    this.executorId = executorId;
+    this.taskletId = taskletId;
+    this.taskResultFuture = taskResultFuture;
+    this.msgSender = msgSender;
+  }
+
+  public String getId() {
+    return taskletId;
   }
 
   /**
    * Stops the running task.
    */
   public void stop() {
-    runningTask.close();
+    msgSender.sendTaskletStopReqMsg(executorId, taskletId);
   }
 
   /**
    * @return the future of task result
    */
-  public ListenableFuture<TaskResult> getTaskResultFuture() {
-    return resultFuture;
+  public ListenableFuture<TaskletResult> getTaskResultFuture() {
+    return taskResultFuture;
   }
 
   /**
    * @return the result of this task, after waiting it to complete
    * @throws InterruptedException when interrupted while waiting
    */
-  public TaskResult getTaskResult() throws InterruptedException {
+  public TaskletResult getTaskResult() throws InterruptedException {
     try {
-      return resultFuture.get();
+      return taskResultFuture.get();
     } catch (ExecutionException e) {
       throw new RuntimeException(e);
     }
@@ -64,20 +76,17 @@ public final class SubmittedTask {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof RunningTasklet)) {
       return false;
     }
 
-    final SubmittedTask that = (SubmittedTask) o;
+    final RunningTasklet that = (RunningTasklet) o;
 
-    return (runningTask != null ? runningTask.equals(that.runningTask) : that.runningTask == null)
-        && (resultFuture != null ? resultFuture.equals(that.resultFuture) : that.resultFuture == null);
+    return taskletId.equals(that.taskletId);
   }
 
   @Override
   public int hashCode() {
-    int result = runningTask != null ? runningTask.hashCode() : 0;
-    result = 31 * result + (resultFuture != null ? resultFuture.hashCode() : 0);
-    return result;
+    return taskletId.hashCode();
   }
 }

@@ -21,7 +21,7 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
@@ -124,7 +124,7 @@ final class MetricETDriver {
       CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(associators.size());
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(associators.size());
 
           // Simply create a hash-based table.
           etMaster.createTable(buildTableConf(TABLE_ID), associators).get();

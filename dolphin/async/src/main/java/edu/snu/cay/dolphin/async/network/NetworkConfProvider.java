@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.network;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgHandler;
-import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -42,18 +41,9 @@ public final class NetworkConfProvider {
   }
 
   /**
-   * Returns {@link MessageHandler} related context configuration to be used in executor.
-   */
-  public static Configuration getContextConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, ContextStartHandler.class)
-        .build();
-  }
-
-  /**
    * Returns {@link MessageHandler} related service configuration to be used in executor.
    */
-  public static Configuration getServiceConfiguration(final String jobId, final String dolphinJobId) {
+  public static Configuration getWorkerServiceConfiguration(final String jobId, final String dolphinJobId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobIdentifier.class, jobId) // connection factory id
         .bindNamedParameter(DolphinParameters.DolphinJobId.class, dolphinJobId) // master-side endpoint id

@@ -18,28 +18,26 @@ package edu.snu.cay.dolphin.async.core.master;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
-import edu.snu.cay.dolphin.async.core.server.ETServerTask;
-import edu.snu.cay.dolphin.async.core.server.ServerTaskCloseHandler;
-import edu.snu.cay.dolphin.async.core.worker.ETWorkerTask;
-import edu.snu.cay.dolphin.async.core.worker.ModelEvaluationTask;
-import edu.snu.cay.dolphin.async.core.worker.WorkerTaskCloseHandler;
+import edu.snu.cay.dolphin.async.core.server.ServerTasklet;
+import edu.snu.cay.dolphin.async.core.worker.ModelEvaluationTasklet;
+import edu.snu.cay.dolphin.async.core.worker.WorkerTasklet;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
+import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -50,8 +48,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
-import static edu.snu.cay.dolphin.async.core.server.ETServerTask.SERVER_TASK_ID_PREFIX;
-import static edu.snu.cay.dolphin.async.core.worker.ETWorkerTask.TASK_ID_PREFIX;
+import static edu.snu.cay.dolphin.async.core.server.ServerTasklet.SERVER_TASKLET_ID_PREFIX;
+import static edu.snu.cay.dolphin.async.core.worker.WorkerTasklet.TASKLET_ID_PREFIX;
 
 /**
  * A Dolphin master, which runs a dolphin job with given executors and tables.
@@ -108,14 +106,12 @@ public final class DolphinMaster {
     optimizationOrchestrator.start();
   }
 
-  public Configuration getWorkerTaskConf() {
-    return Configurations.merge(TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, dolphinJobId + "-" + TASK_ID_PREFIX +
-                workerTaskIdCount.getAndIncrement())
-            .set(TaskConfiguration.TASK, ETWorkerTask.class)
-            .set(TaskConfiguration.ON_CLOSE, WorkerTaskCloseHandler.class)
-            .build(),
+  public Configuration getWorkerTaskletConf() {
+    return Configurations.merge(
         Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(Tasklet.class, WorkerTasklet.class)
+            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + TASKLET_ID_PREFIX +
+                workerTaskIdCount.getAndIncrement())
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .bindNamedParameter(ModelTableId.class, modelTableId)
             .bindNamedParameter(InputTableId.class, inputTableId)
@@ -124,14 +120,12 @@ public final class DolphinMaster {
         workerConf);
   }
 
-  public Configuration getWorkerTaskConf(final Class<? extends Task> taskClass) {
-    return Configurations.merge(TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, dolphinJobId + "-" + TASK_ID_PREFIX +
-                workerTaskIdCount.getAndIncrement())
-            .set(TaskConfiguration.TASK, taskClass)
-            .set(TaskConfiguration.ON_CLOSE, WorkerTaskCloseHandler.class)
-            .build(),
+  public Configuration getWorkerTaskletConf(final Class<? extends Tasklet> taskClass) {
+    return Configurations.merge(
         Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(Tasklet.class, taskClass)
+            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + TASKLET_ID_PREFIX +
+                workerTaskIdCount.getAndIncrement())
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .bindNamedParameter(ModelTableId.class, modelTableId)
             .bindNamedParameter(InputTableId.class, inputTableId)
@@ -140,12 +134,11 @@ public final class DolphinMaster {
         workerConf);
   }
 
-  public Configuration getServerTaskConf() {
-    return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, dolphinJobId + "-" + SERVER_TASK_ID_PREFIX +
+  public Configuration getServerTaskletConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Tasklet.class, ServerTasklet.class)
+        .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + SERVER_TASKLET_ID_PREFIX +
             serverTaskIdCount.getAndIncrement())
-        .set(TaskConfiguration.TASK, ETServerTask.class)
-        .set(TaskConfiguration.ON_CLOSE, ServerTaskCloseHandler.class)
         .build();
   }
 
@@ -181,8 +174,8 @@ public final class DolphinMaster {
       servers.forEach(server -> metricManager.startMetricCollection(server.getId(), getServerMetricConf()));
       workers.forEach(worker -> metricManager.startMetricCollection(worker.getId(), getWorkerMetricConf()));
 
-      final List<TaskResult> taskResults = taskRunner.run(workers, servers);
-      checkTaskResults(taskResults);
+      final List<TaskletResult> taskletResults = taskRunner.run(workers, servers);
+      checkTaskResults(taskletResults);
 
       servers.forEach(server -> metricManager.stopMetricCollection(server.getId()));
       workers.forEach(worker -> metricManager.stopMetricCollection(worker.getId()));
@@ -200,10 +193,10 @@ public final class DolphinMaster {
 
     modelChkpManager.setExecutors(servers, workers);
 
-    final List<Future<SubmittedTask>> taskFutures = new ArrayList<>(workers.size());
-    workers.forEach(worker -> taskFutures.add(worker.submitTask(getWorkerTaskConf(ModelEvaluationTask.class))));
+    final List<Future<RunningTasklet>> taskFutures = new ArrayList<>(workers.size());
+    workers.forEach(worker -> taskFutures.add(worker.submitTask(getWorkerTaskletConf(ModelEvaluationTasklet.class))));
 
-    final List<TaskResult> taskResults = new ArrayList<>(workers.size());
+    final List<TaskletResult> taskResults = new ArrayList<>(workers.size());
     taskFutures.forEach(taskFuture -> {
       try {
         taskResults.add(taskFuture.get().getTaskResult());
@@ -217,10 +210,10 @@ public final class DolphinMaster {
     workers.forEach(worker -> metricManager.stopMetricCollection(worker.getId()));
   }
 
-  private void checkTaskResults(final List<TaskResult> taskResultList) {
-    taskResultList.forEach(taskResult -> {
+  private void checkTaskResults(final List<TaskletResult> taskletResultList) {
+    taskletResultList.forEach(taskResult -> {
       if (!taskResult.isSuccess()) {
-        final String taskId = taskResult.getFailedTask().get().getId();
+        final String taskId = taskResult.getTaskletId();
         throw new RuntimeException(String.format("Task %s has been failed", taskId));
       }
     });

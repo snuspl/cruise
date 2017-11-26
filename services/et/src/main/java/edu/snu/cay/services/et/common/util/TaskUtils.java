@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.et.common.util;
 
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import org.apache.reef.tang.Configuration;
 
 import java.util.List;
@@ -39,12 +39,13 @@ public final class TaskUtils {
    *                       by {@link edu.snu.cay.services.et.driver.api.AllocatedExecutor#submitTask(Configuration)}
    * @param expected The expected answer.
    */
-  public static void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList, final boolean expected) {
-    taskFutureList.forEach(taskResultFuture -> {
+  public static void waitAndCheckTaskResult(final List<Future<RunningTasklet>> taskFutureList, final boolean expected) {
+    taskFutureList.forEach(taskFuture -> {
       try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (taskResult.isSuccess() != expected) {
-          final String taskId = taskResult.getFailedTask().get().getId();
+        final RunningTasklet runningTasklet = taskFuture.get();
+        final TaskletResult taskletResult = runningTasklet.getTaskResult();
+        if (taskletResult.isSuccess() != expected) {
+          final String taskId = runningTasklet.getId();
           throw new RuntimeException(String.format("Task %s has been failed", taskId));
         }
       } catch (InterruptedException | ExecutionException e) {
