@@ -135,7 +135,7 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, MetricTask.class)
               .build())));
@@ -149,7 +149,7 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, MetricTask.class)
               .build())));

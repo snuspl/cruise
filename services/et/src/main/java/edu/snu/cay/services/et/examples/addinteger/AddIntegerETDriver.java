@@ -165,7 +165,7 @@ public final class AddIntegerETDriver {
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(workers.size());
-          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
+          workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
               Configurations.merge(TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
                   .set(TaskConfiguration.TASK, UpdaterTask.class)
@@ -176,7 +176,7 @@ public final class AddIntegerETDriver {
           // start validate tasks on worker executors
           taskIdCount.set(0);
           taskFutureList.clear();
-          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
+          workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
               Configurations.merge(TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
                   .set(TaskConfiguration.TASK, ValidatorTask.class)

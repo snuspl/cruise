@@ -95,7 +95,7 @@ final class ETCentCommExampleDriver {
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(executors.size());
-          executors.forEach(executor -> taskFutureList.add(executor.submitTask(
+          executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
                   .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)

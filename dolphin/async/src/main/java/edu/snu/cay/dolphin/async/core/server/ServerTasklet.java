@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  */
 public final class ServerTasklet implements Tasklet {
   private static final Logger LOG = Logger.getLogger(ServerTasklet.class.getName());
-  public static final String SERVER_TASKLET_ID_PREFIX = "ServerTask-";
+  public static final String TASKLET_ID_PREFIX = "ServerTask-";
 
   /**
    * A latch that will be released upon {@link #close()}.

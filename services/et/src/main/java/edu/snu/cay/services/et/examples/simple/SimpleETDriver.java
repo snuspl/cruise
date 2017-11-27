@@ -129,7 +129,7 @@ final class SimpleETDriver {
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(associators.size() + subscribers.size());
 
           // 1. First run a put task in a subscriber
-          taskFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
+          taskFutureList.add(subscribers.get(0).submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, PutTask.class)
               .build()));
@@ -139,12 +139,12 @@ final class SimpleETDriver {
           // 2. Then run get tasks in all executors
           taskFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
@@ -168,12 +168,12 @@ final class SimpleETDriver {
           // 4. run get tasks in all executors again after migration
           taskFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
@@ -186,12 +186,12 @@ final class SimpleETDriver {
 
           taskFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
@@ -205,7 +205,7 @@ final class SimpleETDriver {
           // 7. start scan tasks in associator executors
           taskFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, ScanTask.class)
               .build())));
@@ -223,7 +223,7 @@ final class SimpleETDriver {
           // 9. start scan tasks again after migration
           taskFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, ScanTask.class)
               .build())));

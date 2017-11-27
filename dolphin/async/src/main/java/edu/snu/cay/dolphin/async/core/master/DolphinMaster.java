@@ -45,11 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-
-import static edu.snu.cay.dolphin.async.core.server.ServerTasklet.SERVER_TASKLET_ID_PREFIX;
-import static edu.snu.cay.dolphin.async.core.worker.WorkerTasklet.TASKLET_ID_PREFIX;
 
 /**
  * A Dolphin master, which runs a dolphin job with given executors and tables.
@@ -71,9 +67,6 @@ public final class DolphinMaster {
   private final String modelTableId;
   private final String inputTableId;
   private final Configuration workerConf;
-
-  private final AtomicInteger workerTaskIdCount = new AtomicInteger(0);
-  private final AtomicInteger serverTaskIdCount = new AtomicInteger(0);
 
   @Inject
   private DolphinMaster(final JobLogger jobLogger,
@@ -110,8 +103,8 @@ public final class DolphinMaster {
     return Configurations.merge(
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(Tasklet.class, WorkerTasklet.class)
-            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + TASKLET_ID_PREFIX +
-                workerTaskIdCount.getAndIncrement())
+            .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .bindNamedParameter(ModelTableId.class, modelTableId)
             .bindNamedParameter(InputTableId.class, inputTableId)
@@ -124,8 +117,8 @@ public final class DolphinMaster {
     return Configurations.merge(
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(Tasklet.class, taskClass)
-            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + TASKLET_ID_PREFIX +
-                workerTaskIdCount.getAndIncrement())
+            .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
             .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .bindNamedParameter(ModelTableId.class, modelTableId)
             .bindNamedParameter(InputTableId.class, inputTableId)
@@ -137,8 +130,7 @@ public final class DolphinMaster {
   public Configuration getServerTaskletConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Tasklet.class, ServerTasklet.class)
-        .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + SERVER_TASKLET_ID_PREFIX +
-            serverTaskIdCount.getAndIncrement())
+        .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + ServerTasklet.TASKLET_ID_PREFIX)
         .build();
   }
 
@@ -194,7 +186,8 @@ public final class DolphinMaster {
     modelChkpManager.setExecutors(servers, workers);
 
     final List<Future<RunningTasklet>> taskFutures = new ArrayList<>(workers.size());
-    workers.forEach(worker -> taskFutures.add(worker.submitTask(getWorkerTaskletConf(ModelEvaluationTasklet.class))));
+    workers.forEach(worker ->
+        taskFutures.add(worker.submitTasklet(getWorkerTaskletConf(ModelEvaluationTasklet.class))));
 
     final List<TaskletResult> taskResults = new ArrayList<>(workers.size());
     taskFutures.forEach(taskFuture -> {

@@ -594,7 +594,6 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "TaskletStartMsgType",
         "symbols": ["Req", "Res"]}},
-    {"name": "taskletId", "type": "string"},
     {"name": "taskConf", "type": ["null", "string"], "default": null}
   ]
 },
@@ -611,7 +610,6 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "TaskletStopMsgType",
         "symbols": ["Req", "Res"]}},
-    {"name": "taskletId", "type": "string"},
     {"name": "isSuccess", "type": ["null", "boolean"], "default": null}
   ]
 },
@@ -627,7 +625,9 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "TaskletMsgType",
-        "symbols": ["TaskletStartMsg", "TaskletStopMsg"]}},
+        "symbols": ["TaskletByteMsg", "TaskletStartMsg", "TaskletStopMsg"]}},
+    {"name": "taskletId", "type": "string"},
+    {"name": "taskletByteMsg", "type": ["null", "bytes"], "default": null},
     {"name": "taskletStartMsg", "type": ["null", "TaskletStartMsg"], "default": null},
     {"name": "taskletStopMsg", "type": ["null", "TaskletStopMsg"], "default": null}
   ]

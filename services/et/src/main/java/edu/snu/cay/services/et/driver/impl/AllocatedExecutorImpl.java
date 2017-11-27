@@ -60,16 +60,16 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   }
 
   @Override
-  public ListenableFuture<RunningTasklet> submitTask(final Configuration taskConf) {
+  public ListenableFuture<RunningTasklet> submitTasklet(final Configuration taskletConf) {
     try {
-      final String taskId = Tang.Factory.getTang().newInjector(taskConf)
+      final String taskletId = Tang.Factory.getTang().newInjector(taskletConf)
           .getNamedInstance(TaskletIdentifier.class);
 
       final ResultFuture<RunningTasklet> runningTaskletFuture = new ResultFuture<>();
-      runningTaskletFuture.addListener(runningTasklet -> runningTaskletMap.put(taskId, runningTasklet));
-      callbackRegistry.register(RunningTasklet.class, taskId, runningTaskletFuture::onCompleted);
+      runningTaskletFuture.addListener(runningTasklet -> runningTaskletMap.put(taskletId, runningTasklet));
+      callbackRegistry.register(RunningTasklet.class, identifier + taskletId, runningTaskletFuture::onCompleted);
 
-      msgSender.sendTaskletStartReqMsg(identifier, taskId, taskConf);
+      msgSender.sendTaskletStartReqMsg(identifier, taskletId, taskletConf);
 
       return runningTaskletFuture;
     } catch (final InjectionException e) {
@@ -78,7 +78,7 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   }
 
   @Override
-  public Map<String, RunningTasklet> getRunningTasks() {
+  public Map<String, RunningTasklet> getRunningTasklets() {
     return new HashMap<>(runningTaskletMap);
   }
 

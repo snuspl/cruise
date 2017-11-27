@@ -50,12 +50,12 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException(e);
     }
 
-    final Collection<RunningTasklet> tasklets = executor.getRunningTasks().values();
+    final Collection<RunningTasklet> tasklets = executor.getRunningTasklets().values();
     if (tasklets.isEmpty()) {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
-    // assume there's only one tasklet
+    // TODO #00: fix. It assumes there's only one tasklet
     final RunningTasklet runningTasklet = tasklets.iterator().next();
 
     runningTasklet.stop();

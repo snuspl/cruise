@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.network;
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
+import edu.snu.cay.services.et.exceptions.AlreadyConnectedException;
 import edu.snu.cay.services.et.exceptions.NotConnectedException;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -67,7 +68,8 @@ public final class NetworkConnectionImpl implements NetworkConnection<DolphinMsg
   @Override
   public void setup(final String endPointId) {
     if (connectionFactory != null) {
-      return;
+      throw new AlreadyConnectedException(connectionFactory.getConnectionFactoryId(),
+          connectionFactory.getLocalEndPointId());
     }
     final Identifier connectionFactoryId = identifierFactory.getNewInstance(reefJobId);
     final Identifier localEndPointId = identifierFactory.getNewInstance(endPointId);

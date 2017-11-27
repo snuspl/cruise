@@ -192,7 +192,7 @@ final class TableAccessETDriver {
         final Configuration taskParamsConf = getTaskParamsConf(taskIdx, tableId,
             tableAccessType, executorsToSubmitTask.size());
         final Configuration taskConf = getTaskConf(testId, taskIdx);
-        taskFutureList.add(testExecutor.submitTask(Configurations.merge(taskParamsConf, taskConf)));
+        taskFutureList.add(testExecutor.submitTasklet(Configurations.merge(taskParamsConf, taskConf)));
         taskIdx++;
       }
 

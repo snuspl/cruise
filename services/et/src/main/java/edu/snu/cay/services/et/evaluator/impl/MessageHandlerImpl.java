@@ -67,7 +67,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final ExecutorService taskletMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TASKLET_MSG_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
-  private final InjectionFuture<Tasklets> taskletRuntimeFuture;
+  private final InjectionFuture<TaskletRuntime> taskletRuntimeFuture;
 
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
@@ -79,7 +79,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
-                             final InjectionFuture<Tasklets> taskletRuntimeFuture,
+                             final InjectionFuture<TaskletRuntime> taskletRuntimeFuture,
                              final ConfigurationSerializer confSerializer,
                              final InjectionFuture<MessageSender> msgSenderFuture,
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
@@ -339,18 +339,20 @@ public final class MessageHandlerImpl implements MessageHandler {
   private void onTaskletMsg(final TaskletMsg msg) {
     taskletMsgExecutor.submit(() -> {
       switch (msg.getType()) {
+      case TaskletByteMsg:
+        taskletRuntimeFuture.get().onTaskletMsg(msg.getTaskletId(), msg.getTaskletByteMsg().array());
+        break;
       case TaskletStartMsg:
         final TaskletStartMsg taskletStartMsg = msg.getTaskletStartMsg();
         try {
-          taskletRuntimeFuture.get().startTasklet(taskletStartMsg.getTaskletId(),
+          taskletRuntimeFuture.get().startTasklet(msg.getTaskletId(),
               confSerializer.fromString(taskletStartMsg.getTaskConf()));
         } catch (InjectionException | IOException e) {
           throw new RuntimeException(e);
         }
         break;
       case TaskletStopMsg:
-        final TaskletStopMsg taskletStopMsg = msg.getTaskletStopMsg();
-        taskletRuntimeFuture.get().stopTasklet(taskletStopMsg.getTaskletId());
+        taskletRuntimeFuture.get().stopTasklet(msg.getTaskletId());
         break;
       default:
         throw new RuntimeException("Unexpected msg type");

@@ -506,14 +506,14 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTaskletStartResMsg(final String taskletId) {
     final TaskletStartMsg taskletStartMsg = TaskletStartMsg.newBuilder()
         .setType(TaskletStartMsgType.Res)
-        .setTaskletId(taskletId)
         .build();
 
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
-        .setType(TaskletMsgType.TaskletStartMsg)
-        .setTaskletStartMsg(taskletStartMsg)
-        .build(), TaskletMsg.class);
+            .setType(TaskletMsgType.TaskletStartMsg)
+            .setTaskletId(taskletId)
+            .setTaskletStartMsg(taskletStartMsg)
+            .build(), TaskletMsg.class);
 
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TaskletMsg)
@@ -530,13 +530,13 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTaskletStopResMsg(final String taskletId, final boolean isSuccess) {
     final TaskletStopMsg taskletStopMsg = TaskletStopMsg.newBuilder()
         .setType(TaskletStopMsgType.Res)
-        .setTaskletId(taskletId)
         .setIsSuccess(isSuccess)
         .build();
 
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
             .setType(TaskletMsgType.TaskletStopMsg)
+            .setTaskletId(taskletId)
             .setTaskletStopMsg(taskletStopMsg)
             .build(), TaskletMsg.class);
 

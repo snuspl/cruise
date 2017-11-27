@@ -175,14 +175,14 @@ final class LoadETDriver {
                 System.currentTimeMillis() - startMillis);
 
             // 1. test load test that table data has both key and value.
-            executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf(true))));
+            executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf(true))));
             for (final Future<RunningTasklet> taskFuture : taskFutureList) {
               taskFuture.get().getTaskResult();
             }
             taskFutureList.clear();
 
             // 2. test load test that table data has only value.
-            executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf(false))));
+            executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf(false))));
             for (final Future<RunningTasklet> taskFuture : taskFutureList) {
               taskFuture.get().getTaskResult();
             }

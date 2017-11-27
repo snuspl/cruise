@@ -219,7 +219,7 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(jobId, jobId))
+        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(jobId))
         .build();
   }
 

@@ -36,7 +36,7 @@ public final class TaskUtils {
   /**
    * Wait until all Tasks finish and checks whether the results are as expected.
    * @param taskFutureList The list of futures of submitted tasks, each of which is returned
-   *                       by {@link edu.snu.cay.services.et.driver.api.AllocatedExecutor#submitTask(Configuration)}
+   *                       by {@link edu.snu.cay.services.et.driver.api.AllocatedExecutor#submitTasklet(Configuration)}
    * @param expected The expected answer.
    */
   public static void waitAndCheckTaskResult(final List<Future<RunningTasklet>> taskFutureList, final boolean expected) {

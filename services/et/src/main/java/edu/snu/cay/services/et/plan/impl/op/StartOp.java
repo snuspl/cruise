@@ -65,7 +65,7 @@ public final class StartOp extends AbstractOp {
     // need to submit task after metric service is started at executor
     metricManager.startMetricCollection(actualId, metricConf);
 
-    executor.submitTask(taskConf)
+    executor.submitTasklet(taskConf)
         .addListener(task -> resultFuture.onCompleted(new OpResult.StartOpResult(StartOp.this, task)));
 
     return resultFuture;

@@ -15,9 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.network;
 
-import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.core.worker.DolphinMsgHandler;
 import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgHandler;
-import edu.snu.cay.services.et.configuration.parameters.ExecutorStartHandlers;
+import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
+import org.apache.reef.evaluator.context.parameters.Services;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -44,12 +45,12 @@ public final class NetworkConfProvider {
   /**
    * Returns {@link MessageHandler} related service configuration to be used in executor.
    */
-  public static Configuration getWorkerServiceConfiguration(final String jobId, final String dolphinJobId) {
+  public static Configuration getWorkerServiceConfiguration(final String jobId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ExecutorStartHandlers.class, ExecutorStartHandler.class)
+        .bindSetEntry(Services.class, DolphinNetworkService.class)
         .bindNamedParameter(JobIdentifier.class, jobId) // connection factory id
-        .bindNamedParameter(DolphinParameters.DolphinJobId.class, dolphinJobId) // master-side endpoint id
-        .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class)
+        .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class) // TODO #00: remove it
+        .bindImplementation(TaskletMsgHandler.class, DolphinMsgHandler.class)
         .build();
   }
 }

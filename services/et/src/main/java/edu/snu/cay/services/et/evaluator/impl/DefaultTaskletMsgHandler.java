@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters;
+package edu.snu.cay.services.et.evaluator.impl;
+
+import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
+
+import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by xyzi on 27/11/2017.
  */
-public class ExecutorStart {
-  private final String identifier;
+public final class DefaultTaskletMsgHandler implements TaskletMsgHandler {
+  private static final Logger LOG = Logger.getLogger(DefaultTaskletMsgHandler.class.getName());
 
-  public ExecutorStart(final String identifier) {
-    this.identifier = identifier;
+  @Inject
+  private DefaultTaskletMsgHandler() {
+
   }
 
-  public String getId() {
-    return identifier;
+  @Override
+  public void onNext(final byte[] bytes) {
+    LOG.log(Level.FINE, "DefaultTaskletMsgHandler received a msg.");
   }
 }

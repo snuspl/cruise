@@ -373,6 +373,11 @@ public final class MigrationManagerTest {
     }
 
     @Override
+    public void sendTaskletByteMsg(final String executorId, final String taskletId, final byte[] message) {
+
+    }
+
+    @Override
     public void sendTaskletStartReqMsg(final String executorId, final String taskletId,
                                        final Configuration taskletConf) {
 

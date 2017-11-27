@@ -343,7 +343,7 @@ public final class JobServerDriver {
     final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(reefJobId, dolphinJobId))
+        .setUserServiceConf(NetworkConfProvider.getWorkerServiceConfiguration(reefJobId))
         .build();
     final TableConfiguration workerTableConf = buildWorkerTableConf(inputTableId,
         workerInjector, numWorkerBlocks, userParamConf);

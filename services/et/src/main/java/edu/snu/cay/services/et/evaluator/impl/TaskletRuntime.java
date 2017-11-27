@@ -17,12 +17,16 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
+import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
 import edu.snu.cay.utils.CatchableExecutors;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -31,19 +35,21 @@ import java.util.logging.Logger;
 /**
  * Created by xyzi on 25/11/2017.
  */
-public final class Tasklets {
-  private static final Logger LOG = Logger.getLogger(Tasklets.class.getName());
+public final class TaskletRuntime {
+  private static final Logger LOG = Logger.getLogger(TaskletRuntime.class.getName());
   private static final int NUM_TASKLETS = 4;
   private final Injector taskletBaseInjector;
   private final MessageSender msgSender;
 
   private final AtomicBoolean closeFlag = new AtomicBoolean(false);
 
+  private final Map<String, Pair<Tasklet, TaskletMsgHandler>> taskletMap = new ConcurrentHashMap<>();
+
   private final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(NUM_TASKLETS);
 
   @Inject
-  private Tasklets(final Injector taskletBaseInjector,
-                   final MessageSender msgSender) {
+  private TaskletRuntime(final Injector taskletBaseInjector,
+                         final MessageSender msgSender) {
     this.taskletBaseInjector = taskletBaseInjector;
     this.msgSender = msgSender;
   }
@@ -55,9 +61,11 @@ public final class Tasklets {
 
     final Injector taskletInjector = taskletBaseInjector.forkInjector(taskletConf);
     final Tasklet tasklet = taskletInjector.getInstance(Tasklet.class);
+    final TaskletMsgHandler taskletMsgHandler = taskletInjector.getInstance(TaskletMsgHandler.class);
 
     LOG.log(Level.INFO, "Send tasklet start res msg. tasklet Id: {0}", taskletId);
     msgSender.sendTaskletStartResMsg(taskletId);
+    taskletMap.put(taskletId, Pair.of(tasklet, taskletMsgHandler));
 
     executorService.submit(() -> {
       boolean isSuccess;
@@ -70,6 +78,7 @@ public final class Tasklets {
         LOG.log(Level.SEVERE, "Task fail", e);
       }
       LOG.log(Level.INFO, "Tasklet run finish. IsSuccess: {0}", isSuccess);
+      taskletMap.remove(taskletId);
       msgSender.sendTaskletStopResMsg(taskletId, isSuccess);
     });
   }
@@ -81,5 +90,10 @@ public final class Tasklets {
   public void close() {
     closeFlag.set(true);
     // stop all tasklets
+  }
+
+  public void onTaskletMsg(final String taskletId, final byte[] message) {
+    final TaskletMsgHandler taskletMsgHandler = taskletMap.get(taskletId).getRight();
+    taskletMsgHandler.onNext(message);
   }
 }

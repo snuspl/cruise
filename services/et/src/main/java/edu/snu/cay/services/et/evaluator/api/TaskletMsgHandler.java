@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters;
+package edu.snu.cay.services.et.evaluator.api;
 
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+import edu.snu.cay.services.et.evaluator.impl.DefaultTaskletMsgHandler;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
-
-import java.util.Set;
 
 /**
  * Created by xyzi on 27/11/2017.
  */
-@NamedParameter(doc = "", default_classes = DefaultExecutorStartHandler.class)
-public class ExecutorStartHandlers implements Name<Set<EventHandler<ExecutorStart>>> {
+@DefaultImplementation(DefaultTaskletMsgHandler.class)
+public interface TaskletMsgHandler extends EventHandler<byte[]> {
 }

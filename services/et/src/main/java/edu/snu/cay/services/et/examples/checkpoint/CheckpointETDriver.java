@@ -101,7 +101,7 @@ final class CheckpointETDriver {
           // 1. Checkpoint a table after putting some value by running PutTask.
           final AllocatedTable originalTable = etMaster.createTable(buildTableConf(TABLE_ID), executors0).get();
 
-          final Future<RunningTasklet> taskFuture = executors0.get(0).submitTask(TaskConfiguration.CONF
+          final Future<RunningTasklet> taskFuture = executors0.get(0).submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "PutTask")
               .set(TaskConfiguration.TASK, PutTask.class)
               .build());
@@ -126,7 +126,7 @@ final class CheckpointETDriver {
 
           final AtomicInteger taskIdx = new AtomicInteger(0);
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
@@ -151,7 +151,7 @@ final class CheckpointETDriver {
           // 4. Restore a table once again to check that chkps are committed safely.
           final AllocatedTable tableFromCommittedChkps = etMaster.createTable(chkpId, executors1).get();
 
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build())));
@@ -168,7 +168,7 @@ final class CheckpointETDriver {
           // 5. Restore a table from the checkpoint with sampling rate 0.5
           final AllocatedTable tableFromSampledChkp = etMaster.createTable(sampledChkpId, executors1).get();
 
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(
               Configurations.merge(
                   TaskConfiguration.CONF
                       .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())

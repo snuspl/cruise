@@ -52,6 +52,10 @@ public final class RunningTasklet {
     msgSender.sendTaskletStopReqMsg(executorId, taskletId);
   }
 
+  public void send(final byte[] message) {
+    msgSender.sendTaskletByteMsg(executorId, taskletId, message);
+  }
+
   /**
    * @return the future of task result
    */

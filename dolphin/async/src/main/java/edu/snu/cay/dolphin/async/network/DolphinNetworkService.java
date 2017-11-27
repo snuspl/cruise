@@ -16,12 +16,10 @@
 package edu.snu.cay.dolphin.async.network;
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.services.et.configuration.parameters.ExecutorStart;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
@@ -30,19 +28,11 @@ import javax.inject.Inject;
  */
 @Private
 @EvaluatorSide
-public final class ExecutorStartHandler implements EventHandler<ExecutorStart> {
-  private final NetworkConnection<DolphinMsg> networkConnection;
-  private final String evaluatorId;
+public final class DolphinNetworkService {
 
   @Inject
-  private ExecutorStartHandler(final NetworkConnection<DolphinMsg> networkConnection,
-                               @Parameter(EvaluatorIdentifier.class) final String evaluatorId) {
-    this.networkConnection = networkConnection;
-    this.evaluatorId = evaluatorId;
-  }
-
-  @Override
-  public void onNext(final ExecutorStart executorStart) {
+  private DolphinNetworkService(final NetworkConnection<DolphinMsg> networkConnection,
+                                @Parameter(EvaluatorIdentifier.class) final String evaluatorId) {
     networkConnection.setup(evaluatorId);
   }
 }

@@ -332,18 +332,38 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendTaskletByteMsg(final String executorId, final String taskletId, final byte[] message) {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletByteMsg)
+            .setTaskletId(taskletId)
+            .setTaskletByteMsg(ByteBuffer.wrap(message))
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletByte message", e);
+    }
+  }
+
+  @Override
   public void sendTaskletStartReqMsg(final String executorId, final String taskletId, final Configuration taskletConf) {
     final TaskletStartMsg taskletStartMsg = TaskletStartMsg.newBuilder()
         .setType(TaskletStartMsgType.Req)
-        .setTaskletId(taskletId)
         .setTaskConf(confSerializer.toString(taskletConf))
         .build();
 
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
-        .setType(TaskletMsgType.TaskletStartMsg)
-        .setTaskletStartMsg(taskletStartMsg)
-        .build(), TaskletMsg.class);
+            .setType(TaskletMsgType.TaskletStartMsg)
+            .setTaskletId(taskletId)
+            .setTaskletStartMsg(taskletStartMsg)
+            .build(), TaskletMsg.class);
 
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TaskletMsg)
@@ -360,12 +380,12 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTaskletStopReqMsg(final String executorId, final String taskletId) {
     final TaskletStopMsg taskletStopMsg = TaskletStopMsg.newBuilder()
         .setType(TaskletStopMsgType.Req)
-        .setTaskletId(taskletId)
         .build();
 
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
             .setType(TaskletMsgType.TaskletStopMsg)
+            .setTaskletId(taskletId)
             .setTaskletStopMsg(taskletStopMsg)
             .build(), TaskletMsg.class);
 

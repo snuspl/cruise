@@ -126,7 +126,7 @@ public final class PregelDriver {
           vertexTable.load(executors, masterConfInjector.getNamedInstance(InputPath.class)).get();
 
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>();
-          executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
+          executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf())));
 
           for (final Future<RunningTasklet> submittedTaskFuture : taskFutureList) {
             submittedTaskFuture.get().getTaskResult();

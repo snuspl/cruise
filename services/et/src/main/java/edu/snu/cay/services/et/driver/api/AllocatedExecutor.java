@@ -36,16 +36,16 @@ public interface AllocatedExecutor {
 
   /**
    * Assign task to executor.
-   * @param taskConf task configuration.
+   * @param taskletConf task configuration.
    * @return a {@link ListenableFuture} of {@link TaskletResult}
    */
-  ListenableFuture<RunningTasklet> submitTask(Configuration taskConf);
+  ListenableFuture<RunningTasklet> submitTasklet(Configuration taskletConf);
 
   /**
-   * @return an {@link Optional} with a {@link RunningTasklet} submitted by {@link #submitTask(Configuration)}
+   * @return an {@link Optional} with a {@link RunningTasklet} submitted by {@link #submitTasklet(Configuration)}
    * It's emtpy when there's no running task.
    */
-  Map<String, RunningTasklet> getRunningTasks();
+  Map<String, RunningTasklet> getRunningTasklets();
 
   /**
    * Closes the executor.

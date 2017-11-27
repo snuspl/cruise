@@ -293,16 +293,20 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTaskletMsg(final String executorId, final TaskletMsg msg) {
     switch (msg.getType()) {
+    case TaskletByteMsg:
+      break;
+
     case TaskletStartMsg:
       final TaskletStartMsg taskletStartMsg = msg.getTaskletStartMsg();
       if (taskletStartMsg.getType() == TaskletStartMsgType.Res) {
-        final String taskletId = taskletStartMsg.getTaskletId();
+        final String taskletId = msg.getTaskletId();
         final ResultFuture<TaskletResult> taskResultFuture = new ResultFuture<>();
-        callbackRegistryFuture.get().register(TaskletResult.class, taskletId, taskResultFuture::onCompleted);
+        callbackRegistryFuture.get().register(TaskletResult.class,
+            executorId + taskletId, taskResultFuture::onCompleted);
 
         final RunningTasklet runningTasklet = new RunningTasklet(executorId, taskletId,
             taskResultFuture, messageSenderFuture.get());
-        callbackRegistryFuture.get().onCompleted(RunningTasklet.class, taskletId, runningTasklet);
+        callbackRegistryFuture.get().onCompleted(RunningTasklet.class, executorId + taskletId, runningTasklet);
       } else {
         throw new RuntimeException();
       }
@@ -310,9 +314,9 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TaskletStopMsg:
       final TaskletStopMsg taskletStopMsg = msg.getTaskletStopMsg();
       if (taskletStopMsg.getType() == TaskletStopMsgType.Res) {
-        final String taskletId = taskletStopMsg.getTaskletId();
+        final String taskletId = msg.getTaskletId();
         final TaskletResult taskletResult = new TaskletResult(taskletId, taskletStopMsg.getIsSuccess());
-        callbackRegistryFuture.get().onCompleted(TaskletResult.class, taskletId, taskletResult);
+        callbackRegistryFuture.get().onCompleted(TaskletResult.class, executorId + taskletId, taskletResult);
       } else {
         throw new RuntimeException();
       }
