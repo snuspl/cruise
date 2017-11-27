@@ -18,14 +18,11 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
-import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -60,21 +57,16 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   }
 
   @Override
-  public ListenableFuture<RunningTasklet> submitTasklet(final Configuration taskletConf) {
-    try {
-      final String taskletId = Tang.Factory.getTang().newInjector(taskletConf)
-          .getNamedInstance(TaskletIdentifier.class);
+  public ListenableFuture<RunningTasklet> submitTasklet(final TaskletConfiguration taskletConf) {
+    final String taskletId = taskletConf.getId();
 
-      final ResultFuture<RunningTasklet> runningTaskletFuture = new ResultFuture<>();
-      runningTaskletFuture.addListener(runningTasklet -> runningTaskletMap.put(taskletId, runningTasklet));
-      callbackRegistry.register(RunningTasklet.class, identifier + taskletId, runningTaskletFuture::onCompleted);
+    final ResultFuture<RunningTasklet> runningTaskletFuture = new ResultFuture<>();
+    runningTaskletFuture.addListener(runningTasklet -> runningTaskletMap.put(taskletId, runningTasklet));
+    callbackRegistry.register(RunningTasklet.class, identifier + taskletId, runningTaskletFuture::onCompleted);
 
-      msgSender.sendTaskletStartReqMsg(identifier, taskletId, taskletConf);
+    msgSender.sendTaskletStartReqMsg(identifier, taskletId, taskletConf.getConfiguration());
 
-      return runningTaskletFuture;
-    } catch (final InjectionException e) {
-      throw new RuntimeException("Task id should exist within task configuration", e);
-    }
+    return runningTaskletFuture;
   }
 
   @Override

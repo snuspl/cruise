@@ -17,11 +17,11 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutionException;
@@ -36,7 +36,7 @@ import static edu.snu.cay.services.et.examples.addinteger.AddIntegerETDriver.MOD
  * An exception is thrown if the expected result is not found.
  */
 @TaskSide
-public final class ValidatorTask implements Task {
+public final class ValidatorTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(ValidatorTask.class.getName());
 
   private final TableAccessor tableAccessor;
@@ -65,7 +65,7 @@ public final class ValidatorTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Task.call() commencing...");
 
     final long sleepMillis = 100;
@@ -77,7 +77,7 @@ public final class ValidatorTask implements Task {
 
       try {
         if (validate(expectedResult)) {
-          return null;
+          return;
         }
       } catch (final IntegerValidationException e) {
         if (numRetries > 0) {
@@ -88,7 +88,6 @@ public final class ValidatorTask implements Task {
         }
       }
     }
-    return null;
   }
 
   private boolean validate(final int expectedResult)
@@ -108,6 +107,11 @@ public final class ValidatorTask implements Task {
       }
     }
     return true;
+  }
+
+  @Override
+  public void close() {
+
   }
 
   private static class IntegerValidationException extends Exception {

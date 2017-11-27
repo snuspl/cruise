@@ -18,8 +18,8 @@ package edu.snu.cay.services.et.examples.checkpoint;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -31,7 +31,7 @@ import static edu.snu.cay.services.et.examples.checkpoint.PutTask.VALUE_PREFIX;
 /**
  * Task code that gets values from the table to confirm that the table has values put by {@link PutTask}.
  */
-final class GetTask implements Task {
+final class GetTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(GetTask.class.getName());
 
   private final String executorId;
@@ -50,7 +50,7 @@ final class GetTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello! I am {0}", new Object[]{executorId});
     final Table<Long, String, ?> table = tableAccessor.getTable(CheckpointETDriver.TABLE_ID);
 
@@ -80,7 +80,10 @@ final class GetTask implements Task {
     }
 
     LOG.log(Level.INFO, "Succeed to get {0} key-value items", itemCount);
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

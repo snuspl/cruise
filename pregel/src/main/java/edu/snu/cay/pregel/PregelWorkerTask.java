@@ -21,9 +21,9 @@ import edu.snu.cay.pregel.graph.api.Vertex;
 import edu.snu.cay.pregel.graph.impl.*;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * @param <M> a message type
  */
 @EvaluatorSide
-public final class PregelWorkerTask<V, E, M> implements Task {
+public final class PregelWorkerTask<V, E, M> implements Tasklet {
   private static final Logger LOG = Logger.getLogger(PregelWorkerTask.class.getName());
 
   /**
@@ -71,7 +71,7 @@ public final class PregelWorkerTask<V, E, M> implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
 
     LOG.log(Level.INFO, "Pregel task starts.");
 
@@ -125,8 +125,6 @@ public final class PregelWorkerTask<V, E, M> implements Task {
     LOG.log(Level.INFO, "Pregel job has been finished after {0} supersteps.", superStepCount);
     vertexTable.getLocalTablet().getDataMap().values().forEach(vertex ->
         LOG.log(Level.INFO, "Vertex id : {0}, value : {1}", new Object[]{vertex.getId(), vertex.getValue()}));
-
-    return null;
   }
 
   /**
@@ -154,5 +152,10 @@ public final class PregelWorkerTask<V, E, M> implements Task {
       vertexPartitions.add(new Partition<>(partitionVertices));
     }
     return vertexPartitions;
+  }
+
+  @Override
+  public void close() {
+
   }
 }

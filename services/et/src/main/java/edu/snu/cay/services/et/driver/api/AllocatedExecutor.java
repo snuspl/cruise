@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -39,7 +40,7 @@ public interface AllocatedExecutor {
    * @param taskletConf task configuration.
    * @return a {@link ListenableFuture} of {@link TaskletResult}
    */
-  ListenableFuture<RunningTasklet> submitTasklet(Configuration taskletConf);
+  ListenableFuture<RunningTasklet> submitTasklet(TaskletConfiguration taskletConf);
 
   /**
    * @return an {@link Optional} with a {@link RunningTasklet} submitted by {@link #submitTasklet(Configuration)}

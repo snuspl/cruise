@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.evaluator.impl.OrderingBasedBlockPartitioner;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
@@ -27,7 +28,6 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -45,7 +45,7 @@ import static edu.snu.cay.services.et.examples.tableaccess.PrefixUpdateFunction.
  * Task code runs a test with PUT, GET, UPDATE, DELETE operations,
  * and checks that all operations are executed correctly.
  */
-final class TableAccessSingleThreadTask implements Task {
+final class TableAccessSingleThreadTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(TableAccessSingleThreadTask.class.getName());
 
   // Tests with all block access pattern will access each block exactly once
@@ -95,7 +95,7 @@ final class TableAccessSingleThreadTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
 
     final Table<Long, String, String> table = tableAccessor.getTable(tableId);
@@ -129,7 +129,6 @@ final class TableAccessSingleThreadTask implements Task {
     final long endTime = System.currentTimeMillis();
     testNameToTimeList.add(Pair.of("Total test time", endTime - startTime));
     printResult();
-    return null;
   }
 
   private void runTest(final Runnable test) {
@@ -201,6 +200,11 @@ final class TableAccessSingleThreadTask implements Task {
       }
     }
     return randomizedKeySet.toArray(new Long[randomizedKeySet.size()]);
+  }
+
+  @Override
+  public void close() {
+
   }
 
   /**

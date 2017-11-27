@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -31,9 +32,6 @@ import edu.snu.cay.services.et.evaluator.impl.NoneKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
-import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -126,17 +124,14 @@ final class LoadETDriver {
    * Each task will determine what table to test by {@code #isKeyValueTable}.
    * @param isKeyValueTable whether a data set has key of not, it is bound to {@link IsKeyValueTable}
    */
-  private Configuration buildTaskConf(final boolean isKeyValueTable) {
-    final Configuration isKeyExistConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(IsKeyValueTable.class, String.valueOf(isKeyValueTable))
+  private TaskletConfiguration buildTaskConf(final boolean isKeyValueTable) {
+    return TaskletConfiguration.newBuilder()
+        .setId("LoadETTask" + taskCounter.getAndIncrement())
+        .setTaskletClass(LoadETTask.class)
+        .setUserParamConf(Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(IsKeyValueTable.class, String.valueOf(isKeyValueTable))
+            .build())
         .build();
-
-    final Configuration taskConf = TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, "LoadETTask" + taskCounter.getAndIncrement())
-        .set(TaskConfiguration.TASK, LoadETTask.class)
-        .build();
-
-    return Configurations.merge(isKeyExistConf, taskConf);
   }
 
   /**

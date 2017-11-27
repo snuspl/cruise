@@ -20,13 +20,13 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.RunningTask;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -96,9 +96,9 @@ final class ETCentCommExampleDriver {
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(executors.size());
           executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(
-              TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
+              TaskletConfiguration.newBuilder()
+                  .setId(TASK_PREFIX + taskIdCount.getAndIncrement())
+                  .setTaskletClass(ETCentCommSlaveTask.class)
                   .build())));
 
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);

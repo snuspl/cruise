@@ -216,7 +216,7 @@ public final class JobServerDriver {
     final Future<List<AllocatedExecutor>> workersFuture;
 
     final boolean firstJob;
-    if (first.compareAndSet(true, false)) {
+    if (first.compareAndSet(true, false)) { // TODO #00: spawn all evaluators at job-server's startup
       serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
           jobEntity.getServerExecutorConf());
       workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),

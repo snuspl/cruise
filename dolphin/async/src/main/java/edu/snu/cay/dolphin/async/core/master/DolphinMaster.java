@@ -19,12 +19,13 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.core.server.ServerTasklet;
+import edu.snu.cay.dolphin.async.core.worker.DolphinMsgHandler;
 import edu.snu.cay.dolphin.async.core.worker.ModelEvaluationTasklet;
 import edu.snu.cay.dolphin.async.core.worker.WorkerTasklet;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.api.OptimizationOrchestrator;
-import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
@@ -99,38 +100,43 @@ public final class DolphinMaster {
     optimizationOrchestrator.start();
   }
 
-  public Configuration getWorkerTaskletConf() {
-    return Configurations.merge(
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindImplementation(Tasklet.class, WorkerTasklet.class)
-            .bindNamedParameter(DolphinJobId.class, dolphinJobId)
-            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
-            .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
-            .bindNamedParameter(ModelTableId.class, modelTableId)
-            .bindNamedParameter(InputTableId.class, inputTableId)
-            .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
-            .build(),
-        workerConf);
+  public TaskletConfiguration getWorkerTaskletConf() {
+    return TaskletConfiguration.newBuilder()
+        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
+        .setTaskletClass(WorkerTasklet.class)
+        .setTaskletMsgHandlerClass(DolphinMsgHandler.class)
+        .setUserParamConf(Configurations.merge(
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+                .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
+                .bindNamedParameter(ModelTableId.class, modelTableId)
+                .bindNamedParameter(InputTableId.class, inputTableId)
+                .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
+                .build(),
+            workerConf)).build();
   }
 
-  public Configuration getWorkerTaskletConf(final Class<? extends Tasklet> taskClass) {
-    return Configurations.merge(
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindImplementation(Tasklet.class, taskClass)
-            .bindNamedParameter(DolphinJobId.class, dolphinJobId)
-            .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
-            .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
-            .bindNamedParameter(ModelTableId.class, modelTableId)
-            .bindNamedParameter(InputTableId.class, inputTableId)
-            .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
-            .build(),
-        workerConf);
+  public TaskletConfiguration getWorkerTaskletConf(final Class<? extends Tasklet> taskletClass) {
+    return TaskletConfiguration.newBuilder()
+        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
+        .setTaskletClass(taskletClass)
+        .setTaskletMsgHandlerClass(DolphinMsgHandler.class)
+        .setUserParamConf(Configurations.merge(
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+                .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
+                .bindNamedParameter(ModelTableId.class, modelTableId)
+                .bindNamedParameter(InputTableId.class, inputTableId)
+                .bindNamedParameter(OfflineModelEvaluation.class, Boolean.toString(offlineModelEval))
+                .build(),
+            workerConf))
+        .build();
   }
 
-  public Configuration getServerTaskletConf() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(Tasklet.class, ServerTasklet.class)
-        .bindNamedParameter(TaskletIdentifier.class, dolphinJobId + "-" + ServerTasklet.TASKLET_ID_PREFIX)
+  public TaskletConfiguration getServerTaskletConf() {
+    return TaskletConfiguration.newBuilder()
+        .setId(dolphinJobId + "-" + ServerTasklet.TASKLET_ID_PREFIX)
+        .setTaskletClass(ServerTasklet.class)
         .build();
   }
 

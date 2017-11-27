@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.network;
 
-import edu.snu.cay.dolphin.async.core.worker.DolphinMsgHandler;
 import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgHandler;
-import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
 import org.apache.reef.evaluator.context.parameters.Services;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
@@ -50,7 +48,7 @@ public final class NetworkConfProvider {
         .bindSetEntry(Services.class, DolphinNetworkService.class)
         .bindNamedParameter(JobIdentifier.class, jobId) // connection factory id
         .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class) // TODO #00: remove it. it's dummy
-        .bindImplementation(TaskletMsgHandler.class, DolphinMsgHandler.class)
+//        .bindImplementation(TaskletMsgHandler.class, DolphinMsgHandler.class)
         .build();
   }
 }

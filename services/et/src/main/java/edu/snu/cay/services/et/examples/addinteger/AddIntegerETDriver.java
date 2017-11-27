@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -29,9 +30,7 @@ import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -166,10 +165,11 @@ public final class AddIntegerETDriver {
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(workers.size());
           workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
-              Configurations.merge(TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, UpdaterTask.class)
-                  .build(), updaterTaskParamConf))));
+              TaskletConfiguration.newBuilder()
+                  .setId(UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .setTaskletClass(UpdaterTask.class)
+                  .setUserParamConf(updaterTaskParamConf)
+                  .build())));
 
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
 
@@ -177,10 +177,11 @@ public final class AddIntegerETDriver {
           taskIdCount.set(0);
           taskFutureList.clear();
           workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
-              Configurations.merge(TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ValidatorTask.class)
-                  .build(), validatorTaskParamConf))));
+              TaskletConfiguration.newBuilder()
+                  .setId(VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .setTaskletClass(ValidatorTask.class)
+                  .setUserParamConf(validatorTaskParamConf)
+                  .build())));
 
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
 

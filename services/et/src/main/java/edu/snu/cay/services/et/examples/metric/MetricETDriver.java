@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
@@ -27,7 +28,6 @@ import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -135,9 +135,9 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, MetricTask.class)
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .setTaskletClass(MetricTask.class)
               .build())));
 
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
@@ -149,9 +149,9 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, MetricTask.class)
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .setTaskletClass(MetricTask.class)
               .build())));
 
           TaskUtils.waitAndCheckTaskResult(taskFutureList, true);

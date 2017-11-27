@@ -17,10 +17,7 @@ package edu.snu.cay.services.et.examples.tableaccess;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.services.et.common.util.TaskUtils;
-import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
-import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
-import edu.snu.cay.services.et.configuration.ResourceConfiguration;
-import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.*;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -32,9 +29,7 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.client.JobMessageObserver;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -191,8 +186,8 @@ final class TableAccessETDriver {
       for (final AllocatedExecutor testExecutor : executorsToSubmitTask) {
         final Configuration taskParamsConf = getTaskParamsConf(taskIdx, tableId,
             tableAccessType, executorsToSubmitTask.size());
-        final Configuration taskConf = getTaskConf(testId, taskIdx);
-        taskFutureList.add(testExecutor.submitTasklet(Configurations.merge(taskParamsConf, taskConf)));
+        final TaskletConfiguration taskConf = getTaskConf(testId, taskIdx, taskParamsConf);
+        taskFutureList.add(testExecutor.submitTasklet(taskConf));
         taskIdx++;
       }
 
@@ -217,11 +212,13 @@ final class TableAccessETDriver {
         .build();
   }
 
-  private static Configuration getTaskConf(final String testId,
-                                           final int taskIdx) {
-    return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, testId + "-" + taskIdx)
-        .set(TaskConfiguration.TASK, TableAccessSingleThreadTask.class)
+  private static TaskletConfiguration getTaskConf(final String testId,
+                                                  final int taskIdx,
+                                                  final Configuration taskParamsConf) {
+    return TaskletConfiguration.newBuilder()
+        .setId(testId + "-" + taskIdx)
+        .setTaskletClass(TableAccessSingleThreadTask.class)
+        .setUserParamConf(taskParamsConf)
         .build();
   }
 

@@ -75,7 +75,7 @@ public final class TaskletRuntime {
         isSuccess = true;
       } catch (Exception e) {
         isSuccess = false;
-        LOG.log(Level.SEVERE, "Task fail", e);
+        LOG.log(Level.SEVERE, "Tasklet fail. Id: " + taskletId, e);
       }
       LOG.log(Level.INFO, "Tasklet run finish. IsSuccess: {0}", isSuccess);
       taskletMap.remove(taskletId);

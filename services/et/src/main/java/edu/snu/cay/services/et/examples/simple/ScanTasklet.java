@@ -17,12 +17,8 @@ package edu.snu.cay.services.et.examples.simple;
 
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.evaluator.api.Block;
-import edu.snu.cay.services.et.evaluator.api.Table;
-import edu.snu.cay.services.et.evaluator.api.TableAccessor;
-import edu.snu.cay.services.et.evaluator.api.Tablet;
+import edu.snu.cay.services.et.evaluator.api.*;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.Iterator;
@@ -38,8 +34,8 @@ import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.ORDERED_TAB
  * Task code that scans values in locally assigned table blocks.
  * This task assumes that there's no data migration during its span.
  */
-final class ScanTask implements Task {
-  private static final Logger LOG = Logger.getLogger(ScanTask.class.getName());
+final class ScanTasklet implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(ScanTasklet.class.getName());
 
   private final String elasticTableId;
 
@@ -48,16 +44,16 @@ final class ScanTask implements Task {
   private final TableAccessor tableAccessor;
 
   @Inject
-  private ScanTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                   @Parameter(ExecutorIdentifier.class) final String executorId,
-                   final TableAccessor tableAccessor) {
+  private ScanTasklet(@Parameter(ETIdentifier.class) final String elasticTableId,
+                      @Parameter(ExecutorIdentifier.class) final String executorId,
+                      final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
     final Table<Long, String, ?> orderedTableWithFile = tableAccessor.getTable(ORDERED_TABLE_WITH_FILE_ID);
 
@@ -100,7 +96,10 @@ final class ScanTask implements Task {
     if (localDataMap.size() != dataCount.get()) {
       throw new RuntimeException("Data obtained through getDataMap and getBlockIterator should be the same.");
     }
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

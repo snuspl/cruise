@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
@@ -24,7 +25,6 @@ import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.plan.impl.OpResult;
-import org.apache.reef.tang.Configuration;
 
 import java.util.Map;
 
@@ -33,11 +33,11 @@ import java.util.Map;
  */
 public final class StartOp extends AbstractOp {
   private final String executorId;
-  private final Configuration taskConf;
+  private final TaskletConfiguration taskConf;
   private final MetricServiceExecutorConf metricConf;
 
   public StartOp(final String executorId,
-                 final Configuration taskConf,
+                 final TaskletConfiguration taskConf,
                  final MetricServiceExecutorConf metricConf) {
     super(OpType.START);
     this.executorId = executorId;

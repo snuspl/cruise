@@ -19,8 +19,8 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -28,14 +28,14 @@ import java.util.logging.Logger;
 
 import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.HASHED_TABLE_ID;
 import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.ORDERED_TABLE_ID;
-import static edu.snu.cay.services.et.examples.simple.PutTask.*;
+import static edu.snu.cay.services.et.examples.simple.PutTasklet.*;
 
 /**
  * Task code that gets values from tables.
- * It should be submitted after {@link PutTask} is done.
+ * It should be submitted after {@link PutTasklet} is done.
  */
-final class GetTask implements Task {
-  private static final Logger LOG = Logger.getLogger(GetTask.class.getName());
+final class GetTasklet implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(GetTasklet.class.getName());
 
   private final String elasticTableId;
 
@@ -44,16 +44,16 @@ final class GetTask implements Task {
   private final TableAccessor tableAccessor;
 
   @Inject
-  private GetTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                  @Parameter(ExecutorIdentifier.class) final String executorId,
-                  final TableAccessor tableAccessor) {
+  private GetTasklet(@Parameter(ETIdentifier.class) final String elasticTableId,
+                     @Parameter(ExecutorIdentifier.class) final String executorId,
+                     final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
     final Table<Long, String, ?> hashedTable = tableAccessor.getTable(HASHED_TABLE_ID);
     final Table<Long, String, ?> orderedTable = tableAccessor.getTable(ORDERED_TABLE_ID);
@@ -72,7 +72,10 @@ final class GetTask implements Task {
         !value11.equals(VALUE1) || !value10.equals(SimpleUpdateFunction.getInitValue(KEY0))) {
       throw new RuntimeException("The result is different from the expectation");
     }
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }
