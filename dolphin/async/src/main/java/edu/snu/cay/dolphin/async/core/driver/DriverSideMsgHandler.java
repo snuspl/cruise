@@ -40,6 +40,6 @@ public final class DriverSideMsgHandler implements MessageHandler {
   @Override
   public void onNext(final Message<DolphinMsg> msg) {
     final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
-    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(dolphinMsg);
   }
 }

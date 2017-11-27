@@ -54,7 +54,7 @@ public final class MasterSideMsgHandler {
   /**
    * Handles dolphin msgs from workers.
    */
-  public void onDolphinMsg(final String srcId, final DolphinMsg dolphinMsg) {
+  public void onDolphinMsg(final DolphinMsg dolphinMsg) {
     switch (dolphinMsg.getType()) {
     case ProgressMsg:
       final ProgressMsg progressMsg = dolphinMsg.getProgressMsg();
@@ -70,7 +70,7 @@ public final class MasterSideMsgHandler {
       }
       break;
     case SyncMsg:
-      syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(srcId, dolphinMsg.getSyncMsg()));
+      syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(dolphinMsg.getSyncMsg()));
       break;
     case ModelEvalAskMsg:
       modelEvalMsgExecutor.submit(() -> modelChkpManagerFuture.get().onWorkerMsg());

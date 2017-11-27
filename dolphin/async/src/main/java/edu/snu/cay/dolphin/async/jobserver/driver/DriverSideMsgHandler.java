@@ -44,6 +44,6 @@ public final class DriverSideMsgHandler implements MessageHandler {
 
     final String jobId = dolphinMsg.getJobId().toString();
     final DolphinMaster dolphinMaster = jobServerDriverFuture.get().getDolphinMaster(jobId);
-    dolphinMaster.getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+    dolphinMaster.getMsgHandler().onDolphinMsg(dolphinMsg);
   }
 }

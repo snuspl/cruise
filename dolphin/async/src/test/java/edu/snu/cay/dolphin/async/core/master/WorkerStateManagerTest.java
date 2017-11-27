@@ -30,15 +30,11 @@ import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.io.network.impl.NSMessage;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -151,7 +147,6 @@ public class WorkerStateManagerTest {
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
     final TaskletMsgHandler taskletMsgHandler = injector.getInstance(DolphinMsgHandler.class);
     final SerializableCodec<WorkerGlobalBarrier.State> codec = new SerializableCodec<>();
-    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
     workerIdToWorkerComponents.put(workerId,
         new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, taskletMsgHandler));
@@ -171,10 +166,7 @@ public class WorkerStateManagerTest {
 
       LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
       final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getRight();
-
-      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
-          identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
-      masterSideMsgHandler.onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+      masterSideMsgHandler.onDolphinMsg(dolphinMsg);
       return null;
     }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }

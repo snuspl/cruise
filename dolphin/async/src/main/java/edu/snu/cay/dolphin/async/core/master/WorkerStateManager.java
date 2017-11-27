@@ -68,12 +68,6 @@ public final class WorkerStateManager {
   private final CountDownLatch finishRunLatch = new CountDownLatch(1);
 
   /**
-   * A map between a worker's identifier and its network identifier.
-   * It's required when two ids are different.
-   */
-  private final Map<String, String> workerIdToNetworkId = new ConcurrentHashMap<>();
-
-  /**
    * A set of ids of workers to be synchronized.
    */
   @GuardedBy("this")
@@ -257,11 +251,6 @@ public final class WorkerStateManager {
   }
 
   private void sendResponseMessage(final String workerId) {
-    final String networkId = workerIdToNetworkId.get(workerId);
-    if (networkId == null) {
-      throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
-    }
-
     final RunningTasklet runningTasklet = taskRunnerFuture.get().getRunningTasklet(workerId);
     runningTasklet.send(serializedReleaseMsg);
   }
@@ -357,14 +346,11 @@ public final class WorkerStateManager {
 
   /**
    * Handles {@link SyncMsg} from a worker whose network id is {@code networkId}.
-   * @param networkId a network id of the worker
    * @param syncMsg a sync msg from the worker
    */
-  void onSyncMsg(final String networkId, final SyncMsg syncMsg) {
+  void onSyncMsg(final SyncMsg syncMsg) {
     final String workerId = syncMsg.getExecutorId().toString();
     final WorkerGlobalBarrier.State localState = codec.decode(syncMsg.getSerializedState().array());
-
-    workerIdToNetworkId.putIfAbsent(workerId, networkId);
 
     jobLogger.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
     onWorkerMsg(workerId, localState);
