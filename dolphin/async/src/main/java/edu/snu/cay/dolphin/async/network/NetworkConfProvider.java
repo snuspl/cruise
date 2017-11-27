@@ -48,7 +48,6 @@ public final class NetworkConfProvider {
         .bindSetEntry(Services.class, DolphinNetworkService.class)
         .bindNamedParameter(JobIdentifier.class, jobId) // connection factory id
         .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class) // TODO #00: remove it. it's dummy
-//        .bindImplementation(TaskletMsgHandler.class, DolphinMsgHandler.class)
         .build();
   }
 }
