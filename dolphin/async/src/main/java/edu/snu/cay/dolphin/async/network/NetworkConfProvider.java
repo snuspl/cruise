@@ -45,11 +45,11 @@ public final class NetworkConfProvider {
   /**
    * Returns {@link MessageHandler} related service configuration to be used in executor.
    */
-  public static Configuration getWorkerServiceConfiguration(final String jobId) {
+  public static Configuration getServiceConfiguration(final String jobId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(Services.class, DolphinNetworkService.class)
         .bindNamedParameter(JobIdentifier.class, jobId) // connection factory id
-        .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class) // TODO #00: remove it
+        .bindImplementation(MessageHandler.class, WorkerSideMsgHandler.class) // TODO #00: remove it. it's dummy
         .bindImplementation(TaskletMsgHandler.class, DolphinMsgHandler.class)
         .build();
   }
