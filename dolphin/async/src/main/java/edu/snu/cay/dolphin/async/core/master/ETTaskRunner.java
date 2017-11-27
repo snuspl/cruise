@@ -31,8 +31,6 @@ import javax.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 
 /**
@@ -88,18 +86,8 @@ public final class ETTaskRunner {
 
     // submit dummy tasks to servers
     servers.forEach(server -> server.submitTasklet(etDolphinMasterFuture.get().getServerTaskletConf()));
-
-    final Map<String, Future<RunningTasklet>> executorIdToTaskletFuture = new HashMap<>(workers.size());
-    workers.forEach(worker -> executorIdToTaskletFuture.put(worker.getId(),
-        worker.submitTasklet(etDolphinMasterFuture.get().getWorkerTaskletConf())));
-
-    executorIdToTaskletFuture.forEach((executorId, taskFuture) -> {
-      try {
-        executorIdToTasklet.put(executorId, taskFuture.get());
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException("Exception while waiting for tasks to be submitted", e);
-      }
-    });
+    workers.forEach(worker -> worker.submitTasklet(etDolphinMasterFuture.get().getWorkerTaskletConf())
+        .addListener(runningTasklet -> executorIdToTasklet.put(worker.getId(), runningTasklet)));
 
     jobLogger.log(Level.INFO, "Wait for workers to finish run stage");
 
