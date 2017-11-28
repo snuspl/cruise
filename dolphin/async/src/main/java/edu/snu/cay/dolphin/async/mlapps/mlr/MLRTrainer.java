@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
-import edu.snu.cay.dolphin.async.core.worker.ETModelAccessor;
 import edu.snu.cay.dolphin.async.core.worker.ModelAccessor;
 import edu.snu.cay.dolphin.async.core.worker.ModelHolder;
 import edu.snu.cay.dolphin.async.core.worker.Trainer;
