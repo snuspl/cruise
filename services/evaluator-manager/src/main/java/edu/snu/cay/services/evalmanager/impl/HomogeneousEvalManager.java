@@ -85,24 +85,37 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     this.numEvalCores = numEvalCores;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  @Override
   public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores...",
-        new Object[]{evalNum, evalMemSizeInMB, numEvalCores});
+    allocateEvaluators(evalNum, megaBytes, cores, new String[0], evaluatorAllocatedHandler, contextActiveHandlerList);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores, final String[] nodeNames,
+                                 final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
+                                 final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores in nodes: {3}...",
+        new Object[]{evalNum, evalMemSizeInMB, numEvalCores, nodeNames});
 
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
       pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
     }
-    final EvaluatorRequest request = EvaluatorRequest.newBuilder()
+    final EvaluatorRequest.Builder requestBuilder = EvaluatorRequest.newBuilder()
         .setNumber(evalNum)
         .setNumberOfCores(numEvalCores)
-        .setMemory(evalMemSizeInMB)
-        .build();
+        .setMemory(evalMemSizeInMB);
+
+    for (final String nodeName : nodeNames) {
+      requestBuilder.addNodeName(nodeName);
+    }
+
+    final EvaluatorRequest request = requestBuilder.build();
+
     evaluatorRequestor.submit(request);
   }
 
