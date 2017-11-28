@@ -41,11 +41,9 @@ import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -78,8 +76,6 @@ public final class JobServerDriver {
   private final JobServerStatusManager jobServerStatusManager;
   private final JobScheduler jobScheduler;
 
-  private final String reefJobId;
-
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
   /**
@@ -96,14 +92,12 @@ public final class JobServerDriver {
                           final JobMessageObserver jobMessageObserver,
                           final JobServerStatusManager jobServerStatusManager,
                           final JobScheduler jobScheduler,
-                          final Injector jobBaseInjector,
-                          @Parameter(JobIdentifier.class) final String reefJobId)
+                          final Injector jobBaseInjector)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.jobServerStatusManager = jobServerStatusManager;
     this.jobScheduler = jobScheduler;
-    this.reefJobId = reefJobId;
     this.jobBaseInjector = jobBaseInjector;
   }
 
@@ -188,11 +182,6 @@ public final class JobServerDriver {
     }
   }
 
-  private AtomicBoolean first = new AtomicBoolean(true);
-
-  private List<AllocatedExecutor> cachedServers;
-  private List<AllocatedExecutor> cachedWorkers;
-
   /**
    * Executes a job.
    */
@@ -204,35 +193,16 @@ public final class JobServerDriver {
     LOG.log(Level.INFO, jobStartMsg);
 
     LOG.log(Level.INFO, "Preparing executors and tables for job: {0}", jobId);
-    final Future<List<AllocatedExecutor>> serversFuture;
-    final Future<List<AllocatedExecutor>> workersFuture;
 
-    final boolean firstJob;
-    if (first.compareAndSet(true, false)) { // TODO #00: spawn all evaluators at job-server's startup
-      serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
+    final Future<List<AllocatedExecutor>> serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
           jobEntity.getServerExecutorConf());
-      workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),
+    final Future<List<AllocatedExecutor>> workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),
           jobEntity.getWorkerExecutorConf());
-      firstJob = true;
-    } else {
-      serversFuture = null;
-      workersFuture = null;
-      firstJob = false;
-    }
 
     new Thread(() -> {
       try {
-        final List<AllocatedExecutor> servers;
-        final List<AllocatedExecutor> workers;
-        if (firstJob) {
-          servers = serversFuture.get();
-          workers = workersFuture.get();
-          cachedServers = servers;
-          cachedWorkers = workers;
-        } else {
-          servers = cachedServers;
-          workers = cachedWorkers;
-        }
+        final List<AllocatedExecutor> servers = serversFuture.get();
+        final List<AllocatedExecutor> workers = workersFuture.get();
 
         final Future<AllocatedTable> modelTableFuture = etMaster.createTable(jobEntity.getServerTableConf(), servers);
         final Future<AllocatedTable> inputTableFuture = etMaster.createTable(jobEntity.getWorkerTableConf(), workers);
@@ -362,9 +332,6 @@ public final class JobServerDriver {
 
     sendMessageToClient(shutdownMsg);
     LOG.log(Level.INFO, shutdownMsg);
-
-    cachedWorkers.forEach(AllocatedExecutor::close);
-    cachedServers.forEach(AllocatedExecutor::close);
 
     if (isClosed.compareAndSet(false, true)) {
       jobServerStatusManager.finishJobServer();
