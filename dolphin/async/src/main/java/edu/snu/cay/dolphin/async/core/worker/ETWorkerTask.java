@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
+import edu.snu.cay.dolphin.async.CachedModelAccessor;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.metric.MetricCollector;

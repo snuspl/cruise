@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.snu.cay.dolphin.async.core.worker.ModelAccessor;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
@@ -82,7 +83,6 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   private LoadingCache<K, V> initCache() {
     return CacheBuilder.newBuilder()
         .concurrencyLevel(CACHE_CONCURRENCY_WRITES)
-//        .maximumSize(0)
         .build(new CacheLoader<K, V>() {
           @Override
           public V load(final K key) throws Exception {
