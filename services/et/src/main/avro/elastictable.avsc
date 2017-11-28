@@ -589,11 +589,11 @@
 {
   "namespace": "edu.snu.cay.services.et.avro",
   "type": "record",
-  "name": "TaskletStartMsg",
+  "name": "TaskletControlMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "TaskletStartMsgType",
-        "symbols": ["Req", "Res"]}},
+    {"name": "type", "type": {"type": "enum", "name": "TaskletControlType",
+        "symbols": ["Start", "Stop"]}},
     {"name": "taskConf", "type": ["null", "string"], "default": null}
   ]
 },
@@ -605,12 +605,12 @@
 {
   "namespace": "edu.snu.cay.services.et.avro",
   "type": "record",
-  "name": "TaskletStopMsg",
+  "name": "TaskletStatusMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "TaskletStopMsgType",
-        "symbols": ["Req", "Res"]}},
-    {"name": "isSuccess", "type": ["null", "boolean"], "default": null}
+    {"name": "type", "type": {"type": "enum", "name": "TaskletStatusType",
+        "symbols": ["Running", "Done", "Failed"]}},
+    {"name": "message", "type": ["null", "string"], "default": null}
   ]
 },
 
@@ -625,11 +625,11 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "TaskletMsgType",
-        "symbols": ["TaskletByteMsg", "TaskletStartMsg", "TaskletStopMsg"]}},
+        "symbols": ["TaskletCustomMsg", "TaskletControlMsg", "TaskletStatusMsg"]}},
     {"name": "taskletId", "type": "string"},
-    {"name": "taskletByteMsg", "type": ["null", "bytes"], "default": null},
-    {"name": "taskletStartMsg", "type": ["null", "TaskletStartMsg"], "default": null},
-    {"name": "taskletStopMsg", "type": ["null", "TaskletStopMsg"], "default": null}
+    {"name": "taskletCustomMsg", "type": ["null", "bytes"], "default": null},
+    {"name": "taskletControlMsg", "type": ["null", "TaskletControlMsg"], "default": null},
+    {"name": "taskletStatusMsg", "type": ["null", "TaskletStatusMsg"], "default": null}
   ]
 },
 

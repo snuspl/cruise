@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.avro.TaskletStatusType;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
-import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -28,7 +28,7 @@ import javax.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,11 +41,11 @@ public final class TaskletRuntime {
   private final Injector taskletBaseInjector;
   private final MessageSender msgSender;
 
-  private final AtomicBoolean closeFlag = new AtomicBoolean(false);
+  private boolean closeFlag = false;
 
   private final Map<String, Pair<Tasklet, TaskletMsgHandler>> taskletMap = new ConcurrentHashMap<>();
 
-  private final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(NUM_TASKLETS);
+  private final ExecutorService executorService = Executors.newFixedThreadPool(NUM_TASKLETS);
 
   @Inject
   private TaskletRuntime(final Injector taskletBaseInjector,
@@ -55,8 +55,10 @@ public final class TaskletRuntime {
   }
 
   public void startTasklet(final String taskletId, final Configuration taskletConf) throws InjectionException {
-    if (closeFlag.get()) {
-      return;
+    synchronized (this) {
+      if (closeFlag) {
+        return;
+      }
     }
 
     final Injector taskletInjector = taskletBaseInjector.forkInjector(taskletConf);
@@ -64,7 +66,7 @@ public final class TaskletRuntime {
     final TaskletMsgHandler taskletMsgHandler = taskletInjector.getInstance(TaskletMsgHandler.class);
 
     LOG.log(Level.INFO, "Send tasklet start res msg. tasklet Id: {0}", taskletId);
-    msgSender.sendTaskletStartResMsg(taskletId);
+    msgSender.sendTaskletStatusMsg(taskletId, TaskletStatusType.Running);
     taskletMap.put(taskletId, Pair.of(tasklet, taskletMsgHandler));
 
     executorService.submit(() -> {
@@ -73,23 +75,28 @@ public final class TaskletRuntime {
         LOG.log(Level.INFO, "Run tasklet. Id: {0}", taskletId);
         tasklet.run();
         isSuccess = true;
+        LOG.log(Level.SEVERE, "Tasklet done. Id: " + taskletId);
       } catch (Exception e) {
         isSuccess = false;
         LOG.log(Level.SEVERE, "Tasklet fail. Id: " + taskletId, e);
       }
-      LOG.log(Level.INFO, "Tasklet run finish. IsSuccess: {0}", isSuccess);
+
       taskletMap.remove(taskletId);
-      msgSender.sendTaskletStopResMsg(taskletId, isSuccess);
+
+      final TaskletStatusType statusType = isSuccess ? TaskletStatusType.Done : TaskletStatusType.Failed;
+      msgSender.sendTaskletStatusMsg(taskletId, statusType);
     });
   }
 
   public void stopTasklet(final String taskletId) {
-
+    taskletMap.get(taskletId).getLeft().close();
   }
 
-  public void close() {
-    closeFlag.set(true);
+  public synchronized void close() {
+    closeFlag = true;
+
     // stop all tasklets
+    taskletMap.values().forEach((taskletPair -> taskletPair.getLeft().close()));
   }
 
   public void onTaskletMsg(final String taskletId, final byte[] message) {

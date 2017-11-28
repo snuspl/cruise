@@ -125,7 +125,7 @@ public final class ETTaskRunner {
       final AllocatedExecutor executor;
       try {
         executor = etMaster.getExecutor(addedWorker);
-        tasklet = executor.getRunningTasklets().get(jobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX);
+        tasklet = executor.getRunningTasklet(jobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX);
         if (tasklet == null) {
           throw new RuntimeException(String.format("Task is not running on the executor %s", addedWorker));
         }

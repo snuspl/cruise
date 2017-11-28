@@ -26,9 +26,9 @@ import javax.inject.Inject;
  * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 @EvaluatorSide
-public final class WorkerSideMsgHandler implements MessageHandler {
+public final class DummyMsgHandler implements MessageHandler {
   @Inject
-  private WorkerSideMsgHandler() {
+  private DummyMsgHandler() {
   }
 
   @Override

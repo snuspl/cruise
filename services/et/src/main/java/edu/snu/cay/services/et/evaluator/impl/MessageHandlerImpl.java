@@ -339,21 +339,29 @@ public final class MessageHandlerImpl implements MessageHandler {
   private void onTaskletMsg(final TaskletMsg msg) {
     taskletMsgExecutor.submit(() -> {
       switch (msg.getType()) {
-      case TaskletByteMsg:
-        taskletRuntimeFuture.get().onTaskletMsg(msg.getTaskletId(), msg.getTaskletByteMsg().array());
+      case TaskletCustomMsg:
+        taskletRuntimeFuture.get().onTaskletMsg(msg.getTaskletId(), msg.getTaskletCustomMsg().array());
         break;
-      case TaskletStartMsg:
-        final TaskletStartMsg taskletStartMsg = msg.getTaskletStartMsg();
-        try {
-          taskletRuntimeFuture.get().startTasklet(msg.getTaskletId(),
-              confSerializer.fromString(taskletStartMsg.getTaskConf()));
-        } catch (InjectionException | IOException e) {
-          throw new RuntimeException(e);
+
+      case TaskletControlMsg:
+        final TaskletControlMsg controlMsg = msg.getTaskletControlMsg();
+        switch (controlMsg.getType()) {
+        case Start:
+          try {
+            final Configuration taskletConf = confSerializer.fromString(controlMsg.getTaskConf());
+            taskletRuntimeFuture.get().startTasklet(msg.getTaskletId(), taskletConf);
+          } catch (InjectionException | IOException e) {
+            throw new RuntimeException(e);
+          }
+          break;
+        case Stop:
+          taskletRuntimeFuture.get().stopTasklet(msg.getTaskletId());
+          break;
+        default:
+          throw new RuntimeException("Unexpected control msg type");
         }
         break;
-      case TaskletStopMsg:
-        taskletRuntimeFuture.get().stopTasklet(msg.getTaskletId());
-        break;
+
       default:
         throw new RuntimeException("Unexpected msg type");
       }

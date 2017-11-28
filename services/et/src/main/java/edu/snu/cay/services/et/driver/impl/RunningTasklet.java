@@ -22,22 +22,25 @@ import edu.snu.cay.services.et.driver.api.MessageSender;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Represents a submitted task.
+ * Represents a running Tasklet.
  */
 public final class RunningTasklet {
   private final String executorId;
   private final String taskletId;
-  private final ResultFuture<TaskletResult> taskResultFuture;
+  private final TaskletRepresenter taskletRepresenter;
+  private final ResultFuture<TaskletResult> taskletResultFuture;
 
   private final MessageSender msgSender;
 
   RunningTasklet(final String executorId,
                  final String taskletId,
-                 final ResultFuture<TaskletResult> taskResultFuture,
+                 final TaskletRepresenter taskletRepresenter,
+                 final ResultFuture<TaskletResult> taskletResultFuture,
                  final MessageSender msgSender) {
     this.executorId = executorId;
     this.taskletId = taskletId;
-    this.taskResultFuture = taskResultFuture;
+    this.taskletRepresenter = taskletRepresenter;
+    this.taskletResultFuture = taskletResultFuture;
     this.msgSender = msgSender;
   }
 
@@ -47,20 +50,19 @@ public final class RunningTasklet {
 
   /**
    * Stops the running task.
+   * @return the future of task result
    */
-  public void stop() {
-    msgSender.sendTaskletStopReqMsg(executorId, taskletId);
+  public ListenableFuture<TaskletResult> stop() {
+    if (!taskletRepresenter.isFinished()) {
+      msgSender.sendTaskletStopMsg(executorId, taskletId);
+    }
+    return taskletResultFuture;
   }
 
   public void send(final byte[] message) {
-    msgSender.sendTaskletByteMsg(executorId, taskletId, message);
-  }
-
-  /**
-   * @return the future of task result
-   */
-  public ListenableFuture<TaskletResult> getTaskResultFuture() {
-    return taskResultFuture;
+    if (!taskletRepresenter.isFinished()) {
+      msgSender.sendTaskletCustomMsg(executorId, taskletId, message);
+    }
   }
 
   /**
@@ -69,7 +71,7 @@ public final class RunningTasklet {
    */
   public TaskletResult getTaskResult() throws InterruptedException {
     try {
-      return taskResultFuture.get();
+      return taskletResultFuture.get();
     } catch (ExecutionException e) {
       throw new RuntimeException(e);
     }

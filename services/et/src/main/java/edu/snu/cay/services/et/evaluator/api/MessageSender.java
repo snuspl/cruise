@@ -159,7 +159,5 @@ public interface MessageSender {
                            Map<String, Integer> countSentGetReq,
                            List<ByteBuffer> encodedCustomMetrics) throws NetworkException;
 
-  void sendTaskletStartResMsg(String taskletId);
-
-  void sendTaskletStopResMsg(String taskletId, boolean isSuccess);
+  void sendTaskletStatusMsg(String taskletId, TaskletStatusType status);
 }

@@ -17,11 +17,11 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
-import edu.snu.cay.services.et.common.impl.CallbackRegistry;
-import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.CatchableExecutors;
@@ -65,10 +65,10 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
   private final InjectionFuture<FallbackManager> fallbackManagerFuture;
+  private final InjectionFuture<ExecutorManager> executorManagerFuture;
   private final InjectionFuture<TableManager> tableManagerFuture;
   private final InjectionFuture<MessageSender> messageSenderFuture;
   private final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture;
-  private final InjectionFuture<CallbackRegistry> callbackRegistryFuture;
 
   /**
    * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
@@ -80,22 +80,22 @@ public final class MessageHandlerImpl implements MessageHandler {
   @Inject
   private MessageHandlerImpl(@Parameter(DriverIdentifier.class) final String driverId,
                              final InjectionFuture<TableControlAgent> tableControlAgentFuture,
+                             final InjectionFuture<ExecutorManager> executorManagerFuture,
                              final InjectionFuture<TableManager> tableManagerFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture,
                              final InjectionFuture<MetricReceiver> metricReceiver,
                              final InjectionFuture<MessageSender> messageSenderFuture,
                              final InjectionFuture<FallbackManager> fallbackManagerFuture,
-                             final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture,
-                             final InjectionFuture<CallbackRegistry> callbackRegistryFuture) {
+                             final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture) {
     this.driverId = driverId;
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
     this.fallbackManagerFuture = fallbackManagerFuture;
+    this.executorManagerFuture = executorManagerFuture;
     this.tableManagerFuture = tableManagerFuture;
     this.messageSenderFuture = messageSenderFuture;
     this.chkpManagerMasterFuture = chkpManagerMasterFuture;
-    this.callbackRegistryFuture = callbackRegistryFuture;
   }
 
   @Override
@@ -292,34 +292,17 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTaskletMsg(final String executorId, final TaskletMsg msg) {
+    final AllocatedExecutor allocatedExecutor;
+    try {
+      allocatedExecutor = executorManagerFuture.get().getExecutor(executorId);
+    } catch (ExecutorNotExistException e) {
+      throw new RuntimeException(e);
+    }
     switch (msg.getType()) {
-    case TaskletByteMsg:
+    case TaskletCustomMsg: // TODO #00: use it
       break;
-
-    case TaskletStartMsg:
-      final TaskletStartMsg taskletStartMsg = msg.getTaskletStartMsg();
-      if (taskletStartMsg.getType() == TaskletStartMsgType.Res) {
-        final String taskletId = msg.getTaskletId();
-        final ResultFuture<TaskletResult> taskResultFuture = new ResultFuture<>();
-        callbackRegistryFuture.get().register(TaskletResult.class,
-            executorId + taskletId, taskResultFuture::onCompleted);
-
-        final RunningTasklet runningTasklet = new RunningTasklet(executorId, taskletId,
-            taskResultFuture, messageSenderFuture.get());
-        callbackRegistryFuture.get().onCompleted(RunningTasklet.class, executorId + taskletId, runningTasklet);
-      } else {
-        throw new RuntimeException();
-      }
-      break;
-    case TaskletStopMsg:
-      final TaskletStopMsg taskletStopMsg = msg.getTaskletStopMsg();
-      if (taskletStopMsg.getType() == TaskletStopMsgType.Res) {
-        final String taskletId = msg.getTaskletId();
-        final TaskletResult taskletResult = new TaskletResult(taskletId, taskletStopMsg.getIsSuccess());
-        callbackRegistryFuture.get().onCompleted(TaskletResult.class, executorId + taskletId, taskletResult);
-      } else {
-        throw new RuntimeException();
-      }
+    case TaskletStatusMsg:
+      allocatedExecutor.onTaskletStatusMessage(msg.getTaskletId(), msg.getTaskletStatusMsg());
       break;
     default:
       throw new RuntimeException("Unexpected message: " + msg);

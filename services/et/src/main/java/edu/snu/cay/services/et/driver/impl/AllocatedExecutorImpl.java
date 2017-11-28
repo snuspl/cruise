@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.avro.TaskletStatusMsg;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
@@ -24,8 +25,8 @@ import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -39,7 +40,7 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   private final ResultFuture<Void> closedFuture;
   private final MessageSender msgSender;
 
-  private final Map<String, RunningTasklet> runningTaskletMap = new ConcurrentHashMap<>();
+  private final Map<String, TaskletRepresenter> taskletRepresenterMap = new ConcurrentHashMap<>();
 
   AllocatedExecutorImpl(final ActiveContext etContext,
                         final MessageSender msgSender,
@@ -61,17 +62,40 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
     final String taskletId = taskletConf.getId();
 
     final ResultFuture<RunningTasklet> runningTaskletFuture = new ResultFuture<>();
-    runningTaskletFuture.addListener(runningTasklet -> runningTaskletMap.put(taskletId, runningTasklet));
     callbackRegistry.register(RunningTasklet.class, identifier + taskletId, runningTaskletFuture::onCompleted);
+    taskletRepresenterMap.put(taskletId, new TaskletRepresenter(identifier, taskletId, msgSender, callbackRegistry));
 
-    msgSender.sendTaskletStartReqMsg(identifier, taskletId, taskletConf.getConfiguration());
+    msgSender.sendTaskletStartMsg(identifier, taskletId, taskletConf.getConfiguration());
 
     return runningTaskletFuture;
   }
 
   @Override
-  public Map<String, RunningTasklet> getRunningTasklets() {
-    return new HashMap<>(runningTaskletMap);
+  public void onTaskletStatusMessage(final String taskletId, final TaskletStatusMsg taskletStatusMsg) {
+    final TaskletRepresenter taskletRepresenter = taskletRepresenterMap.get(taskletId);
+    switch (taskletStatusMsg.getType()) {
+    case Running:
+      taskletRepresenter.onRunningStatusMsg();
+      break;
+    case Done:
+      taskletRepresenter.onDoneStatusMsg();
+      taskletRepresenterMap.remove(taskletId);
+      break;
+    case Failed:
+      taskletRepresenter.onFailedStatusMsg();
+      taskletRepresenterMap.remove(taskletId);
+      break;
+    default:
+      throw new RuntimeException("unexpected msg type");
+    }
+  }
+
+  public Set<String> getTaskletIds() {
+    return taskletRepresenterMap.keySet();
+  }
+
+  public RunningTasklet getRunningTasklet(final String taskletId) {
+    return taskletRepresenterMap.get(taskletId).getRunningTasklet().get();
   }
 
   /**

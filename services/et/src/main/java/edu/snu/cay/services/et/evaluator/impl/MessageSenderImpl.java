@@ -503,16 +503,16 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTaskletStartResMsg(final String taskletId) {
-    final TaskletStartMsg taskletStartMsg = TaskletStartMsg.newBuilder()
-        .setType(TaskletStartMsgType.Res)
+  public void sendTaskletStatusMsg(final String taskletId, final TaskletStatusType status) {
+    final TaskletStatusMsg taskletStatusMsg = TaskletStatusMsg.newBuilder()
+        .setType(status)
         .build();
 
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
-            .setType(TaskletMsgType.TaskletStartMsg)
+            .setType(TaskletMsgType.TaskletStatusMsg)
             .setTaskletId(taskletId)
-            .setTaskletStartMsg(taskletStartMsg)
+            .setTaskletStatusMsg(taskletStatusMsg)
             .build(), TaskletMsg.class);
 
     final ETMsg msg = ETMsg.newBuilder()
@@ -523,31 +523,6 @@ public final class MessageSenderImpl implements MessageSender {
       networkConnection.send(driverId, msg);
     } catch (final NetworkException e) {
       throw new RuntimeException("NetworkException while sending TaskletStartRes message", e);
-    }
-  }
-
-  @Override
-  public void sendTaskletStopResMsg(final String taskletId, final boolean isSuccess) {
-    final TaskletStopMsg taskletStopMsg = TaskletStopMsg.newBuilder()
-        .setType(TaskletStopMsgType.Res)
-        .setIsSuccess(isSuccess)
-        .build();
-
-    final byte[] innerMsg = AvroUtils.toBytes(
-        TaskletMsg.newBuilder()
-            .setType(TaskletMsgType.TaskletStopMsg)
-            .setTaskletId(taskletId)
-            .setTaskletStopMsg(taskletStopMsg)
-            .build(), TaskletMsg.class);
-
-    final ETMsg msg = ETMsg.newBuilder()
-        .setType(ETMsgType.TaskletMsg)
-        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
-
-    try {
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TaskletStopRes message", e);
     }
   }
 }

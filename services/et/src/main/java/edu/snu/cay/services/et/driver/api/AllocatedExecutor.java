@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.services.et.driver.api;
 
+import edu.snu.cay.services.et.avro.TaskletStatusMsg;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
 
-import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Represents an allocated executor.
@@ -42,11 +41,12 @@ public interface AllocatedExecutor {
    */
   ListenableFuture<RunningTasklet> submitTasklet(TaskletConfiguration taskletConf);
 
-  /**
-   * @return an {@link Optional} with a {@link RunningTasklet} submitted by {@link #submitTasklet(Configuration)}
-   * It's emtpy when there's no running task.
-   */
-  Map<String, RunningTasklet> getRunningTasklets();
+  void onTaskletStatusMessage(String taskletId, TaskletStatusMsg taskletStatusMsg);
+
+
+  Set<String> getTaskletIds();
+
+  RunningTasklet getRunningTasklet(String taskletId);
 
   /**
    * Closes the executor.

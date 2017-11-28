@@ -23,9 +23,9 @@ public final class TaskletResult {
   private final boolean isSuccess;
 
   TaskletResult(final String taskletId,
-                final boolean isSuccess) {
+                final TaskletRepresenter.State state) {
     this.taskletId = taskletId;
-    this.isSuccess = isSuccess;
+    this.isSuccess = state.equals(TaskletRepresenter.State.DONE);
   }
 
   public String getTaskletId() {
@@ -35,7 +35,7 @@ public final class TaskletResult {
   /**
    * @return True if the task is finished successfully
    */
-  public synchronized boolean isSuccess() {
-    return  isSuccess;
+  public boolean isSuccess() {
+    return isSuccess;
   }
 }

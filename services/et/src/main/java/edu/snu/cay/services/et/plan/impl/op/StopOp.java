@@ -25,8 +25,8 @@ import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.plan.impl.OpResult;
 
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * An operation for stopping a running task on an executor.
@@ -50,19 +50,17 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException(e);
     }
 
-    final Collection<RunningTasklet> tasklets = executor.getRunningTasklets().values();
-    if (tasklets.isEmpty()) {
+    final Set<String> taskletIds = executor.getTaskletIds();
+    if (taskletIds.isEmpty()) {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
     // TODO #00: fix. It assumes there's only one tasklet
-    final RunningTasklet runningTasklet = tasklets.iterator().next();
-
-    runningTasklet.stop();
+    final String taskletId = taskletIds.iterator().next();
+    final RunningTasklet runningTasklet = executor.getRunningTasklet(taskletId);
 
     final ResultFuture<OpResult> opResultFuture = new ResultFuture<>();
-
-    runningTasklet.getTaskResultFuture()
+    runningTasklet.stop()
         .addListener(taskResult -> {
           // TODO #181: add a listener to sync
           // need to complete this op after metric service is stopped at executor
