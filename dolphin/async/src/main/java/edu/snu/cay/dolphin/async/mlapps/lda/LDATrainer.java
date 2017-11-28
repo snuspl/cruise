@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
