@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.core.worker;
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.CatchableExecutors;
 
@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * Created by xyzi on 27/11/2017.
  */
-public final class DolphinMsgHandler implements TaskletMsgHandler {
+public final class WorkerSideMsgHandler implements TaskletCustomMsgHandler {
   private static final int NUM_RELEASE_MSG_THREADS = 8;
   private static final int NUM_MODEL_EV_MSG_THREADS = 8;
 
@@ -37,8 +37,8 @@ public final class DolphinMsgHandler implements TaskletMsgHandler {
   private final ExecutorService modelEvalMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MODEL_EV_MSG_THREADS);
 
   @Inject
-  private DolphinMsgHandler(final WorkerGlobalBarrier workerGlobalBarrier,
-                            final ModelEvaluator modelEvaluator) {
+  private WorkerSideMsgHandler(final WorkerGlobalBarrier workerGlobalBarrier,
+                               final ModelEvaluator modelEvaluator) {
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.modelEvaluator = modelEvaluator;
   }

@@ -17,9 +17,8 @@ package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.network.MessageHandler;
-import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.reef.io.network.Message;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
@@ -29,7 +28,7 @@ import javax.inject.Inject;
  * Therefore, it routes messages to an appropriate {@link DolphinMaster}
  * based on {@link edu.snu.cay.dolphin.async.DolphinParameters.DolphinJobId} embedded in incoming {@link DolphinMsg}.
  */
-public final class DriverSideMsgHandler implements MessageHandler {
+public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
   private final InjectionFuture<JobServerDriver> jobServerDriverFuture;
 
@@ -39,8 +38,8 @@ public final class DriverSideMsgHandler implements MessageHandler {
   }
 
   @Override
-  public void onNext(final Message<DolphinMsg> msg) {
-    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
+  public void onNext(final byte[] bytes) {
+    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
 
     final String jobId = dolphinMsg.getJobId().toString();
     final DolphinMaster dolphinMaster = jobServerDriverFuture.get().getDolphinMaster(jobId);

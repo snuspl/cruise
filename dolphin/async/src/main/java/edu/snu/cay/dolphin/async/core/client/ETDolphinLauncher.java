@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.async.core.master.ProgressTracker;
 import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.dolphin.async.optimizer.api.Optimizer;
 import edu.snu.cay.dolphin.async.optimizer.conf.OptimizerClass;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
@@ -322,6 +321,7 @@ public final class ETDolphinLauncher {
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF
+        .set(ETDriverConfiguration.TASKLET_CUSTOM_MSG_HANDLER, DriverSideMsgHandler.class)
         .set(ETDriverConfiguration.CHKP_COMMIT_PATH, chkpCommitPath)
         .set(ETDriverConfiguration.CHKP_TEMP_PATH, chkpTempPath)
         .build();
@@ -330,12 +330,9 @@ public final class ETDolphinLauncher {
         .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
         .build();
 
-    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
-
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf,
-        driverNetworkConf, getNCSConfiguration(),
+    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf, getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
             .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))

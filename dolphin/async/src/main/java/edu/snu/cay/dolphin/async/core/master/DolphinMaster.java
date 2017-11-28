@@ -19,7 +19,7 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.core.server.ServerTasklet;
-import edu.snu.cay.dolphin.async.core.worker.DolphinMsgHandler;
+import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgHandler;
 import edu.snu.cay.dolphin.async.core.worker.ModelEvaluationTasklet;
 import edu.snu.cay.dolphin.async.core.worker.WorkerTasklet;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
@@ -104,7 +104,7 @@ public final class DolphinMaster {
     return TaskletConfiguration.newBuilder()
         .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
         .setTaskletClass(WorkerTasklet.class)
-        .setTaskletMsgHandlerClass(DolphinMsgHandler.class)
+        .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(DolphinJobId.class, dolphinJobId)
@@ -120,7 +120,7 @@ public final class DolphinMaster {
     return TaskletConfiguration.newBuilder()
         .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
         .setTaskletClass(taskletClass)
-        .setTaskletMsgHandlerClass(DolphinMsgHandler.class)
+        .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(DolphinJobId.class, dolphinJobId)

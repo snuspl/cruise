@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.async.jobserver.driver.DriverSideMsgHandler;
 import edu.snu.cay.dolphin.async.jobserver.driver.JobScheduler;
 import edu.snu.cay.dolphin.async.jobserver.driver.JobServerDriver;
 import edu.snu.cay.dolphin.async.jobserver.driver.JobServerStatusManager;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
@@ -173,16 +172,16 @@ public final class JobServerClient {
             Class.forName(driverParamInjector.getNamedInstance(Parameters.SchedulerClass.class)))
         .build();
 
-    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF
+        .set(ETDriverConfiguration.TASKLET_CUSTOM_MSG_HANDLER, DriverSideMsgHandler.class)
+        .build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
         .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, LoggingMetricReceiver.class)
         .build();
 
-    final Configuration driverNetworkConf = NetworkConfProvider.getDriverConfiguration(DriverSideMsgHandler.class);
-
     return Configurations.merge(driverConf, jobServerConf, etMasterConfiguration, metricServiceConf,
-        driverNetworkConf, getNCSConfiguration());
+        getNCSConfiguration());
   }
 
   private static Configuration getNCSConfiguration() {

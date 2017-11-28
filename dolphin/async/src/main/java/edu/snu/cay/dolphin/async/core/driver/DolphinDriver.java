@@ -17,11 +17,8 @@ package edu.snu.cay.dolphin.async.core.driver;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
-import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -39,7 +36,6 @@ import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
-import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
@@ -97,7 +93,6 @@ public final class DolphinDriver {
                         final ETMaster etMaster,
                         final JobMessageObserver jobMessageObserver,
                         final ConfigurationSerializer confSerializer,
-                        final NetworkConnection<DolphinMsg> networkConnection,
                         @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
                         @Parameter(NumServers.class) final int numServers,
                         @Parameter(ServerMemSize.class) final int serverMemSize,
@@ -116,7 +111,6 @@ public final class DolphinDriver {
                         @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
                         @Parameter(NumServerBlocks.class) final int numServerBlocks,
                         @Parameter(JobIdentifier.class) final String jobId,
-                        @Parameter(DriverIdentifier.class) final String driverId,
                         @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                         @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                         @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
@@ -129,8 +123,6 @@ public final class DolphinDriver {
 
     this.numWorkers = numWorkers;
     this.numServers = numServers;
-
-    networkConnection.setup(driverId);
 
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
@@ -219,7 +211,6 @@ public final class DolphinDriver {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
         .setRemoteAccessConf(workerRemoteAccessConf)
-        .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(jobId))
         .build();
   }
 

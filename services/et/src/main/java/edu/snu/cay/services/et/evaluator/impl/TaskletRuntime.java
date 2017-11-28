@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.avro.TaskletStatusType;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
-import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -43,7 +43,7 @@ public final class TaskletRuntime {
 
   private boolean closeFlag = false;
 
-  private final Map<String, Pair<Tasklet, TaskletMsgHandler>> taskletMap = new ConcurrentHashMap<>();
+  private final Map<String, Pair<Tasklet, TaskletCustomMsgHandler>> taskletMap = new ConcurrentHashMap<>();
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(NUM_TASKLETS);
 
@@ -63,11 +63,11 @@ public final class TaskletRuntime {
 
     final Injector taskletInjector = taskletBaseInjector.forkInjector(taskletConf);
     final Tasklet tasklet = taskletInjector.getInstance(Tasklet.class);
-    final TaskletMsgHandler taskletMsgHandler = taskletInjector.getInstance(TaskletMsgHandler.class);
+    final TaskletCustomMsgHandler taskletCustomMsgHandler = taskletInjector.getInstance(TaskletCustomMsgHandler.class);
 
     LOG.log(Level.INFO, "Send tasklet start res msg. tasklet Id: {0}", taskletId);
     msgSender.sendTaskletStatusMsg(taskletId, TaskletStatusType.Running);
-    taskletMap.put(taskletId, Pair.of(tasklet, taskletMsgHandler));
+    taskletMap.put(taskletId, Pair.of(tasklet, taskletCustomMsgHandler));
 
     executorService.submit(() -> {
       boolean isSuccess;
@@ -100,7 +100,7 @@ public final class TaskletRuntime {
   }
 
   public void onTaskletMsg(final String taskletId, final byte[] message) {
-    final TaskletMsgHandler taskletMsgHandler = taskletMap.get(taskletId).getRight();
-    taskletMsgHandler.onNext(message);
+    final TaskletCustomMsgHandler taskletCustomMsgHandler = taskletMap.get(taskletId).getRight();
+    taskletCustomMsgHandler.onNext(message);
   }
 }

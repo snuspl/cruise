@@ -13,15 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.api;
+package edu.snu.cay.services.et.evaluator.impl;
 
-import edu.snu.cay.services.et.evaluator.impl.DefaultTaskletMsgHandler;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
+
+import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by xyzi on 27/11/2017.
  */
-@DefaultImplementation(DefaultTaskletMsgHandler.class)
-public interface TaskletMsgHandler extends EventHandler<byte[]> {
+public final class DefaultTaskletCustomMsgHandler implements TaskletCustomMsgHandler {
+  private static final Logger LOG = Logger.getLogger(DefaultTaskletCustomMsgHandler.class.getName());
+
+  @Inject
+  private DefaultTaskletCustomMsgHandler() {
+
+  }
+
+  @Override
+  public void onNext(final byte[] bytes) {
+    LOG.log(Level.FINE, "DefaultTaskletCustomMsgHandler received a msg.");
+  }
 }

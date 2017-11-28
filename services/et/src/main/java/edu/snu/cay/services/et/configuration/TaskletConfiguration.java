@@ -29,14 +29,14 @@ import org.apache.reef.util.BuilderUtils;
 public final class TaskletConfiguration {
   private final String id;
   private final Class<? extends Tasklet> taskletClass;
-  private final Class<? extends TaskletMsgHandler> taskletMsgHandlerClass;
+  private final Class<? extends TaskletCustomMsgHandler> taskletMsgHandlerClass;
   private final Configuration userParamConf;
 
   private Configuration configuration = null;
 
   private TaskletConfiguration(final String id,
                                final Class<? extends Tasklet> taskletClass,
-                               final Class<? extends TaskletMsgHandler> taskletMsgHandlerClass,
+                               final Class<? extends TaskletCustomMsgHandler> taskletMsgHandlerClass,
                                final Configuration userParamConf) {
     this.id = id;
     this.taskletClass = taskletClass;
@@ -55,7 +55,7 @@ public final class TaskletConfiguration {
     return taskletClass;
   }
 
-  public Class<? extends TaskletMsgHandler> getTaskletMsgHandlerClass() {
+  public Class<? extends TaskletCustomMsgHandler> getTaskletMsgHandlerClass() {
     return taskletMsgHandlerClass;
   }
 
@@ -75,7 +75,7 @@ public final class TaskletConfiguration {
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindNamedParameter(TaskletIdentifier.class, id)
               .bindImplementation(Tasklet.class, taskletClass)
-              .bindImplementation(TaskletMsgHandler.class, taskletMsgHandlerClass)
+              .bindImplementation(TaskletCustomMsgHandler.class, taskletMsgHandlerClass)
               .build(),
           userParamConf);
     }
@@ -102,7 +102,7 @@ public final class TaskletConfiguration {
     /**
      * Optional parameters.
      */
-    private Class<? extends TaskletMsgHandler> taskletMsgHandlerClass = DefaultTaskletMsgHandler.class;
+    private Class<? extends TaskletCustomMsgHandler> taskletMsgHandlerClass = DefaultTaskletCustomMsgHandler.class;
     private Configuration userParamConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
 
     private Builder() {
@@ -118,7 +118,7 @@ public final class TaskletConfiguration {
       return this;
     }
 
-    public Builder setTaskletMsgHandlerClass(final Class<? extends TaskletMsgHandler> taskletMsgHandlerClass) {
+    public Builder setTaskletMsgHandlerClass(final Class<? extends TaskletCustomMsgHandler> taskletMsgHandlerClass) {
       this.taskletMsgHandlerClass = taskletMsgHandlerClass;
       return this;
     }

@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.AvroUtils;
@@ -61,6 +62,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private final String driverId;
 
+  private final TaskletCustomMsgHandler taskletCustomMsgHandler;
   private final InjectionFuture<TableControlAgent> tableControlAgentFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
@@ -79,6 +81,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(@Parameter(DriverIdentifier.class) final String driverId,
+                             final TaskletCustomMsgHandler taskletCustomMsgHandler,
                              final InjectionFuture<TableControlAgent> tableControlAgentFuture,
                              final InjectionFuture<ExecutorManager> executorManagerFuture,
                              final InjectionFuture<TableManager> tableManagerFuture,
@@ -88,6 +91,7 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<FallbackManager> fallbackManagerFuture,
                              final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture) {
     this.driverId = driverId;
+    this.taskletCustomMsgHandler = taskletCustomMsgHandler;
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
@@ -299,7 +303,8 @@ public final class MessageHandlerImpl implements MessageHandler {
       throw new RuntimeException(e);
     }
     switch (msg.getType()) {
-    case TaskletCustomMsg: // TODO #00: use it
+    case TaskletCustomMsg:
+      taskletCustomMsgHandler.onNext(msg.getTaskletCustomMsg().array());
       break;
     case TaskletStatusMsg:
       allocatedExecutor.onTaskletStatusMessage(msg.getTaskletId(), msg.getTaskletStatusMsg());

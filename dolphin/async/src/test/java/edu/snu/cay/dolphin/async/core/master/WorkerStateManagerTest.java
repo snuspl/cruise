@@ -22,7 +22,7 @@ import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.dolphinMsgType;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.driver.impl.RunningTasklet;
-import edu.snu.cay.services.et.evaluator.api.TaskletMsgHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
@@ -75,7 +75,7 @@ public class WorkerStateManagerTest {
 
   private Pair<WorkerStateManager, MasterSideMsgHandler> driverComponents;
 
-  private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, TaskletMsgHandler>>
+  private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, TaskletCustomMsgHandler>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -145,11 +145,11 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockedWorkerSideMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final TaskletMsgHandler taskletMsgHandler = injector.getInstance(DolphinMsgHandler.class);
+    final TaskletCustomMsgHandler taskletCustomMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
     final SerializableCodec<WorkerGlobalBarrier.State> codec = new SerializableCodec<>();
 
     workerIdToWorkerComponents.put(workerId,
-        new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, taskletMsgHandler));
+        new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, taskletCustomMsgHandler));
 
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);

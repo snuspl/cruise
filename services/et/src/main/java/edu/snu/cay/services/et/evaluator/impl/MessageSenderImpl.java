@@ -522,7 +522,7 @@ public final class MessageSenderImpl implements MessageSender {
     try {
       networkConnection.send(driverId, msg);
     } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TaskletStartRes message", e);
+      throw new RuntimeException("NetworkException while sending TaskletStatusMessage", e);
     }
   }
 }

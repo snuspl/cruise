@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.network;
+package edu.snu.cay.services.et.evaluator.api;
 
-import edu.snu.cay.dolphin.async.DolphinMsg;
-import org.apache.reef.io.network.Message;
+import edu.snu.cay.services.et.evaluator.impl.DefaultTaskletCustomMsgHandler;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Interface to handle {@link DolphinMsg}.
+ * Created by xyzi on 27/11/2017.
  */
-public interface MessageHandler extends EventHandler<Message<DolphinMsg>> {
+@DefaultImplementation(DefaultTaskletCustomMsgHandler.class)
+public interface TaskletCustomMsgHandler extends EventHandler<byte[]> {
 }
