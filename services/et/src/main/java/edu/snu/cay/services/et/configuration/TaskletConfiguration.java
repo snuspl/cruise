@@ -27,7 +27,7 @@ import org.apache.reef.util.BuilderUtils;
  * A configuration required for creating a table.
  */
 public final class TaskletConfiguration {
-  private final String id;
+  private final String id; // should be unique within the same executor
   private final Class<? extends Tasklet> taskletClass;
   private final Class<? extends TaskletCustomMsgHandler> taskletMsgHandlerClass;
   private final Configuration userParamConf;
