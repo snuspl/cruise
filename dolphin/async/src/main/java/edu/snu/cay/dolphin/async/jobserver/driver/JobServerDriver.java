@@ -220,6 +220,9 @@ public final class JobServerDriver {
 
           dolphinMaster.start(servers, workers, modelTable, inputTable);
 
+          workers.forEach(AllocatedExecutor::close);
+          servers.forEach(AllocatedExecutor::close);
+
         } finally {
           final String jobFinishMsg = String.format("Job execution has been finished. JobId: %s", jobId);
           LOG.log(Level.INFO, jobFinishMsg);
