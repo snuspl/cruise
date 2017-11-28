@@ -55,7 +55,7 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
-    // TODO #00: fix. It assumes there's only one tasklet
+    // it assumes there's only one tasklet on the executor
     final String taskletId = taskletIds.iterator().next();
     final RunningTasklet runningTasklet = executor.getRunningTasklet(taskletId);
 
