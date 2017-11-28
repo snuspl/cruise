@@ -90,9 +90,6 @@ public final class WorkerTasklet<V> implements Tasklet {
 
     trainer.initGlobalSettings();
 
-    // TODO #1225: WorkerGlobalBarrier should not be reused
-    workerGlobalBarrier.init();
-
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
     workerGlobalBarrier.await();
