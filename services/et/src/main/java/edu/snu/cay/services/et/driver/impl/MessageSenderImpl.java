@@ -332,7 +332,8 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTaskletCustomMsg(final String executorId, final String taskletId, final byte[] message) {
+  public void sendTaskletCustomMsg(final String executorId, final String taskletId, final byte[] message)
+      throws NetworkException {
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()
             .setType(TaskletMsgType.TaskletCustomMsg)
@@ -344,11 +345,7 @@ public final class MessageSenderImpl implements MessageSender {
         .setType(ETMsgType.TaskletMsg)
         .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
 
-    try {
-      networkConnection.send(executorId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TaskletByte message", e);
-    }
+    networkConnection.send(executorId, msg);
   }
 
   @Override

@@ -102,7 +102,7 @@ public interface MessageSender {
    */
   void sendTableAccessReqMsg(String destId, long opId, TableAccessReqMsg tableAccessReqMsg) throws NetworkException;
 
-  void sendTaskletCustomMsg(String executorId, String taskletId, byte[] message);
+  void sendTaskletCustomMsg(String executorId, String taskletId, byte[] message) throws NetworkException;
 
   void sendTaskletStartMsg(String executorId, String taskletId, Configuration taskletConf);
 

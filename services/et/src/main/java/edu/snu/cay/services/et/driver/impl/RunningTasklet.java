@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.MessageSender;
+import org.apache.reef.exception.evaluator.NetworkException;
 
 import java.util.concurrent.ExecutionException;
 
@@ -59,7 +60,7 @@ public final class RunningTasklet {
     return taskletResultFuture;
   }
 
-  public void send(final byte[] message) {
+  public void send(final byte[] message) throws NetworkException {
     if (!taskletRepresenter.isFinished()) {
       msgSender.sendTaskletCustomMsg(executorId, taskletId, message);
     }

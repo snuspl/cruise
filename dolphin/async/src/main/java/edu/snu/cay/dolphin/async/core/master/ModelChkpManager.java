@@ -21,7 +21,6 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.InjectionFuture;
@@ -48,14 +47,12 @@ final class ModelChkpManager {
 
   private final LinkedList<Future<String>[]> checkpointIdFutures = new LinkedList<>();
 
-  private final String jobId;
-
   private final String modelTableId;
   private final String inputTableId;
 
   private final InjectionFuture<ETMaster> etMasterFuture;
   private final InjectionFuture<JobMessageObserver> jobMessageObserverFuture;
-  private final InjectionFuture<ETTaskRunner> etTaskRunnerFuture;
+  private final InjectionFuture<MasterSideMsgSender> masterSideMsgSenderFuture;
 
   private final AtomicInteger workerCount = new AtomicInteger(0);
   private final AtomicInteger chkpCounter = new AtomicInteger(0);
@@ -70,15 +67,13 @@ final class ModelChkpManager {
   private ModelChkpManager(final JobLogger jobLogger,
                            final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<JobMessageObserver> jobMessageObserverFuture,
-                           final InjectionFuture<ETTaskRunner> etTaskRunnerFuture,
-                           @Parameter(DolphinParameters.DolphinJobId.class) final String jobId,
+                           final InjectionFuture<MasterSideMsgSender> masterSideMsgSenderFuture,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.jobLogger = jobLogger;
     this.etMasterFuture = etMasterFuture;
     this.jobMessageObserverFuture = jobMessageObserverFuture;
-    this.etTaskRunnerFuture = etTaskRunnerFuture;
-    this.jobId = jobId;
+    this.masterSideMsgSenderFuture = masterSideMsgSenderFuture;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
   }
@@ -114,16 +109,7 @@ final class ModelChkpManager {
       executor.submit(() -> {
         final boolean doNext = restoreOldestCheckpoint();
 
-        final byte[] modelEvalAnsMsg = AvroUtils.toBytes(
-            DolphinMsg.newBuilder()
-                .setJobId(jobId)
-                .setType(dolphinMsgType.ModelEvalAnsMsg)
-                .setModelEvalAnsMsg(ModelEvalAnsMsg.newBuilder()
-                    .setDoNext(doNext).build())
-                .build(), DolphinMsg.class);
-
-        runningWorkers.forEach(worker ->
-            etTaskRunnerFuture.get().getRunningTasklet(worker.getId()).send(modelEvalAnsMsg));
+        runningWorkers.forEach(worker -> masterSideMsgSenderFuture.get().sendModelEvalAnsMsg(worker.getId(), doNext));
       });
     }
   }

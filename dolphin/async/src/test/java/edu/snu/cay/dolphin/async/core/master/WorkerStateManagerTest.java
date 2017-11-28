@@ -105,12 +105,16 @@ public class WorkerStateManagerTest {
     final Map<String, RunningTasklet> runningTaskletMap = new HashMap<>();
     workerIds.forEach(workerId -> {
       final RunningTasklet mockedTasklet = mock(RunningTasklet.class);
-      doAnswer(invocation -> {
-        LOG.log(Level.INFO, "sending a release msg to {0}", workerId);
-        final byte[] bytes = invocation.getArgumentAt(0, byte[].class);
-        workerIdToWorkerComponents.get(workerId).getThird().onNext(bytes);
-        return null;
-      }).when(mockedTasklet).send(any(byte[].class));
+      try {
+        doAnswer(invocation -> {
+          LOG.log(Level.INFO, "sending a release msg to {0}", workerId);
+          final byte[] bytes = invocation.getArgumentAt(0, byte[].class);
+          workerIdToWorkerComponents.get(workerId).getThird().onNext(bytes);
+          return null;
+        }).when(mockedTasklet).send(any(byte[].class));
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
 
       runningTaskletMap.put(workerId, mockedTasklet);
     });

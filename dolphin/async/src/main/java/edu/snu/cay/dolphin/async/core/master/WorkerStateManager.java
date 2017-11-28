@@ -17,13 +17,10 @@ package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.core.worker.WorkerGlobalBarrier;
-import edu.snu.cay.services.et.driver.impl.RunningTasklet;
-import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -45,7 +42,7 @@ import java.util.logging.Level;
 public final class WorkerStateManager {
   private final JobLogger jobLogger;
 
-  private final InjectionFuture<ETTaskRunner> taskRunnerFuture;
+  private final MasterSideMsgSender masterSideMsgSender;
 
   private final Codec<WorkerGlobalBarrier.State> codec;
 
@@ -79,22 +76,14 @@ public final class WorkerStateManager {
   @GuardedBy("this")
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final byte[] serializedReleaseMsg;
-
   @Inject
   private WorkerStateManager(final JobLogger jobLogger,
-                             final InjectionFuture<ETTaskRunner> taskRunnerFuture,
+                             final MasterSideMsgSender masterSideMsgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              @Parameter(DolphinParameters.DolphinJobId.class) final String jobId,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
     this.jobLogger = jobLogger;
-    this.taskRunnerFuture = taskRunnerFuture;
-
-    this.serializedReleaseMsg = AvroUtils.toBytes(DolphinMsg.newBuilder()
-        .setJobId(jobId)
-        .setType(dolphinMsgType.ReleaseMsg)
-        .build(), DolphinMsg.class);
-
+    this.masterSideMsgSender = masterSideMsgSender;
     this.numWorkers = numWorkers;
     jobLogger.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -251,8 +240,7 @@ public final class WorkerStateManager {
   }
 
   private void sendResponseMessage(final String workerId) {
-    final RunningTasklet runningTasklet = taskRunnerFuture.get().getRunningTasklet(workerId);
-    runningTasklet.send(serializedReleaseMsg);
+    masterSideMsgSender.sendReleaseMsg(workerId);
   }
 
   /**
