@@ -159,5 +159,8 @@ public interface MessageSender {
                            Map<String, Integer> countSentGetReq,
                            List<ByteBuffer> encodedCustomMetrics) throws NetworkException;
 
+  /**
+   * Sends a tasklet status message to master.
+   */
   void sendTaskletStatusMsg(String taskletId, TaskletStatusType status);
 }

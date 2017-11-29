@@ -24,6 +24,7 @@ import java.util.Optional;
 
 /**
  * Represents a Tasklet.
+ * It manages tasklet status tracking tasklet events.
  */
 public final class TaskletRepresenter {
   private final String executorId;
@@ -34,8 +35,6 @@ public final class TaskletRepresenter {
   private final CallbackRegistry callbackRegistry;
 
   private Optional<RunningTasklet> runningTaskletOptional = Optional.empty();
-
-  private final ResultFuture<TaskletResult> taskletResultFuture;
 
   private final StateMachine stateMachine;
 
@@ -54,35 +53,44 @@ public final class TaskletRepresenter {
     this.taskletId = taskletId;
     this.msgSender = msgSender;
     this.callbackRegistry = callbackRegistry;
-    this.taskletResultFuture = new ResultFuture<>();
     this.stateMachine = initStateMachine();
   }
 
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
-        .addState(State.INIT, "")
-        .addState(State.RUNNING, "")
-        .addState(State.DONE, "")
-        .addState(State.FAILED, "")
-        .addTransition(State.INIT, State.RUNNING, "")
-        .addTransition(State.RUNNING, State.DONE, "")
-        .addTransition(State.RUNNING, State.FAILED, "")
+        .addState(State.INIT, "Tasklet has been submitted to executor, but there's no response message yet.")
+        .addState(State.RUNNING, "Tasklet is running on executor.")
+        .addState(State.DONE, "Tasklet has been finished successfully. It may be closed by Tasklet::close().")
+        .addState(State.FAILED, "Tasklet has been failed during execution.")
+        .addTransition(State.INIT, State.RUNNING, "Received tasklet running status message after submission.")
+        .addTransition(State.RUNNING, State.DONE, "Received tasklet done status message.")
+        .addTransition(State.RUNNING, State.FAILED, "Received tasklet failed status message.")
         .setInitialState(State.INIT)
         .build();
   }
 
+  /**
+   * @return True if this tasklet has been finished
+   */
   public boolean isFinished() {
     final State state = (State) stateMachine.getCurrentState();
     return state.equals(State.DONE) || state.equals(State.FAILED);
   }
 
+  /**
+   * @return an {@link Optional} with {@link RunningTasklet} or empty when it does not receive Running status message
+   */
   public Optional<RunningTasklet> getRunningTasklet() {
     return runningTaskletOptional;
   }
 
+  /**
+   * On Running status message from executor.
+   */
   public synchronized void onRunningStatusMsg() {
     if (stateMachine.getCurrentState() == State.INIT) {
       stateMachine.setState(State.RUNNING);
+      final ResultFuture<TaskletResult> taskletResultFuture = new ResultFuture<>();
       callbackRegistry.register(TaskletResult.class, executorId + taskletId, taskletResultFuture::onCompleted);
 
       final RunningTasklet runningTasklet = new RunningTasklet(executorId, taskletId,
@@ -106,14 +114,23 @@ public final class TaskletRepresenter {
     }
   }
 
+  /**
+   * On Done status message from executor.
+   */
   public synchronized void onDoneStatusMsg() {
     onDoneFailedStatusMsg(State.DONE);
   }
 
+  /**
+   * On Failed status message from executor.
+   */
   public synchronized void onFailedStatusMsg() {
     onDoneFailedStatusMsg(State.FAILED);
   }
 
+  /**
+   * @return a tasklet identifier
+   */
   public String getId() {
     return taskletId;
   }

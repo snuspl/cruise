@@ -102,9 +102,18 @@ public interface MessageSender {
    */
   void sendTableAccessReqMsg(String destId, long opId, TableAccessReqMsg tableAccessReqMsg) throws NetworkException;
 
+  /**
+   * Sends a TaskletCustomMsg, which is from clients communicate with tasklets for custom usages.
+   */
   void sendTaskletCustomMsg(String executorId, String taskletId, byte[] message) throws NetworkException;
 
+  /**
+   * Sends a message for starting a tasklet with the given configuration in a specified executor.
+   */
   void sendTaskletStartMsg(String executorId, String taskletId, Configuration taskletConf);
 
+  /**
+   * Sends a message for stopping a tasklet in an executor.
+   */
   void sendTaskletStopMsg(String executorId, String taskletId);
 }

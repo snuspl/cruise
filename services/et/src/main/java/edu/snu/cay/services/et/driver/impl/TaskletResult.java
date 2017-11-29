@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.driver.impl;
 
 /**
- * Represents the result of a finished Task.
+ * Represents the result of a finished Tasklet.
  */
 public final class TaskletResult {
   private final String taskletId;
@@ -28,6 +28,9 @@ public final class TaskletResult {
     this.isSuccess = state.equals(TaskletRepresenter.State.DONE);
   }
 
+  /**
+   * @return a tasklet identifier
+   */
   public String getTaskletId() {
     return taskletId;
   }

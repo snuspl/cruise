@@ -24,7 +24,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
 
 /**
- * A configuration required for creating a table.
+ * A configuration required for submitting a Tasklet.
  */
 public final class TaskletConfiguration {
   private final String id; // should be unique within the same executor
@@ -51,10 +51,16 @@ public final class TaskletConfiguration {
     return id;
   }
 
+  /**
+   * @return a tasklet class
+   */
   public Class<? extends Tasklet> getTaskletClass() {
     return taskletClass;
   }
 
+  /**
+   * @return a TaskletCustomMsgHandler implementation
+   */
   public Class<? extends TaskletCustomMsgHandler> getTaskletMsgHandlerClass() {
     return taskletMsgHandlerClass;
   }

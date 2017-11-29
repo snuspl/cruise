@@ -583,8 +583,8 @@
 },
 
 /**
- * The message protocol used for collecting metrics.
- * Custom metrics can be defined and plugged in as a byte array.
+ * The message protocol for master to control tasklets in executors.
+ * When starting a tasklet, it includes string-formed tasklet configuration.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -599,8 +599,8 @@
 },
 
 /**
- * The message protocol used for collecting metrics.
- * Custom metrics can be defined and plugged in as a byte array.
+ * The message protocol to report tasklet status from executors to master.
+ * It reports a string message optionally, in addition to status type.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -615,7 +615,11 @@
 },
 
 /**
- * The message protocol used for collecting metrics.
+ * The message protocol for tasklets.
+ * Messages are categorized into following types:
+ * (1) TaskletCustomMsg: Messages with byte form for custom usage of ET's clients.
+ * (2) TaskletControlMsg: Messages for master to control tasklets in executors.
+ * (3) TaskletStatusMsg: Messages for executors to report tasklet status to master.
  * Custom metrics can be defined and plugged in as a byte array.
  */
 {
@@ -641,6 +645,7 @@
  * (3) TableChkpMsg: Messages regarding to talbe checkpoint.
  * (4) MigrationMsg: Messages used for data migration.
  * (5) MetricMsg: Messages for collecting metrics from executors.
+ * (6) TaskletMsg: Messages regarding to tasklets.
  * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {

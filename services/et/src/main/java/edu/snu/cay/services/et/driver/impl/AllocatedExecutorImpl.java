@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implementation for {@link AllocatedExecutor}.
+ * It maintains a pointer for REEF's context, which is a core of executor runtime, and
+ * {@link TaskletRepresenter}s running on the executor.
  */
 @DriverSide
 final class AllocatedExecutorImpl implements AllocatedExecutor {
@@ -90,10 +92,12 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
     }
   }
 
+  @Override
   public Set<String> getTaskletIds() {
     return taskletRepresenterMap.keySet();
   }
 
+  @Override
   public RunningTasklet getRunningTasklet(final String taskletId) {
     return taskletRepresenterMap.get(taskletId).getRunningTasklet().get();
   }

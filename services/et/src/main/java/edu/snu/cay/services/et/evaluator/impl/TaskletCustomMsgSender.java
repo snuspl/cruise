@@ -30,7 +30,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
 /**
- * Created by xyzi on 28/11/2017.
+ * A class for users to send TaskletCustomMsg from executors to master.
  */
 public final class TaskletCustomMsgSender {
   private final NetworkConnection<ETMsg> networkConnection;
@@ -46,6 +46,10 @@ public final class TaskletCustomMsgSender {
     this.driverId = driverId;
   }
 
+  /**
+   * Send a TaskletCustomMsg to master.
+   * @param message byte message
+   */
   public void send(final byte[] message) {
     final byte[] innerMsg = AvroUtils.toBytes(
         TaskletMsg.newBuilder()

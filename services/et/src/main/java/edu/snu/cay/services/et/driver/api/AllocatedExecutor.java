@@ -35,17 +35,29 @@ public interface AllocatedExecutor {
   String getId();
 
   /**
-   * Assign task to executor.
-   * @param taskletConf task configuration.
+   * Submit tasklet to executor.
+   * @param taskletConf tasklet configuration.
    * @return a {@link ListenableFuture} of {@link TaskletResult}
    */
   ListenableFuture<RunningTasklet> submitTasklet(TaskletConfiguration taskletConf);
 
+  /**
+   * It's for internal usage.
+   * @param taskletId tasklet Id
+   * @param taskletStatusMsg tasklet status msg from tasklets in executors
+   */
   void onTaskletStatusMessage(String taskletId, TaskletStatusMsg taskletStatusMsg);
 
-
+  /**
+   * @return a set of running tasklet Ids
+   */
   Set<String> getTaskletIds();
 
+  /**
+   * Get a {@link RunningTasklet} that has given tasklet Id.
+   * @param taskletId a tasklet Id
+   * @return a {@link RunningTasklet} with {@code taskletId} or {@code null} if it does not exist
+   */
   RunningTasklet getRunningTasklet(String taskletId);
 
   /**

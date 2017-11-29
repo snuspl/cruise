@@ -45,6 +45,9 @@ public final class RunningTasklet {
     this.msgSender = msgSender;
   }
 
+  /**
+   * @return a tasklet identifier
+   */
   public String getId() {
     return taskletId;
   }
@@ -60,6 +63,12 @@ public final class RunningTasklet {
     return taskletResultFuture;
   }
 
+  /**
+   * Sends a custom byte message to tasklet.
+   * {@link edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler} for the tasklet will receive this message.
+   * @param message a byte message
+   * @throws NetworkException
+   */
   public void send(final byte[] message) throws NetworkException {
     if (!taskletRepresenter.isFinished()) {
       msgSender.sendTaskletCustomMsg(executorId, taskletId, message);

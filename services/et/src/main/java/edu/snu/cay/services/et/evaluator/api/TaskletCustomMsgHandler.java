@@ -20,7 +20,10 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Created by xyzi on 27/11/2017.
+ * A handler for custom tasklet msgs.
+ * In executors-side, each tasklet will have separate instance,
+ * so users can bind different implementation for each tasklet.
+ * However, in master-side, there exists only one instance.
  */
 @DefaultImplementation(DefaultTaskletCustomMsgHandler.class)
 public interface TaskletCustomMsgHandler extends EventHandler<byte[]> {

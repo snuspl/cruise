@@ -24,7 +24,7 @@ import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Created by xyzi on 27/11/2017.
+ * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
 public final class WorkerSideMsgHandler implements TaskletCustomMsgHandler {
   private static final int NUM_RELEASE_MSG_THREADS = 8;

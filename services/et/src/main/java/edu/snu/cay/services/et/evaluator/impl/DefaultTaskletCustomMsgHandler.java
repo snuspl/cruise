@@ -22,7 +22,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Created by xyzi on 27/11/2017.
+ * A default implementation of {@link TaskletCustomMsgHandler}.
  */
 public final class DefaultTaskletCustomMsgHandler implements TaskletCustomMsgHandler {
   private static final Logger LOG = Logger.getLogger(DefaultTaskletCustomMsgHandler.class.getName());

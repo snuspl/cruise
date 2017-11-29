@@ -16,11 +16,20 @@
 package edu.snu.cay.services.et.evaluator.api;
 
 /**
- * Created by xyzi on 25/11/2017.
+ * The interface for Tasklets.
+ * When a tasklet has been submitted, executor runtime execute it by calling {@link #run()}.
+ * When master directs the tasklet to stop the tasklet, executor runtime will call {@link #close()}.
  */
 public interface Tasklet {
 
+  /**
+   * Run a tasklet.
+   * @throws Exception when tasklet encounters unresolved issues
+   */
   void run() throws Exception;
 
+  /**
+   * Close the running tasklet.
+   */
   void close();
 }

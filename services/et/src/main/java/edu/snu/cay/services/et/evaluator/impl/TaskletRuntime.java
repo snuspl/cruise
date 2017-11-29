@@ -33,7 +33,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Created by xyzi on 25/11/2017.
+ * A Tasklet runtime.
+ * It maintains a thread pool for executing Tasklets.
  */
 public final class TaskletRuntime {
   private static final Logger LOG = Logger.getLogger(TaskletRuntime.class.getName());
@@ -54,6 +55,12 @@ public final class TaskletRuntime {
     this.msgSender = msgSender;
   }
 
+  /**
+   * Start a Tasklet.
+   * @param taskletId a tasklet identifier
+   * @param taskletConf a tasklet configuration
+   * @throws InjectionException when the given tasklet configuration is incomplete
+   */
   public void startTasklet(final String taskletId, final Configuration taskletConf) throws InjectionException {
     synchronized (this) {
       if (closeFlag) {
@@ -88,10 +95,17 @@ public final class TaskletRuntime {
     });
   }
 
+  /**
+   * Stop the running tasklet specified with the given Id.
+   * @param taskletId a tasklet identifier
+   */
   public void stopTasklet(final String taskletId) {
     taskletMap.get(taskletId).getLeft().close();
   }
 
+  /**
+   * Close the runtime, stopping all tasklets first.
+   */
   public synchronized void close() {
     closeFlag = true;
 
@@ -99,6 +113,12 @@ public final class TaskletRuntime {
     taskletMap.values().forEach((taskletPair -> taskletPair.getLeft().close()));
   }
 
+  /**
+   * Handles custom tasklet messages from master.
+   * It routes messages to an appropriate {@link TaskletCustomMsgHandler} corresponding to the tasklet Id.
+   * @param taskletId a tasklet identifier
+   * @param message a byte message
+   */
   public void onTaskletMsg(final String taskletId, final byte[] message) {
     final TaskletCustomMsgHandler taskletCustomMsgHandler = taskletMap.get(taskletId).getRight();
     taskletCustomMsgHandler.onNext(message);
