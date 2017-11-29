@@ -28,10 +28,13 @@ import java.util.logging.Logger;
  */
 public final class ContextStopHandler implements EventHandler<ContextStop> {
   private static final Logger LOG = Logger.getLogger(ContextStopHandler.class.getName());
+  private final TaskletRuntime taskletRuntime;
   private final ChkpManagerSlave chkpManagerSlave;
 
   @Inject
-  private ContextStopHandler(final ChkpManagerSlave chkpManagerSlave) {
+  private ContextStopHandler(final TaskletRuntime taskletRuntime,
+                             final ChkpManagerSlave chkpManagerSlave) {
+    this.taskletRuntime = taskletRuntime;
     this.chkpManagerSlave = chkpManagerSlave;
   }
 
@@ -39,6 +42,7 @@ public final class ContextStopHandler implements EventHandler<ContextStop> {
   public void onNext(final ContextStop ctxStop) {
     LOG.log(Level.INFO, "Close context: {0}", ctxStop.getId());
     try {
+      taskletRuntime.close();
       chkpManagerSlave.commitAllLocalChkps();
     } catch (IOException e) {
       throw new RuntimeException("Fail to commit blocks before closing", e);
