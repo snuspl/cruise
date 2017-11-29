@@ -74,7 +74,6 @@ public final class ETCentCommExample {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ETCentCommExampleDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "ETCentCommExample")
         .set(DriverConfiguration.ON_DRIVER_STARTED, ETCentCommExampleDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, ETCentCommExampleDriver.RunningTaskHandler.class)
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
