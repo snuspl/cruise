@@ -35,7 +35,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for running Dolphin trainers on ET.
+ * Tasklet for running Dolphin trainers on ET.
  */
 public final class WorkerTasklet<V> implements Tasklet {
   private static final Logger LOG = Logger.getLogger(WorkerTasklet.class.getName());

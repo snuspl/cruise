@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.core.master;
 
-import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.JobLogger;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
@@ -52,7 +53,8 @@ final class ModelChkpManager {
 
   private final InjectionFuture<ETMaster> etMasterFuture;
   private final InjectionFuture<JobMessageObserver> jobMessageObserverFuture;
-  private final InjectionFuture<MasterSideMsgSender> masterSideMsgSenderFuture;
+
+  private final InjectionFuture<MasterSideMsgSender> msgSender;
 
   private final AtomicInteger workerCount = new AtomicInteger(0);
   private final AtomicInteger chkpCounter = new AtomicInteger(0);
@@ -66,14 +68,14 @@ final class ModelChkpManager {
   @Inject
   private ModelChkpManager(final JobLogger jobLogger,
                            final InjectionFuture<ETMaster> etMasterFuture,
+                           final InjectionFuture<MasterSideMsgSender> msgSender,
                            final InjectionFuture<JobMessageObserver> jobMessageObserverFuture,
-                           final InjectionFuture<MasterSideMsgSender> masterSideMsgSenderFuture,
                            @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
                            @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
     this.jobLogger = jobLogger;
     this.etMasterFuture = etMasterFuture;
     this.jobMessageObserverFuture = jobMessageObserverFuture;
-    this.masterSideMsgSenderFuture = masterSideMsgSenderFuture;
+    this.msgSender = msgSender;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
   }
@@ -105,11 +107,9 @@ final class ModelChkpManager {
 
     if (numWorkersSentMsg == runningWorkers.size()) {
       workerCount.set(0); // reset
-
       executor.submit(() -> {
         final boolean doNext = restoreOldestCheckpoint();
-
-        runningWorkers.forEach(worker -> masterSideMsgSenderFuture.get().sendModelEvalAnsMsg(worker.getId(), doNext));
+        runningWorkers.forEach(worker -> msgSender.get().sendModelEvalAnsMsg(worker.getId(), doNext));
       });
     }
   }

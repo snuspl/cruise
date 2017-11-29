@@ -23,7 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Server-side task implementation that does nothing.
+ * Server-side tasklet implementation that does nothing.
  */
 public final class ServerTasklet implements Tasklet {
   private static final Logger LOG = Logger.getLogger(ServerTasklet.class.getName());
