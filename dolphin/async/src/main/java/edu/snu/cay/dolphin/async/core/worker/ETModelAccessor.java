@@ -101,13 +101,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
     return resultValues;
   }
 
-  /**
-   * Do {@link #pull(List)} with a given table.
-   * @param keys a list of keys of model parameter
-   * @param aModelTable a table to read value from
-   * @return a list of values associated with the given {@code keys}.
-   *        Some positions in the list can be {@code null}, if the key has no associated value
-   */
+  @Override
   public List<V> pull(final List<K> keys, final Table<K, V, P> aModelTable) {
     try {
       final Map<K, V> result = aModelTable.multiGetOrInit(keys).get();

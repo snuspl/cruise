@@ -121,7 +121,7 @@ final class LDATrainer implements Trainer<Document> {
                                                  final edu.snu.cay.services.et.evaluator.api.Table modelTable) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    final List<int[]> wordTopicCounts = ((ETModelAccessor)modelAccessor).pull(vocabList, modelTable);
+    final List<int[]> wordTopicCounts = modelAccessor.pull(vocabList, modelTable);
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
