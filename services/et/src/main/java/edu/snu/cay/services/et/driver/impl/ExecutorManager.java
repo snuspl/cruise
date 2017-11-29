@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ExecutorServiceConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
+import edu.snu.cay.services.et.configuration.parameters.NumTasklets;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
@@ -42,6 +43,7 @@ import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.runtime.common.parameters.JVMHeapSlack;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
@@ -118,6 +120,7 @@ final class ExecutorManager {
    * @return a list of allocated executors
    */
   ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+    final int numTasklets = executorConf.getNumTasklets();
     final ResourceConfiguration resConf = executorConf.getResourceConf();
     final Configuration remoteAccessConf = executorConf.getRemoteAccessConf();
     final Configuration userContextConf = executorConf.getUserContextConf();
@@ -140,9 +143,13 @@ final class ExecutorManager {
       ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
     });
 
+    final Configuration serviceConf = Configurations.merge(remoteAccessConf, userServiceConf,
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(NumTasklets.class, Integer.toString(numTasklets))
+            .build());
+
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores, nodeNames,
-        new AllocatedEvalHandler(userContextConf,
-            Configurations.merge(remoteAccessConf, userServiceConf), memSizeInMB),
+        new AllocatedEvalHandler(userContextConf, serviceConf, memSizeInMB),
         activeCtxHandlers);
 
     return executorListFuture;

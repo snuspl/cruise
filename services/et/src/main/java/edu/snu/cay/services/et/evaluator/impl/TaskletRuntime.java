@@ -16,12 +16,14 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.TaskletStatusType;
+import edu.snu.cay.services.et.configuration.parameters.NumTasklets;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
@@ -38,7 +40,7 @@ import java.util.logging.Logger;
  */
 public final class TaskletRuntime {
   private static final Logger LOG = Logger.getLogger(TaskletRuntime.class.getName());
-  private static final int NUM_TASKLETS = 4;
+
   private final Injector taskletBaseInjector;
   private final MessageSender msgSender;
 
@@ -46,13 +48,15 @@ public final class TaskletRuntime {
 
   private final Map<String, Pair<Tasklet, TaskletCustomMsgHandler>> taskletMap = new ConcurrentHashMap<>();
 
-  private final ExecutorService executorService = Executors.newFixedThreadPool(NUM_TASKLETS);
+  private final ExecutorService taskletThreadPool;
 
   @Inject
   private TaskletRuntime(final Injector taskletBaseInjector,
-                         final MessageSender msgSender) {
+                         final MessageSender msgSender,
+                         @Parameter(NumTasklets.class) final int numTasklets) {
     this.taskletBaseInjector = taskletBaseInjector;
     this.msgSender = msgSender;
+    this.taskletThreadPool = Executors.newFixedThreadPool(numTasklets);
   }
 
   /**
@@ -76,7 +80,7 @@ public final class TaskletRuntime {
     msgSender.sendTaskletStatusMsg(taskletId, TaskletStatusType.Running);
     taskletMap.put(taskletId, Pair.of(tasklet, taskletCustomMsgHandler));
 
-    executorService.submit(() -> {
+    taskletThreadPool.submit(() -> {
       boolean isSuccess;
       try {
         LOG.log(Level.INFO, "Run tasklet. Id: {0}", taskletId);

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.configuration;
 
+import edu.snu.cay.services.et.configuration.parameters.NumTasklets;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
@@ -23,19 +24,26 @@ import org.apache.reef.util.BuilderUtils;
  * A configuration required for adding an executor.
  */
 public final class ExecutorConfiguration {
+  private final int numTasklets;
   private final ResourceConfiguration resourceConf;
   private final RemoteAccessConfiguration remoteAccessConf;
   private final Configuration userContextConf;
   private final Configuration userServiceConf;
 
-  private ExecutorConfiguration(final ResourceConfiguration resourceConf,
+  private ExecutorConfiguration(final int numTasklets,
+                                final ResourceConfiguration resourceConf,
                                 final RemoteAccessConfiguration remoteAccessConf,
                                 final Configuration userContextConf,
                                 final Configuration userServiceConf) {
+    this.numTasklets = numTasklets;
     this.resourceConf = resourceConf;
     this.remoteAccessConf = remoteAccessConf;
     this.userContextConf = userContextConf;
     this.userServiceConf = userServiceConf;
+  }
+
+  public int getNumTasklets() {
+    return numTasklets;
   }
 
   public ResourceConfiguration getResourceConf() {
@@ -50,12 +58,12 @@ public final class ExecutorConfiguration {
     return userServiceConf;
   }
 
-  public static Builder newBuilder() {
-    return new Builder();
-  }
-
   public Configuration getRemoteAccessConf() {
     return remoteAccessConf.getConfiguration();
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
   }
 
   /**
@@ -70,11 +78,21 @@ public final class ExecutorConfiguration {
     /**
      * Optional parameters.
      */
+    private int numTasklets = Integer.parseInt(NumTasklets.DEFAULT_VALUE_STR);
     private RemoteAccessConfiguration remoteAccessConf = RemoteAccessConfiguration.newBuilder().build(); //default
     private Configuration userContextConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
     private Configuration userServiceConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
 
     private Builder() {
+    }
+
+    /**
+     * @param numTasklets the maximum number of tasklets
+     * @return this
+     */
+    public Builder setNumTasklets(final int numTasklets) {
+      this.numTasklets = numTasklets;
+      return this;
     }
 
     /**
@@ -117,7 +135,7 @@ public final class ExecutorConfiguration {
     public ExecutorConfiguration build() {
       BuilderUtils.notNull(resourceConf);
 
-      return new ExecutorConfiguration(resourceConf, remoteAccessConf,
+      return new ExecutorConfiguration(numTasklets, resourceConf, remoteAccessConf,
           userContextConf, userServiceConf);
     }
   }
