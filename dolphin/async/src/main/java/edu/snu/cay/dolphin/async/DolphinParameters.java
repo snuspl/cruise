@@ -72,6 +72,11 @@ public final class DolphinParameters {
   public final class HyperThreadEnabled implements Name<Boolean> {
   }
 
+  @NamedParameter(doc = "Whether the model cache is enabled.",
+      short_name = "model_cache_enabled", default_value = "false")
+  public final class ModelCacheEnabled implements Name<Boolean> {
+  }
+
   @NamedParameter(doc = "Desired memory size for each worker evaluator (MBs)",
                   short_name = "worker_mem_size",
                   default_value = "128")

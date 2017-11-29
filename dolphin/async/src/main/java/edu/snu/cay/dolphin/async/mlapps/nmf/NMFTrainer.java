@@ -19,7 +19,6 @@ import com.google.common.collect.Sets;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.dolphin.async.core.worker.ETModelAccessor;
 import edu.snu.cay.dolphin.async.core.worker.ModelAccessor;
 import edu.snu.cay.dolphin.async.core.worker.Trainer;
 import edu.snu.cay.dolphin.async.core.worker.TrainingDataProvider;
@@ -203,7 +202,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   private NMFModel pullModelToEvaluate(final List<Integer> keys, final Table<Integer, Vector, Vector> modelTable) {
     final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
-    final List<Vector> vectors = ((ETModelAccessor) modelAccessor).pull(keys, modelTable);
+    final List<Vector> vectors = modelAccessor.pull(keys, modelTable);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }

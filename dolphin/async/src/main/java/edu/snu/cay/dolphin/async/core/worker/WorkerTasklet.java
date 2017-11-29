@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
+import edu.snu.cay.dolphin.async.CachedModelAccessor;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.BatchMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
@@ -141,7 +142,10 @@ public final class WorkerTasklet<V> implements Tasklet {
     workerGlobalBarrier.await();
 
     trainer.cleanup();
-    return;
+
+    if (modelAccessor instanceof CachedModelAccessor) {
+      ((CachedModelAccessor) modelAccessor).stopRefreshingCache();
+    }
   }
   
   /**
