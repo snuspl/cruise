@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.metric;
 
-import edu.snu.cay.services.et.common.util.TaskUtils;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -140,7 +140,7 @@ final class MetricETDriver {
               .setTaskletClass(MetricTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
 
           // Round 2. start collecting metrics with automatic periodic flush
           associators.forEach(associator -> metricManager.startMetricCollection(associator.getId(),
@@ -154,7 +154,7 @@ final class MetricETDriver {
               .setTaskletClass(MetricTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
 
           // Close the executors
           associators.forEach(AllocatedExecutor::close);

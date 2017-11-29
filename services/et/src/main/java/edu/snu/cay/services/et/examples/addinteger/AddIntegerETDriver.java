@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.addinteger;
 
-import edu.snu.cay.services.et.common.util.TaskUtils;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -162,28 +162,28 @@ public final class AddIntegerETDriver {
           modelTable.subscribe(workers).get();
 
           // start update tasks on worker executors
-          final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(workers.size());
-          workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
+          final AtomicInteger taskletIdCount = new AtomicInteger(0);
+          final List<Future<RunningTasklet>> taskletFutureList = new ArrayList<>(workers.size());
+          workers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(
               TaskletConfiguration.newBuilder()
-                  .setId(UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .setId(UPDATER_TASK_ID_PREFIX + taskletIdCount.getAndIncrement())
                   .setTaskletClass(UpdaterTask.class)
                   .setUserParamConf(updaterTaskParamConf)
                   .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskletFutureList, true);
 
           // start validate tasks on worker executors
-          taskIdCount.set(0);
-          taskFutureList.clear();
-          workers.forEach(executor -> taskFutureList.add(executor.submitTasklet(
+          taskletIdCount.set(0);
+          taskletFutureList.clear();
+          workers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(
               TaskletConfiguration.newBuilder()
-                  .setId(VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .setId(VALIDATOR_TASK_ID_PREFIX + taskletIdCount.getAndIncrement())
                   .setTaskletClass(ValidatorTask.class)
                   .setUserParamConf(validatorTaskParamConf)
                   .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskletFutureList, true);
 
           workers.forEach(AllocatedExecutor::close);
           servers.forEach(AllocatedExecutor::close);

@@ -39,9 +39,9 @@ import java.util.logging.Logger;
  */
 public final class WorkerTasklet<V> implements Tasklet {
   private static final Logger LOG = Logger.getLogger(WorkerTasklet.class.getName());
-  public static final String TASKLET_ID_PREFIX = "ETWorkerTask";
+  public static final String TASKLET_ID = "WorkerTasklet";
 
-  private final String taskId;
+  private final String taskletId;
   private final int startingEpoch;
   private final int maxNumEpochs;
 
@@ -60,7 +60,7 @@ public final class WorkerTasklet<V> implements Tasklet {
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
   @Inject
-  private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskId,
+  private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskletId,
                         @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                         @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                         final ProgressReporter progressReporter,
@@ -70,7 +70,7 @@ public final class WorkerTasklet<V> implements Tasklet {
                         final TestDataProvider<V> testDataProvider,
                         final Trainer<V> trainer,
                         final MetricCollector metricCollector) {
-    this.taskId = taskId;
+    this.taskletId = taskletId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
     this.progressReporter = progressReporter;
@@ -84,7 +84,7 @@ public final class WorkerTasklet<V> implements Tasklet {
 
   @Override
   public void run() throws Exception {
-    LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
+    LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskletId, startingEpoch});
 
     final List<V> testData = testDataProvider.getTestData();
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
@@ -127,7 +127,7 @@ public final class WorkerTasklet<V> implements Tasklet {
         miniBatchIdx++;
 
         if (abortFlag.get()) {
-          LOG.log(Level.INFO, "The task is getting closed.");
+          LOG.log(Level.INFO, "The tasklet {0} is getting closed.", taskletId);
           return;
         }
       }

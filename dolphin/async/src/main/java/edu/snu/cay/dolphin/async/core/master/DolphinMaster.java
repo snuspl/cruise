@@ -102,7 +102,7 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getWorkerTaskletConf() {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
+        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID)
         .setTaskletClass(WorkerTasklet.class)
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
@@ -118,7 +118,7 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getWorkerTaskletConf(final Class<? extends Tasklet> taskletClass) {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID_PREFIX)
+        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID)
         .setTaskletClass(taskletClass)
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
@@ -135,7 +135,7 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getServerTaskletConf() {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + ServerTasklet.TASKLET_ID_PREFIX)
+        .setId(dolphinJobId + "-" + ServerTasklet.TASKLET_ID)
         .setTaskletClass(ServerTasklet.class)
         .build();
   }

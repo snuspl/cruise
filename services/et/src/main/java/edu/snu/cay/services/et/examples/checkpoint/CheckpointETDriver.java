@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.checkpoint;
 
-import edu.snu.cay.services.et.common.util.TaskUtils;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -105,7 +105,7 @@ final class CheckpointETDriver {
               .setTaskletClass(PutTask.class)
               .build());
 
-          TaskUtils.waitAndCheckTaskResult(Collections.singletonList(taskFuture), true);
+          TaskletUtils.waitAndCheckTaskletResult(Collections.singletonList(taskFuture), true);
 
           final String chkpId = originalTable.checkpoint().get();
           LOG.log(Level.INFO, "checkpointId: {0}", chkpId);
@@ -130,7 +130,7 @@ final class CheckpointETDriver {
               .setTaskletClass(GetTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           tableFromLocalChkps.drop().get();
@@ -155,7 +155,7 @@ final class CheckpointETDriver {
               .setTaskletClass(GetTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           // checkpoint the table with sampling rate 0.5
@@ -175,7 +175,7 @@ final class CheckpointETDriver {
                       .build())
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           tableFromSampledChkp.drop().get();

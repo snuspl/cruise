@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.common.util.TaskUtils.waitAndCheckTaskResult;
+import static edu.snu.cay.services.et.common.util.TaskletUtils.waitAndCheckTaskletResult;
 
 /**
  * Driver code for simple example.
@@ -52,9 +52,9 @@ import static edu.snu.cay.services.et.common.util.TaskUtils.waitAndCheckTaskResu
 @Unit
 final class SimpleETDriver {
   private static final Logger LOG = Logger.getLogger(SimpleETDriver.class.getName());
-  private static final String GET_TASK_ID_PREFIX = "Simple-get-task-";
-  private static final String PUT_TASK_ID_PREFIX = "Simple-put-task-";
-  private static final String SCAN_TASK_ID_PREFIX = "Simple-scan-task-";
+  private static final String GET_TASKLET_ID_PREFIX = "Simple-get-task-";
+  private static final String PUT_TASKLET_ID_PREFIX = "Simple-put-task-";
+  private static final String SCAN_TASKLET_ID_PREFIX = "Simple-scan-task-";
   static final int NUM_ASSOCIATORS = 2; // should be at least 2
   static final int NUM_SUBSCRIBERS = 1; // should be at least 1
   static final String HASHED_TABLE_ID = "Hashed_Table";
@@ -125,31 +125,32 @@ final class SimpleETDriver {
           hashedTable.subscribe(subscribers).get();
           orderedTable.subscribe(subscribers).get();
 
-          final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(associators.size() + subscribers.size());
+          final AtomicInteger taskletIdCount = new AtomicInteger(0);
+          final List<Future<RunningTasklet>> taskletFutureList =
+              new ArrayList<>(associators.size() + subscribers.size());
 
           // 1. First run a put task in a subscriber
-          taskFutureList.add(subscribers.get(0).submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          taskletFutureList.add(subscribers.get(0).submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(PUT_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(PutTasklet.class)
               .build()));
 
-          waitAndCheckTaskResult(taskFutureList, true);
+          waitAndCheckTaskletResult(taskletFutureList, true);
 
           // 2. Then run get tasks in all executors
-          taskFutureList.clear();
+          taskletFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          associators.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          subscribers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          waitAndCheckTaskResult(taskFutureList, true);
+          waitAndCheckTaskletResult(taskletFutureList, true);
 
           // 3. migrate blocks between associators
           // move all blocks of hashedTable in the first associator to the second associator
@@ -166,51 +167,51 @@ final class SimpleETDriver {
           waitAndCheckMigrationResult(resultFuture1);
 
           // 4. run get tasks in all executors again after migration
-          taskFutureList.clear();
+          taskletFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          associators.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          subscribers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          waitAndCheckTaskResult(taskFutureList, true);
+          waitAndCheckTaskletResult(taskletFutureList, true);
 
           // 5. drop tables and run get tasks again to confirm that tasks fail
           hashedTable.drop().get();
           orderedTable.drop().get();
 
-          taskFutureList.clear();
+          taskletFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          associators.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          subscribers.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          subscribers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(GET_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(GetTasklet.class)
               .build())));
 
-          waitAndCheckTaskResult(taskFutureList, false);
+          waitAndCheckTaskletResult(taskletFutureList, false);
 
           // 6. create a table with input file
           final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
               tableInputPath, true), associators).get();
 
           // 7. start scan tasks in associator executors
-          taskFutureList.clear();
+          taskletFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-              .setId(SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          associators.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(SCAN_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
               .setTaskletClass(ScanTasklet.class)
               .build())));
 
-          waitAndCheckTaskResult(taskFutureList, true);
+          waitAndCheckTaskletResult(taskletFutureList, true);
 
           // 8. migrate blocks between associators
           // move all blocks of orderedTableWithFile in the second associator to the first associator
@@ -221,14 +222,14 @@ final class SimpleETDriver {
           waitAndCheckMigrationResult(resultFuture);
 
           // 9. start scan tasks again after migration
-          taskFutureList.clear();
+          taskletFutureList.clear();
 
-          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
-                  .setId(SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          associators.forEach(executor -> taskletFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+                  .setId(SCAN_TASKLET_ID_PREFIX + taskletIdCount.getAndIncrement())
                   .setTaskletClass(ScanTasklet.class)
                   .build())));
 
-          waitAndCheckTaskResult(taskFutureList, true);
+          waitAndCheckTaskletResult(taskletFutureList, true);
 
           orderedTableWithFile.drop().get(); // not required step
 
