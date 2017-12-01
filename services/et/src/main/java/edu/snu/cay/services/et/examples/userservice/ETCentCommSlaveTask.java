@@ -16,12 +16,12 @@
 package edu.snu.cay.services.et.examples.userservice;
 
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -34,7 +34,7 @@ import static edu.snu.cay.services.et.examples.userservice.ETCentCommExample.CEN
  * Sends a message to master(driver) and waits for a reply message.
  */
 @TaskSide
-final class ETCentCommSlaveTask implements Task {
+final class ETCentCommSlaveTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(ETCentCommSlaveTask.class.getName());
 
   private final SlaveSideCentCommMsgSender centCommMsgSender;
@@ -54,11 +54,15 @@ final class ETCentCommSlaveTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
     centCommMsgSender.send(CENT_COMM_CLIENT_ID, codec.encode(taskId));
     LOG.log(Level.INFO, "A message was sent. Waiting for response from the driver");
     msgHandler.waitForMessage();
-    return null;
+  }
+
+  @Override
+  public void close() {
+
   }
 }

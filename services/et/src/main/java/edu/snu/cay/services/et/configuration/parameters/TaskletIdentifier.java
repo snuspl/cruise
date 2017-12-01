@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Classes for the network-related classes.
- */
-package edu.snu.cay.dolphin.async.network;
+package edu.snu.cay.services.et.configuration.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Identifier of Executor.")
+public final class TaskletIdentifier implements Name<String> {
+}

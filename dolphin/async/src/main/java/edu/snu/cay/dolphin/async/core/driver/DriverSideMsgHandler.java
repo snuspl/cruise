@@ -18,9 +18,8 @@ package edu.snu.cay.dolphin.async.core.driver;
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
-import edu.snu.cay.dolphin.async.network.MessageHandler;
-import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.reef.io.network.Message;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
@@ -28,7 +27,7 @@ import javax.inject.Inject;
 /**
  * A driver-side message handler that routes messages to {@link DolphinMaster}.
  */
-public final class DriverSideMsgHandler implements MessageHandler {
+public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
   private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
 
@@ -38,8 +37,8 @@ public final class DriverSideMsgHandler implements MessageHandler {
   }
 
   @Override
-  public void onNext(final Message<DolphinMsg> msg) {
-    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
-    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+  public void onNext(final byte[] bytes) {
+    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
+    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(dolphinMsg);
   }
 }

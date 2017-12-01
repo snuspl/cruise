@@ -13,26 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.core.server;
-
-import org.apache.reef.task.events.CloseEvent;
-import org.apache.reef.wake.EventHandler;
-
-import javax.inject.Inject;
+package edu.snu.cay.services.et.driver.impl;
 
 /**
- * Handles the event to stop the task.
+ * Represents the result of a finished Tasklet.
  */
-public final class ServerTaskCloseHandler implements EventHandler<CloseEvent> {
-  private final ETServerTask task;
+public final class TaskletResult {
+  private final String taskletId;
+  private final boolean isSuccess;
 
-  @Inject
-  private ServerTaskCloseHandler(final ETServerTask task) {
-    this.task = task;
+  TaskletResult(final String taskletId,
+                final TaskletRepresenter.State state) {
+    this.taskletId = taskletId;
+    this.isSuccess = state.equals(TaskletRepresenter.State.DONE);
   }
 
-  @Override
-  public void onNext(final CloseEvent closeEvent) {
-    task.close();
+  /**
+   * @return a tasklet identifier
+   */
+  public String getTaskletId() {
+    return taskletId;
+  }
+
+  /**
+   * @return True if the task is finished successfully
+   */
+  public boolean isSuccess() {
+    return isSuccess;
   }
 }

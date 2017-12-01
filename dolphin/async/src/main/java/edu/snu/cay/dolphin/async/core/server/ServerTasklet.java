@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.server;
 
-import org.apache.reef.task.Task;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 
 import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
@@ -23,11 +23,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Server-side task implementation that does nothing.
+ * Server-side tasklet implementation that does nothing.
  */
-public final class ETServerTask implements Task {
-  private static final Logger LOG = Logger.getLogger(ETServerTask.class.getName());
-  public static final String SERVER_TASK_ID_PREFIX = "ServerTask-";
+public final class ServerTasklet implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(ServerTasklet.class.getName());
+  public static final String TASKLET_ID = "ServerTasklet";
 
   /**
    * A latch that will be released upon {@link #close()}.
@@ -36,19 +36,19 @@ public final class ETServerTask implements Task {
   private final CountDownLatch closeLatch = new CountDownLatch(1);
 
   @Inject
-  private ETServerTask() {
+  private ServerTasklet() {
   }
 
   @Override
-  public byte[] call(final byte[] memento) throws Exception {
+  public void run() throws Exception {
     closeLatch.await();
-    return null;
   }
 
   /**
    * Called when the Task is requested to close.
    * The {@link #closeLatch} is released, so the task terminates execution.
    */
+  @Override
   public void close() {
     LOG.log(Level.INFO, "Requested to close!");
     closeLatch.countDown();

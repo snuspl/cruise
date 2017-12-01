@@ -15,37 +15,37 @@
  */
 package edu.snu.cay.services.et.common.util;
 
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
-import org.apache.reef.tang.Configuration;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * Provides utility methods for managing tasks.
+ * Provides utility methods for managing tasklets.
  */
-public final class TaskUtils {
+public final class TaskletUtils {
   /**
    * Utility classes should not be instantiated.
    */
-  private TaskUtils() {
+  private TaskletUtils() {
   }
 
   /**
-   * Wait until all Tasks finish and checks whether the results are as expected.
-   * @param taskFutureList The list of futures of submitted tasks, each of which is returned
-   *                       by {@link edu.snu.cay.services.et.driver.api.AllocatedExecutor#submitTask(Configuration)}
+   * Wait until all Tasklets finish and checks whether the results are as expected.
+   * @param taskletFutureList The list of futures of {@link RunningTasklet}s
    * @param expected The expected answer.
    */
-  public static void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList, final boolean expected) {
-    taskFutureList.forEach(taskResultFuture -> {
+  public static void waitAndCheckTaskletResult(final List<Future<RunningTasklet>> taskletFutureList,
+                                               final boolean expected) {
+    taskletFutureList.forEach(taskFuture -> {
       try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (taskResult.isSuccess() != expected) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
+        final RunningTasklet runningTasklet = taskFuture.get();
+        final TaskletResult taskletResult = runningTasklet.getTaskResult();
+        if (taskletResult.isSuccess() != expected) {
+          final String taskletId = runningTasklet.getId();
+          throw new RuntimeException(String.format("Tasklet %s has been failed", taskletId));
         }
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);

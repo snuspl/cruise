@@ -15,22 +15,24 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.avro.TaskletStatusMsg;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.task.RunningTask;
-import org.apache.reef.driver.task.TaskConfigurationOptions;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implementation for {@link AllocatedExecutor}.
+ * It maintains a pointer for REEF's context, which is a core of executor runtime, and
+ * {@link TaskletRepresenter}s running on the executor.
  */
 @DriverSide
 final class AllocatedExecutorImpl implements AllocatedExecutor {
@@ -38,12 +40,16 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   private final String identifier;
   private final CallbackRegistry callbackRegistry;
   private final ResultFuture<Void> closedFuture;
-  private volatile SubmittedTask runningTask;
+  private final MessageSender msgSender;
+
+  private final Map<String, TaskletRepresenter> taskletRepresenterMap = new ConcurrentHashMap<>();
 
   AllocatedExecutorImpl(final ActiveContext etContext,
+                        final MessageSender msgSender,
                         final CallbackRegistry callbackRegistry) {
     this.etContext = etContext;
     this.identifier = etContext.getEvaluatorId();
+    this.msgSender = msgSender;
     this.callbackRegistry = callbackRegistry;
     this.closedFuture = new ResultFuture<>();
   }
@@ -54,37 +60,46 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   }
 
   @Override
-  public ListenableFuture<SubmittedTask> submitTask(final Configuration taskConf) {
-    try {
-      final String taskId = Tang.Factory.getTang().newInjector(taskConf)
-          .getNamedInstance(TaskConfigurationOptions.Identifier.class);
+  public ListenableFuture<RunningTasklet> submitTasklet(final TaskletConfiguration taskletConf) {
+    final String taskletId = taskletConf.getId();
 
-      final ResultFuture<SubmittedTask> submittedTaskFuture = new ResultFuture<>();
-      callbackRegistry.register(SubmittedTask.class, taskId, submittedTaskFuture::onCompleted);
+    final ResultFuture<RunningTasklet> runningTaskletFuture = new ResultFuture<>();
+    callbackRegistry.register(RunningTasklet.class, identifier + taskletId, runningTaskletFuture::onCompleted);
+    taskletRepresenterMap.put(taskletId, new TaskletRepresenter(identifier, taskletId, msgSender, callbackRegistry));
 
-      final ResultFuture<TaskResult> resultFuture = new ResultFuture<>();
-      resultFuture.addListener(taskResult -> runningTask = null);
-      callbackRegistry.register(TaskResult.class, taskId, resultFuture::onCompleted);
+    msgSender.sendTaskletStartMsg(identifier, taskletId, taskletConf.getConfiguration());
 
-      final ResultFuture<RunningTask> runningTaskFuture = new ResultFuture<>();
-      runningTaskFuture.addListener(task -> {
-        final SubmittedTask submittedTask = new SubmittedTask(task, resultFuture);
-        runningTask = submittedTask;
-        callbackRegistry.onCompleted(SubmittedTask.class, taskId, submittedTask);
-      });
-      callbackRegistry.register(RunningTask.class, taskId, runningTaskFuture::onCompleted);
+    return runningTaskletFuture;
+  }
 
-      etContext.submitTask(taskConf);
-
-      return submittedTaskFuture;
-    } catch (final InjectionException e) {
-      throw new RuntimeException("Task id should exist within task configuration", e);
+  @Override
+  public void onTaskletStatusMessage(final String taskletId, final TaskletStatusMsg taskletStatusMsg) {
+    final TaskletRepresenter taskletRepresenter = taskletRepresenterMap.get(taskletId);
+    switch (taskletStatusMsg.getType()) {
+    case Running:
+      taskletRepresenter.onRunningStatusMsg();
+      break;
+    case Done:
+      taskletRepresenter.onDoneStatusMsg();
+      taskletRepresenterMap.remove(taskletId);
+      break;
+    case Failed:
+      taskletRepresenter.onFailedStatusMsg();
+      taskletRepresenterMap.remove(taskletId);
+      break;
+    default:
+      throw new RuntimeException("unexpected msg type");
     }
   }
 
   @Override
-  public Optional<SubmittedTask> getRunningTask() {
-    return Optional.ofNullable(runningTask);
+  public Set<String> getTaskletIds() {
+    return taskletRepresenterMap.keySet();
+  }
+
+  @Override
+  public RunningTasklet getRunningTasklet(final String taskletId) {
+    return taskletRepresenterMap.get(taskletId).getRunningTasklet().get();
   }
 
   /**

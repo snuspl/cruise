@@ -16,8 +16,9 @@
 package edu.snu.cay.dolphin.async.core.master;
 
 import edu.snu.cay.dolphin.async.*;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -32,20 +33,21 @@ final class MasterSideMsgSender {
 
   private final String dolphinJobId;
 
-  private final DolphinMsg releaseMsg;
-  private final NetworkConnection<DolphinMsg> networkConnection;
+  private final InjectionFuture<ETTaskRunner> taskRunnerFuture;
+  private final byte[] serializedReleaseMsg;
 
   @Inject
   private MasterSideMsgSender(final JobLogger jobLogger,
-                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
-                              final NetworkConnection<DolphinMsg> networkConnection) {
+                              final InjectionFuture<ETTaskRunner> taskRunnerFuture,
+                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId) {
     this.jobLogger = jobLogger;
-    this.networkConnection = networkConnection;
+    this.taskRunnerFuture = taskRunnerFuture;
     this.dolphinJobId = dolphinJobId;
-    this.releaseMsg = DolphinMsg.newBuilder()
+
+    this.serializedReleaseMsg = AvroUtils.toBytes(DolphinMsg.newBuilder()
         .setJobId(dolphinJobId)
         .setType(dolphinMsgType.ReleaseMsg)
-        .build();
+        .build(), DolphinMsg.class);
   }
 
   /**
@@ -54,7 +56,7 @@ final class MasterSideMsgSender {
    */
   void sendReleaseMsg(final String workerId) {
     try {
-      networkConnection.send(workerId, releaseMsg);
+      taskRunnerFuture.get().getRunningTasklet(workerId).send(serializedReleaseMsg);
     } catch (NetworkException e) {
       jobLogger.log(Level.INFO, String.format("Fail to send release msg to worker %s.", workerId), e);
     }
@@ -74,7 +76,7 @@ final class MasterSideMsgSender {
         .build();
 
     try {
-      networkConnection.send(workerId, msg);
+      taskRunnerFuture.get().getRunningTasklet(workerId).send(AvroUtils.toBytes(msg, DolphinMsg.class));
     } catch (NetworkException e) {
       jobLogger.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
     }

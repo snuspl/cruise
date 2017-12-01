@@ -17,26 +17,31 @@ package edu.snu.cay.dolphin.async.core.worker;
 
 import edu.snu.cay.dolphin.async.CachedModelAccessor;
 import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.metric.avro.*;
+import edu.snu.cay.dolphin.async.metric.avro.BatchMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.EpochMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsType;
+import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.metric.MetricCollector;
-import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for running Dolphin trainers on ET.
+ * Tasklet for running Dolphin trainers on ET.
  */
-public final class ETWorkerTask<V> implements Task {
-  private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
-  public static final String TASK_ID_PREFIX = "ETWorkerTask";
+public final class WorkerTasklet<V> implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(WorkerTasklet.class.getName());
+  public static final String TASKLET_ID = "WorkerTasklet";
 
-  private final String taskId;
+  private final String taskletId;
   private final int startingEpoch;
   private final int maxNumEpochs;
 
@@ -55,17 +60,17 @@ public final class ETWorkerTask<V> implements Task {
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
   @Inject
-  private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
-                       @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
-                       @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                       final ProgressReporter progressReporter,
-                       final WorkerGlobalBarrier workerGlobalBarrier,
-                       final TrainingDataProvider<V> trainingDataProvider,
-                       final ModelAccessor modelAccessor,
-                       final TestDataProvider<V> testDataProvider,
-                       final Trainer<V> trainer,
-                       final MetricCollector metricCollector) {
-    this.taskId = taskId;
+  private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskletId,
+                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
+                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                        final ProgressReporter progressReporter,
+                        final WorkerGlobalBarrier workerGlobalBarrier,
+                        final TrainingDataProvider<V> trainingDataProvider,
+                        final ModelAccessor modelAccessor,
+                        final TestDataProvider<V> testDataProvider,
+                        final Trainer<V> trainer,
+                        final MetricCollector metricCollector) {
+    this.taskletId = taskletId;
     this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
     this.progressReporter = progressReporter;
@@ -78,16 +83,13 @@ public final class ETWorkerTask<V> implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
+  public void run() throws Exception {
+    LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskletId, startingEpoch});
 
     final List<V> testData = testDataProvider.getTestData();
     LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
     trainer.initGlobalSettings();
-
-    // TODO #1225: WorkerGlobalBarrier should not be reused
-    workerGlobalBarrier.init();
 
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
@@ -125,8 +127,8 @@ public final class ETWorkerTask<V> implements Task {
         miniBatchIdx++;
 
         if (abortFlag.get()) {
-          LOG.log(Level.INFO, "The task is getting closed.");
-          return null;
+          LOG.log(Level.INFO, "The tasklet {0} is getting closed.", taskletId);
+          return;
         }
       }
 
@@ -144,8 +146,6 @@ public final class ETWorkerTask<V> implements Task {
     if (modelAccessor instanceof CachedModelAccessor) {
       ((CachedModelAccessor) modelAccessor).stopRefreshingCache();
     }
-
-    return null;
   }
   
   /**
@@ -230,6 +230,7 @@ public final class ETWorkerTask<V> implements Task {
    * Called when the Task is requested to close.
    * The {@link #abortFlag} is set true, so the task terminates execution.
    */
+  @Override
   public void close() {
     LOG.log(Level.INFO, "Requested to close!");
     abortFlag.set(true);

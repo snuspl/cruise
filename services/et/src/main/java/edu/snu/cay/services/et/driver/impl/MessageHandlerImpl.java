@@ -17,9 +17,12 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.CatchableExecutors;
@@ -59,10 +62,12 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private final String driverId;
 
+  private final TaskletCustomMsgHandler taskletCustomMsgHandler;
   private final InjectionFuture<TableControlAgent> tableControlAgentFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
   private final InjectionFuture<FallbackManager> fallbackManagerFuture;
+  private final InjectionFuture<ExecutorManager> executorManagerFuture;
   private final InjectionFuture<TableManager> tableManagerFuture;
   private final InjectionFuture<MessageSender> messageSenderFuture;
   private final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture;
@@ -76,7 +81,9 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(@Parameter(DriverIdentifier.class) final String driverId,
+                             final TaskletCustomMsgHandler taskletCustomMsgHandler,
                              final InjectionFuture<TableControlAgent> tableControlAgentFuture,
+                             final InjectionFuture<ExecutorManager> executorManagerFuture,
                              final InjectionFuture<TableManager> tableManagerFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture,
                              final InjectionFuture<MetricReceiver> metricReceiver,
@@ -84,10 +91,12 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<FallbackManager> fallbackManagerFuture,
                              final InjectionFuture<ChkpManagerMaster> chkpManagerMasterFuture) {
     this.driverId = driverId;
+    this.taskletCustomMsgHandler = taskletCustomMsgHandler;
     this.metricReceiver = metricReceiver;
     this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
     this.fallbackManagerFuture = fallbackManagerFuture;
+    this.executorManagerFuture = executorManagerFuture;
     this.tableManagerFuture = tableManagerFuture;
     this.messageSenderFuture = messageSenderFuture;
     this.chkpManagerMasterFuture = chkpManagerMasterFuture;
@@ -117,6 +126,10 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TableAccessMsg:
       onTableAccessMsg(msg.getSrcId().toString(),
           AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TableAccessMsg.class));
+      break;
+
+    case TaskletMsg:
+      onTaskletMsg(msg.getSrcId().toString(), AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TaskletMsg.class));
       break;
 
     default:
@@ -280,5 +293,24 @@ public final class MessageHandlerImpl implements MessageHandler {
       }
       return;
     });
+  }
+
+  private void onTaskletMsg(final String executorId, final TaskletMsg msg) {
+    final AllocatedExecutor allocatedExecutor;
+    try {
+      allocatedExecutor = executorManagerFuture.get().getExecutor(executorId);
+    } catch (ExecutorNotExistException e) {
+      throw new RuntimeException(e);
+    }
+    switch (msg.getType()) {
+    case TaskletCustomMsg:
+      taskletCustomMsgHandler.onNext(msg.getTaskletCustomMsg().array());
+      break;
+    case TaskletStatusMsg:
+      allocatedExecutor.onTaskletStatusMessage(msg.getTaskletId(), msg.getTaskletStatusMsg());
+      break;
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
+    }
   }
 }

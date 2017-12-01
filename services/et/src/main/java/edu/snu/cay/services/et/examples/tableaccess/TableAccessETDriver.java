@@ -16,15 +16,12 @@
 package edu.snu.cay.services.et.examples.tableaccess;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.services.et.common.util.TaskUtils;
-import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
-import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
-import edu.snu.cay.services.et.configuration.ResourceConfiguration;
-import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
+import edu.snu.cay.services.et.configuration.*;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.BlockAccessType;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.KeyOffsetByExecutor;
 import edu.snu.cay.services.et.examples.tableaccess.parameters.NumExecutorsToRunTask;
@@ -32,9 +29,7 @@ import edu.snu.cay.services.et.examples.tableaccess.parameters.TableIdentifier;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.driver.client.JobMessageObserver;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -186,42 +181,44 @@ final class TableAccessETDriver {
       table.subscribe(subscribers).get();
 
       // launch tasks to executors
-      final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
-      int taskIdx = 0;
+      final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(executorsToSubmitTask.size());
+      int taskletIdx = 0;
       for (final AllocatedExecutor testExecutor : executorsToSubmitTask) {
-        final Configuration taskParamsConf = getTaskParamsConf(taskIdx, tableId,
+        final Configuration taskParamsConf = getTaskletParamsConf(taskletIdx, tableId,
             tableAccessType, executorsToSubmitTask.size());
-        final Configuration taskConf = getTaskConf(testId, taskIdx);
-        taskFutureList.add(testExecutor.submitTask(Configurations.merge(taskParamsConf, taskConf)));
-        taskIdx++;
+        final TaskletConfiguration taskConf = getTaskletConf(testId, taskletIdx, taskParamsConf);
+        taskFutureList.add(testExecutor.submitTasklet(taskConf));
+        taskletIdx++;
       }
 
       // wait and check the result
-      TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+      TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
       table.drop().get();
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }
   }
 
-  private static Configuration getTaskParamsConf(final int taskIdx,
-                                                 final String tableId,
-                                                 final String blockAccessType,
-                                                 final int testExecutorsSize) {
+  private static Configuration getTaskletParamsConf(final int taskletIdx,
+                                                    final String tableId,
+                                                    final String blockAccessType,
+                                                    final int testExecutorsSize) {
 
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(KeyOffsetByExecutor.class, Integer.toString(taskIdx))
+        .bindNamedParameter(KeyOffsetByExecutor.class, Integer.toString(taskletIdx))
         .bindNamedParameter(TableIdentifier.class, tableId)
         .bindNamedParameter(BlockAccessType.class, blockAccessType)
         .bindNamedParameter(NumExecutorsToRunTask.class, Integer.toString(testExecutorsSize))
         .build();
   }
 
-  private static Configuration getTaskConf(final String testId,
-                                           final int taskIdx) {
-    return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, testId + "-" + taskIdx)
-        .set(TaskConfiguration.TASK, TableAccessSingleThreadTask.class)
+  private static TaskletConfiguration getTaskletConf(final String testId,
+                                                     final int taskletIdx,
+                                                     final Configuration taskParamsConf) {
+    return TaskletConfiguration.newBuilder()
+        .setId(testId + "-" + taskletIdx)
+        .setTaskletClass(TableAccessSingleThreadTask.class)
+        .setUserParamConf(taskParamsConf)
         .build();
   }
 

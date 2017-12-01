@@ -22,9 +22,11 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ExecutorServiceConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
+import edu.snu.cay.services.et.configuration.parameters.NumTasklets;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.ContextStopHandler;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
@@ -41,6 +43,7 @@ import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.runtime.common.parameters.JVMHeapSlack;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
@@ -65,6 +68,7 @@ final class ExecutorManager {
 
   private final CallbackRegistry callbackRegistry;
 
+  private final MessageSender msgSender;
   private final EvaluatorManager evaluatorManager;
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -84,6 +88,7 @@ final class ExecutorManager {
   @Inject
   private ExecutorManager(final CallbackRegistry callbackRegistry,
                           final EvaluatorManager evaluatorManager,
+                          final MessageSender msgSender,
                           final NameServer nameServer,
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
@@ -95,6 +100,7 @@ final class ExecutorManager {
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.callbackRegistry = callbackRegistry;
     this.evaluatorManager = evaluatorManager;
+    this.msgSender = msgSender;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.identifierFactory = identifierFactory;
@@ -114,6 +120,7 @@ final class ExecutorManager {
    * @return a list of allocated executors
    */
   ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+    final int numTasklets = executorConf.getNumTasklets();
     final ResourceConfiguration resConf = executorConf.getResourceConf();
     final Configuration remoteAccessConf = executorConf.getRemoteAccessConf();
     final Configuration userContextConf = executorConf.getUserContextConf();
@@ -128,7 +135,7 @@ final class ExecutorManager {
     final AtomicInteger executorIdxCounter = new AtomicInteger(0);
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
     activeCtxHandlers.add(activeContext -> {
-      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, callbackRegistry);
+      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, msgSender, callbackRegistry);
       executors.put(allocatedExecutor.getId(), allocatedExecutor);
       LOG.log(Level.INFO, "A new Executor {0} is allocated ({1}/{2}).",
           new Object[]{allocatedExecutor.getId(), executorIdxCounter.incrementAndGet(), num});
@@ -136,9 +143,13 @@ final class ExecutorManager {
       ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
     });
 
+    final Configuration serviceConf = Configurations.merge(remoteAccessConf, userServiceConf,
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(NumTasklets.class, Integer.toString(numTasklets))
+            .build());
+
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores, nodeNames,
-        new AllocatedEvalHandler(userContextConf,
-            Configurations.merge(remoteAccessConf, userServiceConf), memSizeInMB),
+        new AllocatedEvalHandler(userContextConf, serviceConf, memSizeInMB),
         activeCtxHandlers);
 
     return executorListFuture;

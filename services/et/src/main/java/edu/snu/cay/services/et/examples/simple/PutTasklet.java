@@ -19,8 +19,8 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -32,8 +32,8 @@ import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.ORDERED_TAB
 /**
  * Task code that puts values to tables.
  */
-final class PutTask implements Task {
-  private static final Logger LOG = Logger.getLogger(PutTask.class.getName());
+final class PutTasklet implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(PutTasklet.class.getName());
   static final long KEY0 = 0;
   static final long KEY1 = 1;
   static final String VALUE0 = "Table0";
@@ -46,16 +46,16 @@ final class PutTask implements Task {
   private final TableAccessor tableAccessor;
 
   @Inject
-  private PutTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                  @Parameter(ExecutorIdentifier.class) final String executorId,
-                  final TableAccessor tableAccessor) {
+  private PutTasklet(@Parameter(ETIdentifier.class) final String elasticTableId,
+                     @Parameter(ExecutorIdentifier.class) final String executorId,
+                     final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
     final Table<Long, String, ?> hashedTable = tableAccessor.getTable(HASHED_TABLE_ID);
     final Table<Long, String, ?> orderedTable = tableAccessor.getTable(ORDERED_TABLE_ID);
@@ -71,7 +71,10 @@ final class PutTask implements Task {
     if (prevValue00 != null || prevValue11 != null) {
       throw new RuntimeException("The result is different from the expectation");
     }
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

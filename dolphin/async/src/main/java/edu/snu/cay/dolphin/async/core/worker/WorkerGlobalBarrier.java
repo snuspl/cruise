@@ -56,7 +56,7 @@ public final class WorkerGlobalBarrier {
    * Initialize its state machine.
    * By calling this method in any state, you can reset the state of {@link WorkerGlobalBarrier} to initial state.
    */
-  public void init() {
+  private void init() {
     this.stateMachine = StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
         .addState(State.RUN, "Workers are running their tasks. Optimization can take place")

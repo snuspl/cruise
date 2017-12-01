@@ -17,16 +17,15 @@ package edu.snu.cay.services.et.examples.userservice;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.task.RunningTask;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -38,23 +37,19 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * The driver for central communication service example.
  * Launch executors which exchange messages with the driver.
  *
- * 1. Each task sends a message to the driver and waits for a response message.
- * 2. When all messages from the tasks has arrived, the driver sends response messages to the tasks.
- * 3. All tasks are terminated by the response messages.
+ * 1. Each tasklet sends a message to the driver and waits for a response message.
+ * 2. When all messages from the tasklets has arrived, the driver sends response messages to the tasklets.
+ * 3. All tasklets are terminated by the response messages.
  */
 @DriverSide
 @Unit
 final class ETCentCommExampleDriver {
-  private static final Logger LOG = Logger.getLogger(ETCentCommExampleDriver.class.getName());
-
-  private static final String TASK_PREFIX = "Worker-Task-";
+  private static final String TASKLET_PREFIX = "WorkerTasklet-";
 
   private final ExecutorConfiguration executorConf;
 
@@ -62,8 +57,6 @@ final class ETCentCommExampleDriver {
   private final DriverSideMsgHandler driverSideMsgHandler;
 
   private final int splits;
-
-  private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
 
   @Inject
   private ETCentCommExampleDriver(final CentCommConfProvider centCommConfProvider,
@@ -92,48 +85,23 @@ final class ETCentCommExampleDriver {
         final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf).get();
 
         CatchableExecutors.newSingleThreadExecutor().submit(() -> {
-          // start update tasks on worker executors
-          final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executors.size());
-          executors.forEach(executor -> taskFutureList.add(executor.submitTask(
-              TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
+          // start update tasklets on worker executors
+          final AtomicInteger taskletIdCount = new AtomicInteger(0);
+          final List<Future<RunningTasklet>> taskletFutureList = new ArrayList<>(executors.size());
+          executors.forEach(executor -> taskletFutureList.add(executor.submitTasklet(
+              TaskletConfiguration.newBuilder()
+                  .setId(TASKLET_PREFIX + taskletIdCount.getAndIncrement())
+                  .setTaskletClass(ETCentCommSlaveTask.class)
                   .build())));
 
-          waitAndCheckTaskResult(taskFutureList);
+          driverSideMsgHandler.sendResponseAfterReceivingAllMsgs();
+
+          TaskletUtils.waitAndCheckTaskletResult(taskletFutureList, true);
 
           executors.forEach(AllocatedExecutor::close);
         });
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
-      }
-    }
-  }
-
-  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskResultFutureList) {
-    taskResultFutureList.forEach(taskResultFuture -> {
-      try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (!taskResult.isSuccess()) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
-  }
-
-  final class RunningTaskHandler implements EventHandler<RunningTask> {
-    @Override
-    public void onNext(final RunningTask runningTask) {
-      LOG.log(Level.INFO, "Task running: {0}", runningTask.getId());
-
-      final int taskRunningCount = taskRunningCounter.incrementAndGet();
-
-      if (taskRunningCount == splits) {
-        driverSideMsgHandler.sendResponseAfterReceivingAllMsgs();
       }
     }
   }

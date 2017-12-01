@@ -18,26 +18,23 @@ package edu.snu.cay.dolphin.async.core.master;
 import edu.snu.cay.dolphin.async.DolphinMsg;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.SyncMsg;
+import edu.snu.cay.dolphin.async.core.worker.*;
 import edu.snu.cay.dolphin.async.dolphinMsgType;
-import edu.snu.cay.dolphin.async.core.worker.ModelEvaluator;
-import edu.snu.cay.dolphin.async.core.worker.WorkerGlobalBarrier;
-import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgHandler;
-import edu.snu.cay.dolphin.async.core.worker.WorkerSideMsgSender;
-import edu.snu.cay.dolphin.async.network.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.driver.client.JobMessageObserver;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.io.network.impl.NSMessage;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,7 +59,7 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MasterSideMsgSender.class, WorkerSideMsgSender.class,
+@PrepareForTest({WorkerSideMsgSender.class, ETTaskRunner.class, RunningTasklet.class,
     ProgressTracker.class, BatchProgressTracker.class, ModelChkpManager.class, ModelEvaluator.class})
 public class WorkerStateManagerTest {
   private static final Logger LOG = Logger.getLogger(WorkerStateManagerTest.class.getName());
@@ -76,9 +73,9 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, MasterSideMsgSender, MasterSideMsgHandler> driverComponents;
+  private Pair<WorkerStateManager, MasterSideMsgHandler> driverComponents;
 
-  private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, MessageHandler>>
+  private Map<String, Tuple3<WorkerGlobalBarrier, WorkerSideMsgSender, TaskletCustomMsgHandler>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -90,9 +87,9 @@ public class WorkerStateManagerTest {
   /**
    * Set up the Driver. The mocked message handler for CentComm service pretends the actual messages to be exchanged.
    */
-  private void setupDriver(final int numWorkers) throws InjectionException, NetworkException {
+  private void setupDriver(final List<String> workerIds) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
+    injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, workerIds.size());
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
     injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
@@ -100,40 +97,43 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(ProgressTracker.class, mock(ProgressTracker.class));
     injector.bindVolatileInstance(BatchProgressTracker.class, mock(BatchProgressTracker.class));
     injector.bindVolatileInstance(ModelChkpManager.class, mock(ModelChkpManager.class));
+    injector.bindVolatileInstance(JobMessageObserver.class, mock(JobMessageObserver.class));
+    injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
+    final ETTaskRunner mockedTaskRunner = mock(ETTaskRunner.class);
+    injector.bindVolatileInstance(ETTaskRunner.class, mockedTaskRunner);
 
-    final MasterSideMsgSender mockedMasterSideMsgSender = mock(MasterSideMsgSender.class);
-    injector.bindVolatileInstance(MasterSideMsgSender.class, mockedMasterSideMsgSender);
+    final Map<String, RunningTasklet> runningTaskletMap = new HashMap<>();
+    workerIds.forEach(workerId -> {
+      final RunningTasklet mockedTasklet = mock(RunningTasklet.class);
+      try {
+        doAnswer(invocation -> {
+          LOG.log(Level.INFO, "sending a release msg to {0}", workerId);
+          final byte[] bytes = invocation.getArgumentAt(0, byte[].class);
+          workerIdToWorkerComponents.get(workerId).getThird().onNext(bytes);
+          return null;
+        }).when(mockedTasklet).send(any(byte[].class));
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
+
+      runningTaskletMap.put(workerId, mockedTasklet);
+    });
+
+    doAnswer(invocation -> {
+      final String workerId = invocation.getArgumentAt(0, String.class);
+      return runningTaskletMap.get(workerId);
+    }).when(mockedTaskRunner).getRunningTasklet(anyString());
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
 
     final MasterSideMsgHandler masterSideMsgHandler = injector.getInstance(MasterSideMsgHandler.class);
-    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
-    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideMsgSender, masterSideMsgHandler);
-
-    doAnswer(invocation -> {
-      final String workerId = invocation.getArgumentAt(0, String.class);
-      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-          .setJobId(JOB_ID)
-          .setType(dolphinMsgType.ReleaseMsg)
-          .build();
-
-      LOG.log(Level.INFO, "sending a release msg to {0}", workerId);
-
-      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(JOB_ID),
-          identifierFactory.getNewInstance(workerId), dolphinMsg);
-
-      final MessageHandler workerSideMsgHandler =
-          workerIdToWorkerComponents.get(workerId).getThird();
-
-      workerSideMsgHandler.onNext(msg);
-      return null;
-    }).when(mockedMasterSideMsgSender).sendReleaseMsg(anyString());
+    driverComponents = Pair.of(workerStateManager, masterSideMsgHandler);
   }
 
   /**
    * Set up a worker. The mocked message handler for CentComm service pretends the actual messages to be exchanged.
-   * This method should be called after {@link #setupDriver(int)}.
+   * This method should be called after {@link #setupDriver(List)}.
    * @param workerId a worker id
    */
   private void setupWorker(final String workerId) throws InjectionException, NetworkException {
@@ -149,12 +149,11 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockedWorkerSideMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final MessageHandler workerSideMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
+    final TaskletCustomMsgHandler taskletCustomMsgHandler = injector.getInstance(WorkerSideMsgHandler.class);
     final SerializableCodec<WorkerGlobalBarrier.State> codec = new SerializableCodec<>();
-    final IdentifierFactory identifierFactory = new StringIdentifierFactory();
 
     workerIdToWorkerComponents.put(workerId,
-        new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, workerSideMsgHandler));
+        new Tuple3<>(workerGlobalBarrier, mockedWorkerSideMsgSender, taskletCustomMsgHandler));
 
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
@@ -170,11 +169,8 @@ public class WorkerStateManagerTest {
           .build();
 
       LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
-      final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getThird();
-
-      final Message<DolphinMsg> msg = new NSMessage<>(identifierFactory.getNewInstance(workerId),
-          identifierFactory.getNewInstance(JOB_ID), dolphinMsg);
-      masterSideMsgHandler.onDolphinMsg(msg.getSrcId().toString(), dolphinMsg);
+      final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getRight();
+      masterSideMsgHandler.onDolphinMsg(dolphinMsg);
       return null;
     }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }
@@ -185,13 +181,13 @@ public class WorkerStateManagerTest {
    * @return a list of worker ids
    */
   private List<String> prepare(final int numInitialWorkers) throws NetworkException, InjectionException {
-    setupDriver(numInitialWorkers);
     final List<String> workerIds = new ArrayList<>(numInitialWorkers);
     for (int workerIdx = 0; workerIdx < numInitialWorkers; workerIdx++) {
       final String workerId = WORKER_ID_PREFIX + workerIdx;
       setupWorker(workerId);
       workerIds.add(workerId);
     }
+    setupDriver(workerIds);
     return workerIds;
   }
 

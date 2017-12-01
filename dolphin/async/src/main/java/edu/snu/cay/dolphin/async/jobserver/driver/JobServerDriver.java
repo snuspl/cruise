@@ -16,12 +16,9 @@
 package edu.snu.cay.dolphin.async.jobserver.driver;
 
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.core.client.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.core.master.DolphinMaster;
-import edu.snu.cay.dolphin.async.network.NetworkConfProvider;
-import edu.snu.cay.dolphin.async.network.NetworkConnection;
 import edu.snu.cay.dolphin.async.jobserver.Parameters.*;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
@@ -40,16 +37,13 @@ import edu.snu.cay.utils.ConfigurationUtils;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
-import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.runtime.common.driver.parameters.JobIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -82,8 +76,6 @@ public final class JobServerDriver {
   private final JobServerStatusManager jobServerStatusManager;
   private final JobScheduler jobScheduler;
 
-  private final String reefJobId;
-
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
   /**
@@ -97,22 +89,16 @@ public final class JobServerDriver {
 
   @Inject
   private JobServerDriver(final ETMaster etMaster,
-                          final NetworkConnection<DolphinMsg> networkConnection,
                           final JobMessageObserver jobMessageObserver,
                           final JobServerStatusManager jobServerStatusManager,
                           final JobScheduler jobScheduler,
-                          final Injector jobBaseInjector,
-                          @Parameter(DriverIdentifier.class) final String driverId,
-                          @Parameter(JobIdentifier.class) final String reefJobId)
+                          final Injector jobBaseInjector)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
     this.jobServerStatusManager = jobServerStatusManager;
     this.jobScheduler = jobScheduler;
-    this.reefJobId = reefJobId;
     this.jobBaseInjector = jobBaseInjector;
-
-    networkConnection.setup(driverId);
   }
 
   /**
@@ -207,10 +193,11 @@ public final class JobServerDriver {
     LOG.log(Level.INFO, jobStartMsg);
 
     LOG.log(Level.INFO, "Preparing executors and tables for job: {0}", jobId);
+
     final Future<List<AllocatedExecutor>> serversFuture = etMaster.addExecutors(jobEntity.getNumServers(),
-        jobEntity.getServerExecutorConf());
+          jobEntity.getServerExecutorConf());
     final Future<List<AllocatedExecutor>> workersFuture = etMaster.addExecutors(jobEntity.getNumWorkers(),
-        jobEntity.getWorkerExecutorConf());
+          jobEntity.getWorkerExecutorConf());
 
     new Thread(() -> {
       try {
@@ -298,8 +285,6 @@ public final class JobServerDriver {
     final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(serverResourceConf)
             .setRemoteAccessConf(serverRemoteAccessConf)
-            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
             .build();
     final TableConfiguration serverTableConf = buildServerTableConf(modelTableId,
         serverInjector, numServerBlocks, userParamConf);
@@ -321,11 +306,9 @@ public final class JobServerDriver {
         numWorkerSenderThreads, workerSenderQueueSize, numWorkerHandlerThreads, workerHandlerQueueSize);
 
     final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
-            .setResourceConf(workerResourceConf)
-            .setRemoteAccessConf(workerRemoteAccessConf)
-            .setUserContextConf(NetworkConfProvider.getContextConfiguration())
-            .setUserServiceConf(NetworkConfProvider.getServiceConfiguration(reefJobId, dolphinJobId))
-            .build();
+        .setResourceConf(workerResourceConf)
+        .setRemoteAccessConf(workerRemoteAccessConf)
+        .build();
     final TableConfiguration workerTableConf = buildWorkerTableConf(inputTableId,
         workerInjector, numWorkerBlocks, userParamConf);
     final String inputPath = workerInjector.getNamedInstance(Parameters.InputDir.class);
@@ -352,6 +335,7 @@ public final class JobServerDriver {
 
     sendMessageToClient(shutdownMsg);
     LOG.log(Level.INFO, shutdownMsg);
+
     if (isClosed.compareAndSet(false, true)) {
       jobServerStatusManager.finishJobServer();
     }

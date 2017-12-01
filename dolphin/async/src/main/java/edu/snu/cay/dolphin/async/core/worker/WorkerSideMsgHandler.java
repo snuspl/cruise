@@ -16,12 +16,9 @@
 package edu.snu.cay.dolphin.async.core.worker;
 
 import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.dolphin.async.network.MessageHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.CatchableExecutors;
-import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
@@ -29,36 +26,33 @@ import java.util.concurrent.ExecutorService;
 /**
  * A worker-side message handler that routes messages to an appropriate component corresponding to the msg type.
  */
-@EvaluatorSide
-public final class WorkerSideMsgHandler implements MessageHandler {
-  private final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture;
-  private final InjectionFuture<ModelEvaluator> modelEvaluatorFuture;
-
+public final class WorkerSideMsgHandler implements TaskletCustomMsgHandler {
   private static final int NUM_RELEASE_MSG_THREADS = 8;
   private static final int NUM_MODEL_EV_MSG_THREADS = 8;
+
+  private final WorkerGlobalBarrier workerGlobalBarrier;
+  private final ModelEvaluator modelEvaluator;
 
   private final ExecutorService releaseMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_RELEASE_MSG_THREADS);
   private final ExecutorService modelEvalMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MODEL_EV_MSG_THREADS);
 
   @Inject
-  private WorkerSideMsgHandler(final InjectionFuture<WorkerGlobalBarrier> workerGlobalBarrierFuture,
-                               final InjectionFuture<ModelEvaluator> modelEvaluatorFuture) {
-    this.workerGlobalBarrierFuture = workerGlobalBarrierFuture;
-    this.modelEvaluatorFuture = modelEvaluatorFuture;
+  private WorkerSideMsgHandler(final WorkerGlobalBarrier workerGlobalBarrier,
+                               final ModelEvaluator modelEvaluator) {
+    this.workerGlobalBarrier = workerGlobalBarrier;
+    this.modelEvaluator = modelEvaluator;
   }
 
   @Override
-  public synchronized void onNext(final Message<DolphinMsg> msg) {
-
-    final DolphinMsg dolphinMsg = SingleMessageExtractor.extract(msg);
-
+  public void onNext(final byte[] bytes) {
+    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
     switch (dolphinMsg.getType()) {
     case ReleaseMsg:
-      releaseMsgExecutor.submit(() -> workerGlobalBarrierFuture.get().onReleaseMsg());
+      releaseMsgExecutor.submit(workerGlobalBarrier::onReleaseMsg);
       break;
 
     case ModelEvalAnsMsg:
-      modelEvalMsgExecutor.submit(() -> modelEvaluatorFuture.get().onMasterMsg(dolphinMsg.getModelEvalAnsMsg()));
+      modelEvalMsgExecutor.submit(() -> modelEvaluator.onMasterMsg(dolphinMsg.getModelEvalAnsMsg()));
       break;
     default:
       throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());

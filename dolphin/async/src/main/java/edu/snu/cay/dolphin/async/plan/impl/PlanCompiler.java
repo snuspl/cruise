@@ -337,7 +337,7 @@ public final class PlanCompiler {
           associateOps.put(executor, associateOp);
           dag.addVertex(associateOp);
 
-          final StartOp workerStartOp = new StartOp(executor, dolphinMasterFuture.get().getWorkerTaskConf(),
+          final StartOp workerStartOp = new StartOp(executor, dolphinMasterFuture.get().getWorkerTaskletConf(),
               dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(executor, workerStartOp);
           dag.addVertex(workerStartOp);
@@ -369,7 +369,7 @@ public final class PlanCompiler {
           dag.addVertex(associateOp);
           dag.addEdge(unsubscribeOp, associateOp);
 
-          final StartOp serverStartOp = new StartOp(executor, dolphinMasterFuture.get().getServerTaskConf(),
+          final StartOp serverStartOp = new StartOp(executor, dolphinMasterFuture.get().getServerTaskletConf(),
               dolphinMasterFuture.get().getServerMetricConf());
           startOps.put(executor, serverStartOp);
           dag.addVertex(serverStartOp);
@@ -448,7 +448,7 @@ public final class PlanCompiler {
 
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StartOp startOp = new StartOp(evalToAdd,
-              dolphinMasterFuture.get().getWorkerTaskConf(),
+              dolphinMasterFuture.get().getWorkerTaskletConf(),
               dolphinMasterFuture.get().getWorkerMetricConf());
           startOps.put(evalToAdd, startOp);
           final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, modelTableId);
@@ -460,7 +460,7 @@ public final class PlanCompiler {
           dag.addEdge(subscribeOp, startOp);
         } else {
           final StartOp startOp = new StartOp(evalToAdd,
-              dolphinMasterFuture.get().getServerTaskConf(),
+              dolphinMasterFuture.get().getServerTaskletConf(),
               dolphinMasterFuture.get().getServerMetricConf());
           startOps.put(evalToAdd, startOp);
 

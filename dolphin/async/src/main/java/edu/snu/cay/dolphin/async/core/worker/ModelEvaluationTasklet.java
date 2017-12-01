@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.core.worker;
 
-import org.apache.reef.task.Task;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -24,29 +24,32 @@ import java.util.logging.Logger;
 /**
  * REEF Task for evaluating a model trained by training tasks.
  */
-public final class ModelEvaluationTask implements Task {
-  private static final Logger LOG = Logger.getLogger(ModelEvaluationTask.class.getName());
+public final class ModelEvaluationTasklet implements Tasklet {
+  private static final Logger LOG = Logger.getLogger(ModelEvaluationTasklet.class.getName());
 
   private final ModelEvaluator modelEvaluator;
   private final TestDataProvider testDataProvider;
   private final Trainer trainer;
 
   @Inject
-  private ModelEvaluationTask(final ModelEvaluator modelEvaluator,
-                              final TestDataProvider testDataProvider,
-                              final Trainer trainer) {
+  private ModelEvaluationTasklet(final ModelEvaluator modelEvaluator,
+                                 final TestDataProvider testDataProvider,
+                                 final Trainer trainer) {
     this.modelEvaluator = modelEvaluator;
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
   }
 
   @Override
-  public byte[] call(final byte[] memento) throws Exception {
+  public void run() throws Exception {
     final List testData = testDataProvider.getTestData();
 
     // evaluate all check-pointed models
     modelEvaluator.evaluate(trainer, testData);
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

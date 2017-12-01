@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.plan.impl;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.api.Op.OpType;
 import edu.snu.cay.services.et.plan.impl.op.*;
@@ -162,17 +162,17 @@ public abstract class OpResult {
   }
 
   public static final class StartOpResult extends OpResult {
-    private final SubmittedTask task;
+    private final RunningTasklet task;
 
-    public StartOpResult(final StartOp op, final SubmittedTask task) {
+    public StartOpResult(final StartOp op, final RunningTasklet task) {
       super(OpType.START, op);
       this.task = task;
     }
 
     /**
-     * @return a {@link SubmittedTask} started by this operation
+     * @return a {@link RunningTasklet} started by this operation
      */
-    public SubmittedTask getTask() {
+    public RunningTasklet getTask() {
       return task;
     }
   }

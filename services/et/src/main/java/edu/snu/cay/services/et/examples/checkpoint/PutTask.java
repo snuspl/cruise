@@ -18,8 +18,8 @@ package edu.snu.cay.services.et.examples.checkpoint;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 /**
  * Task code that puts values to the table.
  */
-final class PutTask implements Task {
+final class PutTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(PutTask.class.getName());
   static final String VALUE_PREFIX = "valueForKey";
   static final int NUM_ITEMS = 100;
@@ -45,7 +45,7 @@ final class PutTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello! I am {0}", new Object[]{executorId});
     final Table<Long, String, ?> table = tableAccessor.getTable(CheckpointETDriver.TABLE_ID);
 
@@ -54,7 +54,10 @@ final class PutTask implements Task {
     }
 
     LOG.log(Level.INFO, "Succeed to put {0} key-value items", NUM_ITEMS);
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

@@ -371,5 +371,21 @@ public final class MigrationManagerTest {
         throws NetworkException {
 
     }
+
+    @Override
+    public void sendTaskletCustomMsg(final String executorId, final String taskletId, final byte[] message) {
+
+    }
+
+    @Override
+    public void sendTaskletStartMsg(final String executorId, final String taskletId,
+                                    final Configuration taskletConf) {
+
+    }
+
+    @Override
+    public void sendTaskletStopMsg(final String executorId, final String taskletId) {
+
+    }
   }
 }

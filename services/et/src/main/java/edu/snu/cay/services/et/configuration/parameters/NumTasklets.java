@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.network;
+package edu.snu.cay.services.et.configuration.parameters;
 
-import edu.snu.cay.dolphin.async.DolphinMsg;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * Interface to handle {@link DolphinMsg}.
- */
-public interface MessageHandler extends EventHandler<Message<DolphinMsg>> {
+@NamedParameter(doc = "The maximum number of tasklets in an executor.", default_value = NumTasklets.DEFAULT_VALUE_STR)
+public final class NumTasklets implements Name<Integer> {
+  public static final String DEFAULT_VALUE_STR = "4";
+
+  // Utility classes should not have a public or default constructor.
+  private NumTasklets() {
+  }
 }

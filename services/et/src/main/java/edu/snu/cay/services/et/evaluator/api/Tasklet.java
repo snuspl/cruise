@@ -13,31 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.network;
-
-import edu.snu.cay.dolphin.async.DolphinMsg;
-import edu.snu.cay.utils.AvroUtils;
-import org.apache.reef.wake.remote.Codec;
-
-import javax.inject.Inject;
+package edu.snu.cay.services.et.evaluator.api;
 
 /**
- * Codec for DolphinMsg.
+ * The interface for Tasklets.
+ * When a tasklet has been submitted, executor runtime execute it by calling {@link #run()}.
+ * When master directs the tasklet to stop the tasklet, executor runtime will call {@link #close()}.
  */
-public final class DolphinMsgCodec implements Codec<DolphinMsg> {
+public interface Tasklet {
 
-  @Inject
-  private DolphinMsgCodec() {
+  /**
+   * Run a tasklet.
+   * @throws Exception when tasklet encounters unresolved issues
+   */
+  void run() throws Exception;
 
-  }
-
-  @Override
-  public byte[] encode(final DolphinMsg dolphinMsg) {
-    return AvroUtils.toBytes(dolphinMsg, DolphinMsg.class);
-  }
-
-  @Override
-  public DolphinMsg decode(final byte[] bytes) {
-    return AvroUtils.fromBytes(bytes, DolphinMsg.class);
-  }
+  /**
+   * Close the running tasklet.
+   */
+  void close();
 }

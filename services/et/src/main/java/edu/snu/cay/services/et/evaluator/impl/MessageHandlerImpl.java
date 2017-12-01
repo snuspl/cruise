@@ -57,14 +57,17 @@ public final class MessageHandlerImpl implements MessageHandler {
   private static final int NUM_METRIC_MSG_THREADS = 4;
   private static final int NUM_TBL_ACS_MSG_THREADS = 8;
   private static final int NUM_CHKP_THREADS = 8;
+  private static final int NUM_TASKLET_MSG_THREADS = 4;
 
   private final ExecutorService tableCtrMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TBL_CTR_MSG_THREADS);
   private final ExecutorService migrationMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_MIGRATION_MSG_THREADS);
   private final ExecutorService metricMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_METRIC_MSG_THREADS);
   private final ExecutorService tableAccessMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TBL_ACS_MSG_THREADS);
   private final ExecutorService chkpMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_CHKP_THREADS);
+  private final ExecutorService taskletMsgExecutor = CatchableExecutors.newFixedThreadPool(NUM_TASKLET_MSG_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
+  private final InjectionFuture<TaskletRuntime> taskletRuntimeFuture;
 
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
@@ -76,6 +79,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
+                             final InjectionFuture<TaskletRuntime> taskletRuntimeFuture,
                              final ConfigurationSerializer confSerializer,
                              final InjectionFuture<MessageSender> msgSenderFuture,
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
@@ -84,6 +88,7 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<MetricCollector> metricCollectorFuture,
                              final InjectionFuture<ChkpManagerSlave> chkpManagerSlaveFuture) {
     this.tablesFuture = tablesFuture;
+    this.taskletRuntimeFuture = taskletRuntimeFuture;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
     this.remoteAccessHandlerFuture = remoteAccessHandlerFuture;
@@ -116,6 +121,10 @@ public final class MessageHandlerImpl implements MessageHandler {
 
     case MetricMsg:
       onMetricMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), MetricMsg.class));
+      break;
+
+    case TaskletMsg:
+      onTaskletMsg(AvroUtils.fromBytes(etMsg.getInnerMsg().array(), TaskletMsg.class));
       break;
 
     default:
@@ -324,6 +333,39 @@ public final class MessageHandlerImpl implements MessageHandler {
       } else {
         throw new RuntimeException("Unexpected msg type");
       }
+    });
+  }
+
+  private void onTaskletMsg(final TaskletMsg msg) {
+    taskletMsgExecutor.submit(() -> {
+      switch (msg.getType()) {
+      case TaskletCustomMsg:
+        taskletRuntimeFuture.get().onTaskletMsg(msg.getTaskletId(), msg.getTaskletCustomMsg().array());
+        break;
+
+      case TaskletControlMsg:
+        final TaskletControlMsg controlMsg = msg.getTaskletControlMsg();
+        switch (controlMsg.getType()) {
+        case Start:
+          try {
+            final Configuration taskletConf = confSerializer.fromString(controlMsg.getTaskConf());
+            taskletRuntimeFuture.get().startTasklet(msg.getTaskletId(), taskletConf);
+          } catch (InjectionException | IOException e) {
+            throw new RuntimeException(e);
+          }
+          break;
+        case Stop:
+          taskletRuntimeFuture.get().stopTasklet(msg.getTaskletId());
+          break;
+        default:
+          throw new RuntimeException("Unexpected control msg type");
+        }
+        break;
+
+      default:
+        throw new RuntimeException("Unexpected msg type");
+      }
+      return;
     });
   }
 }

@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
 import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
 import edu.snu.cay.services.et.evaluator.impl.Tables;
+import edu.snu.cay.services.et.evaluator.impl.TaskletRuntime;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.evaluator.context.parameters.Services;
@@ -62,6 +63,7 @@ public final class ExecutorServiceConfiguration extends ConfigurationModuleBuild
    */
   public static final ConfigurationModule CONF = new ExecutorServiceConfiguration()
       .bindSetEntry(Services.class, Tables.class)
+      .bindSetEntry(Services.class, TaskletRuntime.class)
       .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
       .bindNamedParameter(ExecutorIdentifier.class, IDENTIFIER)
       .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)

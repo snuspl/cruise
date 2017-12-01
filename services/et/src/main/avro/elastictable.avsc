@@ -583,6 +583,61 @@
 },
 
 /**
+ * The message protocol for master to control tasklets in executors.
+ * When starting a tasklet, it includes string-formed tasklet configuration.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletControlMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletControlType",
+        "symbols": ["Start", "Stop"]}},
+    {"name": "taskConf", "type": ["null", "string"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol to report tasklet status from executors to master.
+ * It reports a string message optionally, in addition to status type.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletStatusMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletStatusType",
+        "symbols": ["Running", "Done", "Failed"]}},
+    {"name": "message", "type": ["null", "string"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol for tasklets.
+ * Messages are categorized into following types:
+ * (1) TaskletCustomMsg: Messages with byte form for custom usage of ET's clients.
+ * (2) TaskletControlMsg: Messages for master to control tasklets in executors.
+ * (3) TaskletStatusMsg: Messages for executors to report tasklet status to master.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "TaskletMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "TaskletMsgType",
+        "symbols": ["TaskletCustomMsg", "TaskletControlMsg", "TaskletStatusMsg"]}},
+    {"name": "taskletId", "type": "string"},
+    {"name": "taskletCustomMsg", "type": ["null", "bytes"], "default": null},
+    {"name": "taskletControlMsg", "type": ["null", "TaskletControlMsg"], "default": null},
+    {"name": "taskletStatusMsg", "type": ["null", "TaskletStatusMsg"], "default": null}
+  ]
+},
+
+/**
  * The message protocol used for Elastic Table.
  * Messages are categorized into following types:
  * (1) TableAccessMsg: Messages regarding remote table access.
@@ -590,6 +645,7 @@
  * (3) TableChkpMsg: Messages regarding to talbe checkpoint.
  * (4) MigrationMsg: Messages used for data migration.
  * (5) MetricMsg: Messages for collecting metrics from executors.
+ * (6) TaskletMsg: Messages regarding to tasklets.
  * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {
@@ -599,7 +655,7 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "ETMsgType",
-        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg"]}},
+        "symbols": ["TableAccessMsg", "TableControlMsg", "TableChkpMsg", "MigrationMsg", "MetricMsg", "TaskletMsg"]}},
     {"name": "innerMsg", "type": "bytes"}
   ]
 }

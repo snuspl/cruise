@@ -15,19 +15,19 @@
  */
 package edu.snu.cay.services.et.examples.metric;
 
-import edu.snu.cay.services.et.common.util.TaskUtils;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -124,7 +124,7 @@ final class MetricETDriver {
       CatchableExecutors.newSingleThreadExecutor().submit(() -> {
         try {
           final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(associators.size());
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(associators.size());
 
           // Simply create a hash-based table.
           etMaster.createTable(buildTableConf(TABLE_ID), associators).get();
@@ -135,12 +135,12 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, MetricTask.class)
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .setTaskletClass(MetricTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
 
           // Round 2. start collecting metrics with automatic periodic flush
           associators.forEach(associator -> metricManager.startMetricCollection(associator.getId(),
@@ -149,12 +149,12 @@ final class MetricETDriver {
                   .build()));
 
           // Run tasks
-          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, MetricTask.class)
+          associators.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId(METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .setTaskletClass(MetricTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
 
           // Close the executors
           associators.forEach(AllocatedExecutor::close);

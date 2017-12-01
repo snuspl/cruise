@@ -15,13 +15,14 @@
  */
 package edu.snu.cay.services.et.driver.api;
 
+import edu.snu.cay.services.et.avro.TaskletStatusMsg;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
+import edu.snu.cay.services.et.driver.impl.TaskletResult;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
 
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Represents an allocated executor.
@@ -34,17 +35,30 @@ public interface AllocatedExecutor {
   String getId();
 
   /**
-   * Assign task to executor.
-   * @param taskConf task configuration.
-   * @return a {@link ListenableFuture} of {@link TaskResult}
+   * Submit tasklet to executor.
+   * @param taskletConf tasklet configuration.
+   * @return a {@link ListenableFuture} of {@link TaskletResult}
    */
-  ListenableFuture<SubmittedTask> submitTask(Configuration taskConf);
+  ListenableFuture<RunningTasklet> submitTasklet(TaskletConfiguration taskletConf);
 
   /**
-   * @return an {@link Optional} with a {@link SubmittedTask} submitted by {@link #submitTask(Configuration)}
-   * It's emtpy when there's no running task.
+   * It's for internal usage.
+   * @param taskletId tasklet Id
+   * @param taskletStatusMsg tasklet status msg from tasklets in executors
    */
-  Optional<SubmittedTask> getRunningTask();
+  void onTaskletStatusMessage(String taskletId, TaskletStatusMsg taskletStatusMsg);
+
+  /**
+   * @return a set of running tasklet Ids
+   */
+  Set<String> getTaskletIds();
+
+  /**
+   * Get a {@link RunningTasklet} that has given tasklet Id.
+   * @param taskletId a tasklet Id
+   * @return a {@link RunningTasklet} with {@code taskletId} or {@code null} if it does not exist
+   */
+  RunningTasklet getRunningTasklet(String taskletId);
 
   /**
    * Closes the executor.

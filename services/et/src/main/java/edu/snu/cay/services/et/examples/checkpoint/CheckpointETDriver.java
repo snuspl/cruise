@@ -15,19 +15,18 @@
  */
 package edu.snu.cay.services.et.examples.checkpoint;
 
-import edu.snu.cay.services.et.common.util.TaskUtils;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
-import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -101,12 +100,12 @@ final class CheckpointETDriver {
           // 1. Checkpoint a table after putting some value by running PutTask.
           final AllocatedTable originalTable = etMaster.createTable(buildTableConf(TABLE_ID), executors0).get();
 
-          final Future<SubmittedTask> taskFuture = executors0.get(0).submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, "PutTask")
-              .set(TaskConfiguration.TASK, PutTask.class)
+          final Future<RunningTasklet> taskFuture = executors0.get(0).submitTasklet(TaskletConfiguration.newBuilder()
+              .setId("PutTask")
+              .setTaskletClass(PutTask.class)
               .build());
 
-          TaskUtils.waitAndCheckTaskResult(Collections.singletonList(taskFuture), true);
+          TaskletUtils.waitAndCheckTaskletResult(Collections.singletonList(taskFuture), true);
 
           final String chkpId = originalTable.checkpoint().get();
           LOG.log(Level.INFO, "checkpointId: {0}", chkpId);
@@ -125,13 +124,13 @@ final class CheckpointETDriver {
           final AllocatedTable tableFromLocalChkps = etMaster.createTable(chkpId, executors1).get();
 
           final AtomicInteger taskIdx = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
-              .set(TaskConfiguration.TASK, GetTask.class)
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>(NUM_EXECUTORS);
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId("GetTask" + taskIdx.getAndIncrement())
+              .setTaskletClass(GetTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           tableFromLocalChkps.drop().get();
@@ -151,12 +150,12 @@ final class CheckpointETDriver {
           // 4. Restore a table once again to check that chkps are committed safely.
           final AllocatedTable tableFromCommittedChkps = etMaster.createTable(chkpId, executors1).get();
 
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
-              .set(TaskConfiguration.TASK, GetTask.class)
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId("GetTask" + taskIdx.getAndIncrement())
+              .setTaskletClass(GetTask.class)
               .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           // checkpoint the table with sampling rate 0.5
@@ -168,18 +167,15 @@ final class CheckpointETDriver {
           // 5. Restore a table from the checkpoint with sampling rate 0.5
           final AllocatedTable tableFromSampledChkp = etMaster.createTable(sampledChkpId, executors1).get();
 
-          executors1.forEach(executor -> taskFutureList.add(executor.submitTask(
-              Configurations.merge(
-                  TaskConfiguration.CONF
-                      .set(TaskConfiguration.IDENTIFIER, "GetTask" + taskIdx.getAndIncrement())
-                      .set(TaskConfiguration.TASK, GetTask.class)
-                      .build(),
-                  Tang.Factory.getTang().newConfigurationBuilder()
+          executors1.forEach(executor -> taskFutureList.add(executor.submitTasklet(TaskletConfiguration.newBuilder()
+              .setId("GetTask" + taskIdx.getAndIncrement())
+              .setTaskletClass(GetTask.class)
+              .setUserParamConf(Tang.Factory.getTang().newConfigurationBuilder()
                       .bindNamedParameter(SamplingRatio.class, Double.toString(samplingRatio))
                       .build())
-          )));
+              .build())));
 
-          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+          TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
           taskFutureList.clear();
 
           tableFromSampledChkp.drop().get();

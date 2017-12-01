@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.et.examples.metric;
 
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.metric.MetricCollector;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.concurrent.Executors;
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  * The metrics are sent to the driver in two ways: 1) MetricCollector (ET-internal component) automatically sends
  * the metrics, and 2) Task sends the metrics by calling MetricCollector.flush() manually.
  */
-final class MetricTask implements Task {
+final class MetricTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(MetricTask.class.getName());
 
   private final long metricManualFlushPeriodMs;
@@ -54,7 +54,7 @@ final class MetricTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Hello, I will record timestamp every {0} ms and flush the metrics manually every {1} ms," +
         " in addition to those are sent by MetricCollector automatically",
         new Object[] {customMetricRecordPeriodMs, metricManualFlushPeriodMs});
@@ -73,7 +73,10 @@ final class MetricTask implements Task {
     } catch (final InterruptedException e) {
       LOG.log(Level.FINEST, "Interrupted", e);
     }
+  }
 
-    return null;
+  @Override
+  public void close() {
+
   }
 }

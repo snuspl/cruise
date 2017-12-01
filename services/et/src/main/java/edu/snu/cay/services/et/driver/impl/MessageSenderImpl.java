@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.driver.api.MessageSender;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.annotation.Nullable;
@@ -327,6 +328,72 @@ public final class MessageSenderImpl implements MessageSender {
       networkConnection.send(destId, msg);
     } catch (final NetworkException e) {
       throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
+    }
+  }
+
+  @Override
+  public void sendTaskletCustomMsg(final String executorId, final String taskletId, final byte[] message)
+      throws NetworkException {
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletCustomMsg)
+            .setTaskletId(taskletId)
+            .setTaskletCustomMsg(ByteBuffer.wrap(message))
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    networkConnection.send(executorId, msg);
+  }
+
+  @Override
+  public void sendTaskletStartMsg(final String executorId, final String taskletId, final Configuration taskletConf) {
+    final TaskletControlMsg taskletControlMsg = TaskletControlMsg.newBuilder()
+        .setType(TaskletControlType.Start)
+        .setTaskConf(confSerializer.toString(taskletConf))
+        .build();
+
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletControlMsg)
+            .setTaskletId(taskletId)
+            .setTaskletControlMsg(taskletControlMsg)
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletStart message", e);
+    }
+  }
+
+  @Override
+  public void sendTaskletStopMsg(final String executorId, final String taskletId) {
+    final TaskletControlMsg taskletControlMsg = TaskletControlMsg.newBuilder()
+        .setType(TaskletControlType.Stop)
+        .build();
+
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletControlMsg)
+            .setTaskletId(taskletId)
+            .setTaskletControlMsg(taskletControlMsg)
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletStop message", e);
     }
   }
 }

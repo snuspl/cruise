@@ -15,23 +15,22 @@
  */
 package edu.snu.cay.services.et.examples.addinteger;
 
+import edu.snu.cay.services.et.common.util.TaskletUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.metric.MetricManager;
 import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import edu.snu.cay.utils.CatchableExecutors;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -163,26 +162,28 @@ public final class AddIntegerETDriver {
           modelTable.subscribe(workers).get();
 
           // start update tasks on worker executors
-          final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(workers.size());
-          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
-              Configurations.merge(TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, UpdaterTask.class)
-                  .build(), updaterTaskParamConf))));
+          final AtomicInteger taskletIdCount = new AtomicInteger(0);
+          final List<Future<RunningTasklet>> taskletFutureList = new ArrayList<>(workers.size());
+          workers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(
+              TaskletConfiguration.newBuilder()
+                  .setId(UPDATER_TASK_ID_PREFIX + taskletIdCount.getAndIncrement())
+                  .setTaskletClass(UpdaterTask.class)
+                  .setUserParamConf(updaterTaskParamConf)
+                  .build())));
 
-          waitAndCheckTaskResult(taskFutureList);
+          TaskletUtils.waitAndCheckTaskletResult(taskletFutureList, true);
 
           // start validate tasks on worker executors
-          taskIdCount.set(0);
-          taskFutureList.clear();
-          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
-              Configurations.merge(TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ValidatorTask.class)
-                  .build(), validatorTaskParamConf))));
+          taskletIdCount.set(0);
+          taskletFutureList.clear();
+          workers.forEach(executor -> taskletFutureList.add(executor.submitTasklet(
+              TaskletConfiguration.newBuilder()
+                  .setId(VALIDATOR_TASK_ID_PREFIX + taskletIdCount.getAndIncrement())
+                  .setTaskletClass(ValidatorTask.class)
+                  .setUserParamConf(validatorTaskParamConf)
+                  .build())));
 
-          waitAndCheckTaskResult(taskFutureList);
+          TaskletUtils.waitAndCheckTaskletResult(taskletFutureList, true);
 
           workers.forEach(AllocatedExecutor::close);
           servers.forEach(AllocatedExecutor::close);
@@ -200,19 +201,5 @@ public final class AddIntegerETDriver {
             .setMemSizeInMB(128)
             .build())
         .build();
-  }
-
-  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList) {
-    taskFutureList.forEach(taskResultFuture -> {
-      try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (!taskResult.isSuccess()) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
   }
 }

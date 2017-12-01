@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.services.et.examples.load;
 
+import edu.snu.cay.services.et.configuration.parameters.TaskletIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
-import org.apache.reef.driver.task.TaskConfigurationOptions;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -28,18 +28,18 @@ import java.util.logging.Logger;
 /**
  * Load task which checks which data is stored in which table.
  */
-final class LoadETTask implements Task {
+final class LoadETTask implements Tasklet {
 
   private static final Logger LOG = Logger.getLogger(LoadETTask.class.getName());
-  private String taskId;
+  private String taskletId;
   private final boolean isKeyValueTable;
   private final TableAccessor tableAccessor;
 
   @Inject
-  private LoadETTask(@Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+  private LoadETTask(@Parameter(TaskletIdentifier.class) final String taskletId,
                      @Parameter(LoadETDriver.IsKeyValueTable.class) final boolean isKeyValueTable,
                      final TableAccessor tableAccessor) {
-    this.taskId = taskId;
+    this.taskletId = taskletId;
     this.isKeyValueTable = isKeyValueTable;
     this.tableAccessor = tableAccessor;
   }
@@ -48,13 +48,17 @@ final class LoadETTask implements Task {
    * Log All keys and values which are stored in local tablet.
    */
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     final Table<Long, String, ?> table = isKeyValueTable ? tableAccessor.getTable(LoadETDriver.KEY_VALUE_TABLE) :
         tableAccessor.getTable(LoadETDriver.NONE_KEY_TABLE);
     table.getLocalTablet().getDataMap().forEach((key, value) -> {
       LOG.log(Level.INFO, "TaskId : {0}, table Id : {1}, key : {2}, value : {3}",
-          new Object[]{taskId, LoadETDriver.KEY_VALUE_TABLE, key, value});
+          new Object[]{taskletId, LoadETDriver.KEY_VALUE_TABLE, key, value});
     });
-    return null;
+  }
+
+  @Override
+  public void close() {
+
   }
 }

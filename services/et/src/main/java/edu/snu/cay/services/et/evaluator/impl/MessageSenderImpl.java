@@ -501,4 +501,28 @@ public final class MessageSenderImpl implements MessageSender {
 
     networkConnection.send(driverId, msg);
   }
+
+  @Override
+  public void sendTaskletStatusMsg(final String taskletId, final TaskletStatusType status) {
+    final TaskletStatusMsg taskletStatusMsg = TaskletStatusMsg.newBuilder()
+        .setType(status)
+        .build();
+
+    final byte[] innerMsg = AvroUtils.toBytes(
+        TaskletMsg.newBuilder()
+            .setType(TaskletMsgType.TaskletStatusMsg)
+            .setTaskletId(taskletId)
+            .setTaskletStatusMsg(taskletStatusMsg)
+            .build(), TaskletMsg.class);
+
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TaskletMsg)
+        .setInnerMsg(ByteBuffer.wrap(innerMsg)).build();
+
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TaskletStatusMessage", e);
+    }
+  }
 }

@@ -13,26 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.core.worker;
+package edu.snu.cay.services.et.evaluator.impl;
 
-import org.apache.reef.task.events.CloseEvent;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.services.et.evaluator.api.TaskletCustomMsgHandler;
 
 import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Handles the event to stop the task.
+ * A default implementation of {@link TaskletCustomMsgHandler}.
  */
-public final class WorkerTaskCloseHandler implements EventHandler<CloseEvent> {
-  private final ETWorkerTask task;
+public final class DefaultTaskletCustomMsgHandler implements TaskletCustomMsgHandler {
+  private static final Logger LOG = Logger.getLogger(DefaultTaskletCustomMsgHandler.class.getName());
 
   @Inject
-  private WorkerTaskCloseHandler(final ETWorkerTask task) {
-    this.task = task;
+  private DefaultTaskletCustomMsgHandler() {
+
   }
 
   @Override
-  public void onNext(final CloseEvent closeEvent) {
-    task.close();
+  public void onNext(final byte[] bytes) {
+    LOG.log(Level.FINE, "DefaultTaskletCustomMsgHandler received a msg.");
   }
 }

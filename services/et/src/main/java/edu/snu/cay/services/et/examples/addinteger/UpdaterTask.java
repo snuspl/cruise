@@ -17,13 +17,13 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tasklet;
 import edu.snu.cay.services.et.examples.addinteger.parameters.DeltaValue;
 import edu.snu.cay.services.et.examples.addinteger.parameters.NumKeys;
 import edu.snu.cay.services.et.examples.addinteger.parameters.NumUpdates;
 import edu.snu.cay.services.et.examples.addinteger.parameters.StartKey;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -41,7 +41,7 @@ import static edu.snu.cay.services.et.examples.addinteger.AddIntegerETDriver.MOD
  * Some global updates may not have been processed yet. All updates will be accounted for in the ValidatorTask.
  */
 @TaskSide
-public final class UpdaterTask implements Task {
+public final class UpdaterTask implements Tasklet {
   private static final Logger LOG = Logger.getLogger(UpdaterTask.class.getName());
 
   private final TableAccessor tableAccessor;
@@ -64,7 +64,7 @@ public final class UpdaterTask implements Task {
   }
 
   @Override
-  public byte[] call(final byte[] bytes) throws Exception {
+  public void run() throws Exception {
     LOG.log(Level.INFO, "Task.call() commencing...");
     final Table<Integer, Integer, Integer> modelTable = tableAccessor.getTable(MODEL_TABLE_ID);
 
@@ -81,6 +81,10 @@ public final class UpdaterTask implements Task {
       final Integer getResult = modelTable.get(key).get();
       LOG.log(Level.INFO, "Get result for key {0}: {1}", new Object[]{key, getResult});
     }
-    return null;
+  }
+
+  @Override
+  public void close() {
+
   }
 }

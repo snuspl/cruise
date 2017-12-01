@@ -20,25 +20,20 @@ import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.common.MessageCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.pregel.common.MessageUpdateFunction;
-import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
-import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
-import edu.snu.cay.services.et.configuration.ResourceConfiguration;
-import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.*;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.utils.ConfigurationUtils;
 import edu.snu.cay.utils.NullCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;
-import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -125,10 +120,10 @@ public final class PregelDriver {
 
           vertexTable.load(executors, masterConfInjector.getNamedInstance(InputPath.class)).get();
 
-          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>();
-          executors.forEach(executor -> taskFutureList.add(executor.submitTask(buildTaskConf())));
+          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>();
+          executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf())));
 
-          for (final Future<SubmittedTask> submittedTaskFuture : taskFutureList) {
+          for (final Future<RunningTasklet> submittedTaskFuture : taskFutureList) {
             submittedTaskFuture.get().getTaskResult();
           }
           executors.forEach(AllocatedExecutor::close);
@@ -140,11 +135,12 @@ public final class PregelDriver {
     }
   }
 
-  private Configuration buildTaskConf() {
-    return Configurations.merge(taskConf, TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, WORKER_PREFIX + workerCounter.getAndIncrement())
-        .set(TaskConfiguration.TASK, PregelWorkerTask.class)
-        .build());
+  private TaskletConfiguration buildTaskConf() {
+    return TaskletConfiguration.newBuilder()
+        .setId(WORKER_PREFIX + workerCounter.getAndIncrement())
+        .setTaskletClass(PregelWorkerTask.class)
+        .setUserParamConf(taskConf)
+        .build();
   }
 
   /**
