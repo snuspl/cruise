@@ -86,7 +86,7 @@ public final class TaskletRuntime {
         LOG.log(Level.INFO, "Run tasklet. Id: {0}", taskletId);
         tasklet.run();
         isSuccess = true;
-        LOG.log(Level.SEVERE, "Tasklet done. Id: " + taskletId);
+        LOG.log(Level.INFO, "Tasklet done. Id: {0}", taskletId);
       } catch (Exception e) {
         isSuccess = false;
         LOG.log(Level.SEVERE, "Tasklet fail. Id: " + taskletId, e);
