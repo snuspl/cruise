@@ -365,7 +365,7 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
         if (!remoteIdOptional.isPresent()) {
           final Map<K, V> localResultMap = new HashMap<>();
           for (final K key : keyList) {
-            final V output = tablet.get(blockId, key);
+            final V output = tablet.getOrInit(blockId, key);
             if (output != null) {
               localResultMap.put(key, output);
             }
