@@ -19,6 +19,7 @@ import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
@@ -44,7 +45,7 @@ public final class AvroUtils {
       datumWriter.write(avroObject, encoder);
       encoder.flush();
       out.flush();
-      theBytes = out.getByteArray();
+      theBytes = out.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException("Unable to serialize an avro object", e);
     }

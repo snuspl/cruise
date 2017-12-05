@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.serialization;
 
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import org.apache.reef.io.network.impl.StreamingCodec;
@@ -42,7 +41,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
          DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(vector, daos);
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
