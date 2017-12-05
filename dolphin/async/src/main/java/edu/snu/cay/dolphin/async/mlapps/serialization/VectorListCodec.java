@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.serialization;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -24,7 +25,6 @@ import javax.inject.Inject;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import org.apache.reef.io.serialization.Codec;
 
 /**
@@ -61,7 +61,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
         }
       }
 
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }

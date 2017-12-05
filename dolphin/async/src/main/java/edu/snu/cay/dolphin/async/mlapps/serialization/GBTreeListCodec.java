@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.serialization;
 
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
@@ -60,7 +59,7 @@ public final class GBTreeListCodec implements Codec<List<GBTree>>, StreamingCode
           }
         }
       }
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }

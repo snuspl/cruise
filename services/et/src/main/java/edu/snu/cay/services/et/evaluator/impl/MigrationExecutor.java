@@ -20,7 +20,6 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.utils.CatchableExecutors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -396,7 +395,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
 
                 numSentKVEntries.addAndGet(count);
 
-                final byte[] serializedItem = baos.getByteArray();
+                final byte[] serializedItem = baos.toByteArray();
 
                 msgSender.sendDataMsg(operationId, tableId, blockId, serializedItem,
                     count, numTotalItems, senderId, receiverId);

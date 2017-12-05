@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.serialization;
 
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.io.serialization.Codec;
@@ -45,7 +44,7 @@ public final class GBTreeCodec implements Codec<GBTree> {
           dos.writeFloat(node.getRight());
         }
       }
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }

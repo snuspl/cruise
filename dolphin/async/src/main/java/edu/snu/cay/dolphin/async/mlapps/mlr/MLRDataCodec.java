@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.serialization.SparseVectorCodec;
-import edu.snu.cay.utils.ByteArrayOutputStream;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -41,7 +40,7 @@ public final class MLRDataCodec implements Codec<MLRData>, StreamingCodec<MLRDat
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
          DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(mlrData, daos);
-      return baos.getByteArray();
+      return baos.toByteArray();
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
