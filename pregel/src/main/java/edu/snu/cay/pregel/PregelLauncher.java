@@ -17,21 +17,28 @@ package edu.snu.cay.pregel;
 
 
 import edu.snu.cay.common.centcomm.CentCommConf;
+import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.PregelParameters.*;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpCommitPath;
+import edu.snu.cay.services.et.configuration.parameters.chkp.ChkpTempPath;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.examples.tableaccess.JobMessageLogger;
 import edu.snu.cay.utils.ConfigurationUtils;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
+import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -40,7 +47,9 @@ import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -48,12 +57,7 @@ import java.util.logging.Logger;
  */
 @ClientSide
 public final class PregelLauncher {
-
   private static final Logger LOG = Logger.getLogger(PregelLauncher.class.getName());
-
-  private static final int JOB_TIMEOUT = 300000;
-  private static final int MAX_NUMBER_OF_EVALUATORS = 5;
-  private static final String DRIVER_IDENTIFIER = "Pregel";
 
   /**
    * Should not be instantiated.
@@ -61,67 +65,142 @@ public final class PregelLauncher {
   private PregelLauncher() {
   }
 
-  private static Configuration parseCommandLine(final String[] args,
-                                                final List<Class<? extends Name<?>>> userParamList)
+  private static List<Configuration> parseCommandLine(final String[] args,
+                                                      final List<Class<? extends Name<?>>> userParamList)
       throws IOException {
+
+    final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
+        OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class,
+        ChkpCommitPath.class, ChkpTempPath.class);
+
+    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
+        InputDir.class, NumWorkers.class, WorkerMemSize.class, WorkerNumCores.class);
+
     final CommandLine cl = new CommandLine();
-    cl.registerShortNameOfClass(InputPath.class);
+    clientParamList.forEach(cl::registerShortNameOfClass);
+    driverParamList.forEach(cl::registerShortNameOfClass);
     userParamList.forEach(cl::registerShortNameOfClass);
-    return cl.processCommandLine(args).getBuilder().build();
+
+    final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
+    final Configuration clientConf = ConfigurationUtils.extractParameterConf(clientParamList, commandLineConf);
+    final Configuration driverConf = ConfigurationUtils.extractParameterConf(driverParamList, commandLineConf);
+    final Configuration userConf = ConfigurationUtils.extractParameterConf(userParamList, commandLineConf);
+
+    return Arrays.asList(clientConf, driverConf, userConf);
   }
 
-  public static LauncherStatus launch(final String[] args, final PregelConfiguration pregelConf)
-      throws InjectionException, IOException {
-
-    final Configuration clConf = parseCommandLine(args, pregelConf.getUserParamList());
-    final String inputPath = Tang.Factory.getTang().newInjector(clConf)
-        .getNamedInstance(InputPath.class);
-
-    final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
+  private static Configuration getYarnRuntimeConfiguration(final double heapSlack) {
+    return YarnClientConfiguration.CONF
+        .set(YarnClientConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
         .build();
+  }
 
-    final Configuration baseDriverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_IDENTIFIER)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, PregelDriver.StartHandler.class)
+  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal, final double heapSlack) {
+    return LocalRuntimeConfiguration.CONF
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, Integer.toString(maxNumEvalLocal))
+        .set(LocalRuntimeConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
         .build();
+  }
 
-    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
-    final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
-    final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
-    final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
-
-    final Configuration userParamConf = ConfigurationUtils.extractParameterConf(pregelConf.getUserParamList(), clConf);
-
-    final Configuration taskConf = Configurations.merge(userParamConf, Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(Computation.class, pregelConf.getComputationClass())
-        .build());
-
-    final Configuration masterConf = Tang.Factory.getTang().newConfigurationBuilder()
+  private static Configuration getMasterConf(final PregelConfiguration pregelConf) throws InjectionException {
+    return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(DataParser.class, pregelConf.getDataParserClass())
-        .bindNamedParameter(InputPath.class, inputPath)
         .bindNamedParameter(VertexValueCodec.class, pregelConf.getVertexValueCodecClass())
         .bindNamedParameter(EdgeCodec.class, pregelConf.getEdgeCodecClass())
         .bindNamedParameter(MessageValueCodec.class, pregelConf.getMessageValueCodecClass())
         .build();
+  }
+
+  private static Configuration getNCSConfiguration() {
+    final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
+    final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
+    final Configuration idFactoryImplConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
 
     final Configuration centCommConfiguration = CentCommConf.newBuilder()
         .addCentCommClient(PregelDriver.CENTCOMM_CLIENT_ID,
-            PregelMaster.MasterMsgHandler.class,
-            WorkerMsgManager.class)
+            DriverSideMsgHandler.class, WorkerMsgManager.class)
         .build()
         .getDriverConfiguration();
 
-    final Configuration driverConf = Configurations.merge(baseDriverConf, centCommConfiguration,
-        idFactoryConf, nameClientConfiguration, nameServerConfiguration, etMasterConfiguration,
-        Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(SerializedTaskConf.class, Configurations.toString(taskConf))
-            .bindNamedParameter(SerializedMasterConf.class, Configurations.toString(masterConf))
-            .build());
+    return Configurations.merge(nameServerConfiguration, nameClientConfiguration, idFactoryImplConfiguration,
+        centCommConfiguration);
+  }
 
-    return DriverLauncher.getLauncher(runtimeConfiguration).run(driverConf, JOB_TIMEOUT);
+  public static LauncherStatus launch(final String jobName, final String[] args, final PregelConfiguration pregelConf)
+      throws InjectionException, IOException {
+    LauncherStatus status;
+
+    try {
+      final List<Configuration> configurations = parseCommandLine(args, pregelConf.getUserParamList());
+
+      final Configuration clientParamConf = configurations.get(0);
+      final Configuration driverParamConf = configurations.get(1);
+      final Configuration userParamConf = configurations.get(2);
+
+      final Injector clientParameterInjector = Tang.Factory.getTang().newInjector(clientParamConf);
+      // runtime configuration
+      final boolean onLocal = clientParameterInjector.getNamedInstance(OnLocal.class);
+      final Configuration runTimeConf = onLocal ?
+          getLocalRuntimeConfiguration(
+              clientParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
+              clientParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
+          getYarnRuntimeConfiguration(clientParameterInjector.getNamedInstance(JVMHeapSlack.class));
+
+      final Configuration taskConf = Configurations.merge(userParamConf,
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindImplementation(Computation.class, pregelConf.getComputationClass())
+              .build());
+
+      // driver configuration
+      final Configuration driverConf = getDriverConfiguration(jobName,
+          clientParameterInjector.getNamedInstance(DriverMemory.class),
+          clientParameterInjector.getNamedInstance(ChkpCommitPath.class),
+          clientParameterInjector.getNamedInstance(ChkpTempPath.class),
+          taskConf);
+
+      final Configuration masterConf = getMasterConf(pregelConf);
+
+      final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
+
+      final Configuration customClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(JobMessageHandler.class, JobMessageLogger.class)
+          .build();
+
+      status = DriverLauncher.getLauncher(Configurations.merge(runTimeConf, customClientConf))
+          .run(Configurations.merge(driverConf, driverParamConf, masterConf), timeout);
+
+    } catch (final Exception e) {
+      status = LauncherStatus.failed(e);
+      // This log is for giving more detailed info about failure, which status object does not show
+      LOG.log(Level.WARNING, "Exception occurred", e);
+    }
+
+    LOG.log(Level.INFO, "REEF job completed: {0}", status);
+    return status;
+  }
+
+  private static Configuration getDriverConfiguration(final String jobName,
+                                                      final int driverMemSize,
+                                                      final String chkpCommitPath,
+                                                      final String chkpTempPath,
+                                                      final Configuration taskConf) {
+    final Configuration driverConf = DriverConfiguration.CONF
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelDriver.class))
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
+        .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, PregelDriver.StartHandler.class)
+        .build();
+
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF
+        .set(ETDriverConfiguration.CHKP_COMMIT_PATH, chkpCommitPath)
+        .set(ETDriverConfiguration.CHKP_TEMP_PATH, chkpTempPath)
+        .build();
+
+    return Configurations.merge(driverConf, etMasterConfiguration, getNCSConfiguration(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(SerializedTaskletConf.class, Configurations.toString(taskConf))
+            .build());
   }
 }

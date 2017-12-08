@@ -37,7 +37,7 @@ public final class PagerankET {
   }
 
   public static void main(final String[] args) throws IOException, InjectionException {
-    PregelLauncher.launch(args, PregelConfiguration.newBuilder()
+    PregelLauncher.launch(PagerankET.class.getSimpleName(), args, PregelConfiguration.newBuilder()
         .setComputationClass(PagerankComputation.class)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
         .setMessageValueCodecClass(StreamingSerializableCodec.class)

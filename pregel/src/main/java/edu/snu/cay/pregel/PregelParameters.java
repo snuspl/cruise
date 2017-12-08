@@ -24,13 +24,22 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 public final class PregelParameters {
 
-  @NamedParameter(doc = "configuration for worker task class, serialized as a string")
-  public final class SerializedTaskConf implements Name<String> {
+  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
+  public final class NumWorkers implements Name<Integer> {
 
   }
 
-  @NamedParameter(doc = "configuration for table class, serialized as a string")
-  public final class SerializedMasterConf implements Name<String> {
+  @NamedParameter(doc = "Desired memory size for each worker evaluator (MBs)", short_name = "worker_mem_size")
+  public final class WorkerMemSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of CPU cores for each worker evaluator", short_name = "worker_num_cores")
+  public final class WorkerNumCores implements Name<Integer> {
+
+  }
+
+  @NamedParameter(doc = "configuration for worker tasklet class, serialized as a string")
+  public final class SerializedTaskletConf implements Name<String> {
 
   }
 
@@ -46,11 +55,6 @@ public final class PregelParameters {
 
   @NamedParameter(doc = "The codec class for encoding and decoding edge values")
   public final class EdgeCodec implements Name<StreamingCodec> {
-
-  }
-
-  @NamedParameter(doc = "Path of a input file", short_name = "input_path")
-  public final class InputPath implements Name<String> {
 
   }
 }

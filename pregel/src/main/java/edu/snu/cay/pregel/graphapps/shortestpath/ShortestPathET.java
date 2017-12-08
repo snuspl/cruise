@@ -38,7 +38,7 @@ public final class ShortestPathET {
   }
 
   public static void main(final String[] args) throws IOException, InjectionException {
-    PregelLauncher.launch(args, PregelConfiguration.newBuilder()
+    PregelLauncher.launch(ShortestPathET.class.getSimpleName(), args, PregelConfiguration.newBuilder()
         .setComputationClass(ShortestPathComputation.class)
         .setDataParserClass(DefaultGraphParser.class)
         .setMessageValueCodecClass(StreamingSerializableCodec.class)

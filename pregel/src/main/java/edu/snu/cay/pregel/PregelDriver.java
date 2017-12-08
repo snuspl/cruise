@@ -16,6 +16,7 @@
 package edu.snu.cay.pregel;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.pregel.common.DefaultVertexCodec;
 import edu.snu.cay.pregel.common.MessageCodec;
 import edu.snu.cay.pregel.PregelParameters.*;
@@ -24,17 +25,14 @@ import edu.snu.cay.services.et.configuration.*;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.api.AllocatedTable;
-import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.impl.ExistKeyBulkDataLoader;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
-import edu.snu.cay.utils.ConfigurationUtils;
 import edu.snu.cay.utils.NullCodec;
 import edu.snu.cay.utils.StreamingSerializableCodec;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -44,58 +42,52 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Driver code for Pregel applications.
  */
 @Unit
 public final class PregelDriver {
-  private static final String WORKER_PREFIX = "Worker-";
-
   public static final String VERTEX_TABLE_ID = "Vertex_table";
   public static final String MSG_TABLE_1_ID = "Msg_table_1";
   public static final String MSG_TABLE_2_ID = "Msg_table_2";
 
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
 
-  // TODO #1178: expose more commandline options
-  static final int NUM_EXECUTORS = 3;
-
   private final ETMaster etMaster;
+  private final int numWorkers;
+  private final String inputDir;
   private final ExecutorConfiguration executorConf;
-  private final AtomicInteger workerCounter = new AtomicInteger(0);
-  private final Injector masterConfInjector;
-  private final Configuration taskConf;
+
+  private final PregelMaster pregelMaster;
+
+  private final TableConfiguration vertexTableConf;
+  private final TableConfiguration msgTable1Conf;
+  private final TableConfiguration msgTable2Conf;
 
   @Inject
   private PregelDriver(final ETMaster etMaster,
+                       @Parameter(NumWorkers.class) final int numWorkers,
+                       @Parameter(WorkerMemSize.class) final int workerMemSize,
+                       @Parameter(WorkerNumCores.class) final int workerNumCores,
+                       @Parameter(Parameters.InputDir.class) final String inputDir,
                        final CentCommConfProvider centCommConfProvider,
                        final PregelMaster pregelMaster,
-                       @Parameter(SerializedTaskConf.class) final String serializedTaskConf,
-                       @Parameter(SerializedMasterConf.class) final String serializedMasterConf)
-      throws IOException {
+                       final DataParser dataParser,
+                       @Parameter(VertexValueCodec.class) final StreamingCodec vertexValueCodec,
+                       @Parameter(EdgeCodec.class) final StreamingCodec edgeCodec,
+                       @Parameter(MessageValueCodec.class) final StreamingCodec msgValueCodec)
+      throws IOException, InjectionException {
     this.etMaster = etMaster;
-    this.masterConfInjector = Tang.Factory.getTang().newInjector(ConfigurationUtils.fromString(serializedMasterConf));
-    this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
-    this.executorConf = ExecutorConfiguration.newBuilder()
-        .setResourceConf(ResourceConfiguration.newBuilder()
-            .setNumCores(1)
-            .setMemSizeInMB(128)
-            .build())
-        .setRemoteAccessConf(RemoteAccessConfiguration.newBuilder()
-            .setHandlerQueueSize(2048)
-            .setNumHandlerThreads(1)
-            .setSenderQueueSize(2048)
-            .setNumSenderThreads(1)
-            .build())
-        .setUserContextConf(centCommConfProvider.getContextConfiguration())
-        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
-        .build();
+    this.numWorkers = numWorkers;
+    this.inputDir = inputDir;
+    this.pregelMaster = pregelMaster;
+    this.executorConf = buildExecutorConf(workerNumCores, workerMemSize, centCommConfProvider);
+    this.vertexTableConf = buildVertexTableConf(dataParser, vertexValueCodec, edgeCodec, VERTEX_TABLE_ID);
+    this.msgTable1Conf = buildMsgTableConf(msgValueCodec, MSG_TABLE_1_ID);
+    this.msgTable2Conf = buildMsgTableConf(msgValueCodec, MSG_TABLE_2_ID);
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -106,40 +98,46 @@ public final class PregelDriver {
       final List<AllocatedExecutor> executors;
 
       try {
-        executors = etMaster.addExecutors(NUM_EXECUTORS, executorConf).get();
+        executors = etMaster.addExecutors(numWorkers, executorConf).get();
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
 
       new Thread(() -> {
         try {
-          etMaster.createTable(buildMsgTableConf(MSG_TABLE_1_ID), executors).get();
-          etMaster.createTable(buildMsgTableConf(MSG_TABLE_2_ID), executors).get();
-          final AllocatedTable vertexTable = etMaster.createTable(
-              buildVertexTableConf(VERTEX_TABLE_ID), executors).get();
+          final AllocatedTable msgTable1 = etMaster.createTable(msgTable1Conf, executors).get();
+          final AllocatedTable msgTable2 = etMaster.createTable(msgTable2Conf, executors).get();
+          final AllocatedTable vertexTable = etMaster.createTable(vertexTableConf, executors).get();
 
-          vertexTable.load(executors, masterConfInjector.getNamedInstance(InputPath.class)).get();
+          vertexTable.load(executors, inputDir).get();
 
-          final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>();
-          executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf())));
+          pregelMaster.start(executors, vertexTable, msgTable1, msgTable2);
 
-          for (final Future<RunningTasklet> submittedTaskFuture : taskFutureList) {
-            submittedTaskFuture.get().getTaskResult();
-          }
           executors.forEach(AllocatedExecutor::close);
 
-        } catch (InterruptedException | ExecutionException | InjectionException e) {
+        } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e);
         }
       }).start();
     }
   }
 
-  private TaskletConfiguration buildTaskConf() {
-    return TaskletConfiguration.newBuilder()
-        .setId(WORKER_PREFIX + workerCounter.getAndIncrement())
-        .setTaskletClass(PregelWorkerTask.class)
-        .setUserParamConf(taskConf)
+  private ExecutorConfiguration buildExecutorConf(final int workerNumCores,
+                                                  final int workerMemSize,
+                                                  final CentCommConfProvider centCommConfProvider) {
+    return ExecutorConfiguration.newBuilder()
+        .setResourceConf(ResourceConfiguration.newBuilder()
+            .setNumCores(workerNumCores)
+            .setMemSizeInMB(workerMemSize)
+            .build())
+        .setRemoteAccessConf(RemoteAccessConfiguration.newBuilder()
+            .setHandlerQueueSize(2048)
+            .setNumHandlerThreads(4)
+            .setSenderQueueSize(2048)
+            .setNumSenderThreads(4)
+            .build())
+        .setUserContextConf(centCommConfProvider.getContextConfiguration())
+        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
   }
 
@@ -149,13 +147,11 @@ public final class PregelDriver {
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
-  private TableConfiguration buildVertexTableConf(final String tableId) throws InjectionException {
-
-    final DataParser dataParser = masterConfInjector.getInstance(DataParser.class);
-
+  private TableConfiguration buildVertexTableConf(final DataParser dataParser,
+                                                  final StreamingCodec vertexValueCodec,
+                                                  final StreamingCodec edgeCodec,
+                                                  final String tableId) throws InjectionException {
     // configure vertex value codec, edge codec to vertex table
-    final StreamingCodec vertexValueCodec = masterConfInjector.getNamedInstance(VertexValueCodec.class);
-    final StreamingCodec edgeCodec = masterConfInjector.getNamedInstance(EdgeCodec.class);
     final Configuration vertexComponentCodecConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(VertexValueCodec.class, vertexValueCodec.getClass())
         .bindNamedParameter(EdgeCodec.class, edgeCodec.getClass())
@@ -181,19 +177,18 @@ public final class PregelDriver {
    *
    * @param tableId an identifier of {@link TableConfiguration}
    */
-  private TableConfiguration buildMsgTableConf(final String tableId) throws InjectionException {
-
+  private TableConfiguration buildMsgTableConf(final StreamingCodec messageValueCodec,
+                                               final String tableId) throws InjectionException {
     // configure message value codec to message table
-    final StreamingCodec messageValueStreamingCodec = masterConfInjector.getNamedInstance(MessageValueCodec.class);
     final Configuration messageValueConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(MessageValueCodec.class, messageValueStreamingCodec.getClass())
+        .bindNamedParameter(MessageValueCodec.class, messageValueCodec.getClass())
         .build();
 
     return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(StreamingSerializableCodec.class)
         .setValueCodecClass(MessageCodec.class)
-        .setUpdateValueCodecClass(((Codec) messageValueStreamingCodec).getClass())
+        .setUpdateValueCodecClass(((Codec) messageValueCodec).getClass())
         .setUpdateFunctionClass(MessageUpdateFunction.class)
         .setIsMutableTable(true)
         .setIsOrderedTable(false)
