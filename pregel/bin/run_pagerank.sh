@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_pagerank.sh -input_path file://$(pwd)/inputs/adj_list
+# ./run_pagerank.sh -local true -max_num_eval_local 3 -num_workers 3 -input file://$(pwd)/inputs/adj_list -worker_mem_size 128 -worker_num_cores 1 -driver_memory 128 -timeout 300000
 
 SELF_JAR=`echo ../target/pregel-*-shaded.jar`
 

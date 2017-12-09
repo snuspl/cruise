@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_shortest_path.sh -input_path file://$(pwd)/inputs/shortest_path -source 0
+# ./run_shortest_path.sh -local true -max_num_eval_local 3 -num_workers 3 -input file://$(pwd)/inputs/shortest_path -source 0 -worker_mem_size 128 -worker_num_cores 1 -driver_memory 128 -timeout 300000
 
 SELF_JAR=`echo ../target/pregel-*-shaded.jar`
 

@@ -15,19 +15,25 @@
  */
 package edu.snu.cay.pregel;
 
-import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.services.et.common.util.TaskletUtils;
+import edu.snu.cay.services.et.configuration.TaskletConfiguration;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.driver.api.AllocatedTable;
+import edu.snu.cay.services.et.driver.impl.RunningTasklet;
 import edu.snu.cay.utils.AvroUtils;
+import edu.snu.cay.utils.ConfigurationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,10 +41,10 @@ import java.util.logging.Logger;
  * A Pregel master that communicates with workers using CentComm services.
  * It synchronizes all workers in a single superstep by checking messages that all workers have sent.
  */
-@Unit
 @DriverSide
 final class PregelMaster {
   private static final Logger LOG = Logger.getLogger(PregelMaster.class.getName());
+  private static final String WORKER_PREFIX = "Worker-";
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
@@ -54,14 +60,40 @@ final class PregelMaster {
 
   private volatile CountDownLatch msgCountDownLatch;
 
+  private final int numWorkers;
+  private final AtomicInteger workerCounter = new AtomicInteger(0);
+  private final Configuration taskConf;
+
   @Inject
-  private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender) {
+  private PregelMaster(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
+                       @Parameter(PregelParameters.SerializedTaskletConf.class) final String serializedTaskConf,
+                       @Parameter(PregelParameters.NumWorkers.class) final int numWorkers) throws IOException {
     this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
-    this.msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
-    this.executorIds = Collections.synchronizedSet(new HashSet<String>(PregelDriver.NUM_EXECUTORS));
+    this.msgCountDownLatch = new CountDownLatch(numWorkers);
+    this.executorIds = Collections.synchronizedSet(new HashSet<String>(numWorkers));
     this.isAllVerticesHalt = true;
     this.isNoOngoingMsgs = true;
+    this.numWorkers = numWorkers;
+    this.taskConf = ConfigurationUtils.fromString(serializedTaskConf);
     initControlThread();
+  }
+
+  public void start(final List<AllocatedExecutor> executors,
+                    final AllocatedTable vertexTable,
+                    final AllocatedTable msgTable1,
+                    final AllocatedTable msgTable2) {
+    final List<Future<RunningTasklet>> taskFutureList = new ArrayList<>();
+    executors.forEach(executor -> taskFutureList.add(executor.submitTasklet(buildTaskConf())));
+
+    TaskletUtils.waitAndCheckTaskletResult(taskFutureList, true);
+  }
+
+  private TaskletConfiguration buildTaskConf() {
+    return TaskletConfiguration.newBuilder()
+        .setId(WORKER_PREFIX + workerCounter.getAndIncrement())
+        .setTaskletClass(PregelWorkerTask.class)
+        .setUserParamConf(taskConf)
+        .build();
   }
 
   private void initControlThread() {
@@ -98,7 +130,7 @@ final class PregelMaster {
         // reset for next superstep
         isAllVerticesHalt = true;
         isNoOngoingMsgs = true;
-        msgCountDownLatch = new CountDownLatch(PregelDriver.NUM_EXECUTORS);
+        msgCountDownLatch = new CountDownLatch(numWorkers);
       }
     }).start();
   }
@@ -106,28 +138,16 @@ final class PregelMaster {
   /**
    * Handles {@link SuperstepResultMsg} from workers.
    */
-  final class MasterMsgHandler implements EventHandler<CentCommMsg> {
-
-    @Override
-    public void onNext(final CentCommMsg message) {
-
-      final String sourceId = message.getSourceId().toString();
-
-      LOG.log(Level.INFO, "Received CentComm message {0} from {1}",
-          new Object[]{message, sourceId});
-
-      if (!executorIds.contains(sourceId)) {
-        executorIds.add(sourceId);
-      }
-
-      final SuperstepResultMsg resultMsg = AvroUtils.fromBytes(message.getData().array(), SuperstepResultMsg.class);
-
-      LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoOngoingMsgs : {1}",
-          new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsNoOngoingMsgs()});
-      isAllVerticesHalt &= resultMsg.getIsAllVerticesHalt();
-      isNoOngoingMsgs &= resultMsg.getIsNoOngoingMsgs();
-
-      msgCountDownLatch.countDown();
+  void onWorkerMsg(final String workerId, final SuperstepResultMsg resultMsg) {
+    if (!executorIds.contains(workerId)) {
+      executorIds.add(workerId);
     }
+
+    LOG.log(Level.INFO, "isAllVerticesHalt : {0}, isNoOngoingMsgs : {1}",
+        new Object[]{resultMsg.getIsAllVerticesHalt(), resultMsg.getIsNoOngoingMsgs()});
+    isAllVerticesHalt &= resultMsg.getIsAllVerticesHalt();
+    isNoOngoingMsgs &= resultMsg.getIsNoOngoingMsgs();
+
+    msgCountDownLatch.countDown();
   }
 }

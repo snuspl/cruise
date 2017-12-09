@@ -30,7 +30,7 @@ import java.util.List;
  *
  * Call {@code newBuilder} and supply classes for {@link Computation},
  * {@link DataParser} and {@link Codec}s.
- * Use with {@link PregelLauncher#launch(String[], PregelConfiguration)} to launch application.
+ * Use with {@link PregelLauncher#launch(String, String[], PregelConfiguration)} to launch application.
  */
 @ClientSide
 public final class PregelConfiguration {
