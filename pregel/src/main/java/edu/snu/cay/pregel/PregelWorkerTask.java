@@ -44,11 +44,6 @@ public final class PregelWorkerTask<V, E, M> implements Tasklet {
   private static final Logger LOG = Logger.getLogger(PregelWorkerTask.class.getName());
 
   /**
-   * the number of worker threads for computation.
-   */
-  private static final int NUM_THREADS = 3;
-
-  /**
    * Manage message stores in this works.
    */
   private final MessageManager<Long, M> messageManager;
@@ -75,7 +70,7 @@ public final class PregelWorkerTask<V, E, M> implements Tasklet {
 
     LOG.log(Level.INFO, "Pregel task starts.");
 
-    final int numThreads = NUM_THREADS;
+    final int numThreads = Runtime.getRuntime().availableProcessors();
     final ExecutorService executorService = CatchableExecutors.newFixedThreadPool(numThreads);
 
     int superStepCount = 0;
