@@ -64,7 +64,7 @@
   </prerequisites>
 
   <modules>
-    <module>dolphin/async</module>
+    <module>ps</module>
     <module>services/evaluator-manager</module>
     <module>services/et</module>
     <module>utils</module>
