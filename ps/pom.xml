@@ -159,7 +159,7 @@
               <goal>write-project-properties</goal>
             </goals>
             <configuration>
-              <outputFile>${project.build.testOutputDirectory}/dolphin-async.properties</outputFile>
+              <outputFile>${project.build.testOutputDirectory}/ps.properties</outputFile>
             </configuration>
           </execution>
         </executions>

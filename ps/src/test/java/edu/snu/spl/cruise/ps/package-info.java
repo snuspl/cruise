@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Tests for dolphin-async.
+ * Tests for Cruise PS.
  */
 package edu.snu.spl.cruise.ps;

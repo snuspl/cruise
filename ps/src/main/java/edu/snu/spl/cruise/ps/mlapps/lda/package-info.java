@@ -15,6 +15,6 @@
  */
 
 /**
- * Latent Dirichlet Allocation on dolphin-async.
+ * Latent Dirichlet Allocation on Cruise PS.
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Optimizer tests for dolphin-async.
+ * Optimizer tests for Cruise PS.
  */
 package edu.snu.spl.cruise.ps.optimizer;

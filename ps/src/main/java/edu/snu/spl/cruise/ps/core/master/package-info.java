@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for the master-side of the {@code dolphin-async} framework.
+ * Classes for the master-side of the {@code Cruise PS} framework.
  */
 package edu.snu.spl.cruise.ps.core.master;

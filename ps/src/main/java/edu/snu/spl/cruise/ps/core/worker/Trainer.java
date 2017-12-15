@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.Map;
 
 /**
- * A trainer of a {@code dolphin-async} application.
+ * A trainer of a {@code Cruise PS} application.
  *
  * Classes implementing this interface should consist of
  * a main {@code run} method that is executed once every iteration, as well as

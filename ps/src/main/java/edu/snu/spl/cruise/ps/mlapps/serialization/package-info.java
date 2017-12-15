@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common serialization classes for ml apps in dolphin-async.
+ * Common serialization classes for ml apps in Cruise PS.
  */
 package edu.snu.spl.cruise.ps.mlapps.serialization;

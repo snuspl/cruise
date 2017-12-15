@@ -28,7 +28,7 @@ import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
 import javax.inject.Inject;
 
 /**
- * Run Latent Dirichlet Allocation algorithm on dolphin-async.
+ * Run Latent Dirichlet Allocation algorithm on Cruise PS.
  * Input dataset should be preprocessed to have continuous (no missing) vocabulary indices.
  */
 public final class LDAET {
