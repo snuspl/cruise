@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
+    <groupId>edu.snu.spl.cruise</groupId>
     <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
@@ -98,7 +98,7 @@
       <version>4.1.2</version>
     </dependency>
     <dependency>
-      <groupId>edu.snu.cay.services</groupId>
+      <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>elastic-tables</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>

@@ -19,13 +19,13 @@
 # RUNTIME
 SELF_JAR=`echo ../target/elastic-tables-*-SNAPSHOT-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-JOB='edu.snu.cay.services.et.examples.addinteger.AddIntegerET'
+JOB='edu.snu.spl.cruise.services.et.examples.addinteger.AddIntegerET'
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $JOB $*"
 echo $CMD

@@ -18,13 +18,13 @@
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-CLASS=edu.snu.cay.dolphin.async.jobserver.client.JobServerCloser
+CLASS=edu.snu.spl.cruise.ps.jobserver.client.JobServerCloser
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $CLASS $*"
 echo $CMD

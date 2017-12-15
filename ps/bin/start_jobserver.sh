@@ -14,17 +14,17 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./start_jobserver.sh -num_total_resources 10 -max_num_eval_local 10 -local true -timeout 300000 -scheduler edu.snu.cay.dolphin.async.jobserver.driver.FIFOJobScheduler
+# ./start_jobserver.sh -num_total_resources 10 -max_num_eval_local 10 -local true -timeout 300000 -scheduler edu.snu.spl.cruise.ps.jobserver.driver.FIFOJobScheduler
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-CLASS=edu.snu.cay.dolphin.async.jobserver.client.JobServerClient
+CLASS=edu.snu.spl.cruise.ps.jobserver.client.JobServerClient
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $CLASS $*"
 echo $CMD

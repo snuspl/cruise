@@ -22,7 +22,7 @@
   <name>Cay Pregel</name>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
+    <groupId>edu.snu.spl.cruise</groupId>
     <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
@@ -73,7 +73,7 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>edu.snu.cay.services</groupId>
+      <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>elastic-tables</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>

@@ -20,13 +20,13 @@
  * sent in a fixed time unit, which is called window.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "ServerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
+    {"name": "metrics", "type": ["null", "edu.snu.spl.cruise.common.metric.avro.Metrics"], "default":null},
     {"name": "windowIndex", "type": "int", "default":0},
     {"name": "numModelBlocks", "type": "int", "default":0},
     {"name": "metricWindowMs", "type": "long", "default":0},
@@ -46,7 +46,7 @@
  * Parameter worker metrics are collected and sent in worker's mini-batch unit.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "ParameterWorkerMetrics",
   "fields":
@@ -103,17 +103,17 @@
  * Mini-batch metrics are used for optimization and all fields are required unless noted otherwise.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "WorkerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // "metrics" should contain app-specific metrics. (ex. loss, DvT)
-    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
+    {"name": "metrics", "type": ["null", "edu.snu.spl.cruise.common.metric.avro.Metrics"], "default": null},
 
     // Parameter worker metrics containing pull/push request time split into multiple components (ex. encode time).
-    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
+    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.spl.cruise.ps.metric.avro.ParameterWorkerMetrics"],
      "default":null},
 
     // number of data processed in unit time
@@ -159,7 +159,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "BatchMetrics",
   "fields":
@@ -175,7 +175,7 @@
 
     // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the batch (ex. DvT).
-    {"name": "batchCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
+    {"name": "batchCustomMetrics", "type": ["null", "edu.snu.spl.cruise.common.metric.avro.Metrics"], "default": null},
 
     // total elapsed time for this batch
     {"name": "batchTimeSec", "type": "double"},
@@ -198,7 +198,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "EpochMetrics",
   "fields":
@@ -208,7 +208,7 @@
 
     // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the epoch (ex. Loss, Log-likelihood).
-    {"name": "epochCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
+    {"name": "epochCustomMetrics", "type": ["null", "edu.snu.spl.cruise.common.metric.avro.Metrics"], "default": null},
 
     // total elapsed time for this epoch
     {"name": "epochTimeSec", "type": "double"},
@@ -232,7 +232,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
+  "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
   "name": "DolphinWorkerMetrics",
   "fields":
@@ -241,7 +241,7 @@
       "symbols": ["BatchMetrics", "EpochMetrics", "ModelEvalMetrics"]}},
     {"name": "batchMetrics", "type": ["null", "BatchMetrics"], "default": null},
     {"name": "epochMetrics", "type": ["null", "EpochMetrics"], "default": null},
-    {"name": "objValue", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null}
+    {"name": "objValue", "type": ["null", "edu.snu.spl.cruise.common.metric.avro.Metrics"], "default":null}
   ]
 }
 ]

@@ -14,17 +14,17 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_addinteger.sh -num_workers 3 -number_workers 3 -number_servers 2 -max_num_epochs 10 -num_mini_batches 15 -num_worker_blocks 15 -delta 4 -num_keys 100 -num_training_data 50 -num_test_data 5 -compute_time_ms 30 -max_num_eval_local 5 -input run_addinteger.sh -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_metric_flush_period_ms 1000 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3
+# ./run_addinteger.sh -num_workers 3 -number_workers 3 -number_servers 2 -max_num_epochs 10 -num_mini_batches 15 -num_worker_blocks 15 -delta 4 -num_keys 100 -num_training_data 50 -num_test_data 5 -compute_time_ms 30 -max_num_eval_local 5 -input run_addinteger.sh -optimizer edu.snu.spl.cruise.ps.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_metric_flush_period_ms 1000 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerET
+ALG=edu.snu.spl.cruise.ps.examples.addinteger.AddIntegerET
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

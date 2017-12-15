@@ -18,13 +18,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.snu.cay.services</groupId>
+  <groupId>edu.snu.spl.cruise.services</groupId>
   <version>0.1-SNAPSHOT</version>
   <name>Elastic Tables</name>
   <artifactId>elastic-tables</artifactId>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
+    <groupId>edu.snu.spl.cruise</groupId>
     <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../../</relativePath>
@@ -103,7 +103,7 @@
     </dependency>
     <!-- End of HADOOP -->
     <dependency>
-      <groupId>edu.snu.cay.services</groupId>
+      <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>evaluator-manager</artifactId>
       <version>${cay.version}</version>
     </dependency>

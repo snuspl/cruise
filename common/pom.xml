@@ -22,7 +22,7 @@
   <name>Common library used in Cruise</name>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
+    <groupId>edu.snu.spl.cruise</groupId>
     <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>

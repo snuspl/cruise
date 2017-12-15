@@ -14,17 +14,17 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_nmf.sh -max_num_epochs 50 -local true -number_servers 1 -num_workers 4 -max_num_eval_local 5 -input sample_nmf -num_mini_batches 25 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -optimizer edu.snu.cay.dolphin.async.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3 -hyper_thread_enabled false
+# ./run_nmf.sh -max_num_epochs 50 -local true -number_servers 1 -num_workers 4 -max_num_eval_local 5 -input sample_nmf -num_mini_batches 25 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -optimizer edu.snu.spl.cruise.ps.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -opt_benefit_threshold 0.1 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0 -num_initial_batch_metrics_to_skip 3 -min_num_required_batch_metrics 3 -hyper_thread_enabled false
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.nmf.NMFET
+ALG=edu.snu.spl.cruise.ps.mlapps.nmf.NMFET
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

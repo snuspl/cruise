@@ -15,7 +15,7 @@
  */
 [
 {
- "namespace": "edu.snu.cay.dolphin.async",
+ "namespace": "edu.snu.spl.cruise.ps",
   "type": "record",
   "name": "ProgressMsg",
   "fields":
@@ -27,7 +27,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.dolphin.async",
+  "namespace": "edu.snu.spl.cruise.ps",
   "type": "record",
   "name": "SyncMsg",
   "fields":
@@ -38,7 +38,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.dolphin.async",
+  "namespace": "edu.snu.spl.cruise.ps",
   "type": "record",
   "name": "ModelEvalAnsMsg",
   "fields":
@@ -52,7 +52,7 @@
  * With different job id, users can run multiple dolphin jobs concurrently.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.async",
+  "namespace": "edu.snu.spl.cruise.ps",
   "type": "record",
   "name": "DolphinMsg",
   "fields":
