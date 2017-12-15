@@ -73,7 +73,7 @@
     </dependency>
     <dependency>
       <groupId>${project.parent.groupId}</groupId>
-      <artifactId>cay-utils</artifactId>
+      <artifactId>cruise-utils</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
   </dependencies>
