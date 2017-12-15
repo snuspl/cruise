@@ -23,7 +23,7 @@
 
   <parent>
     <groupId>edu.snu.cay</groupId>
-    <artifactId>cay</artifactId>
+    <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
@@ -69,7 +69,7 @@
     </dependency>
     <dependency>
       <groupId>${project.parent.groupId}</groupId>
-      <artifactId>cay-common</artifactId>
+      <artifactId>cruise-common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>

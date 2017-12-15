@@ -19,12 +19,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.snu.cay</groupId>
-  <artifactId>cay-common</artifactId>
-  <name>Cay Common</name>
+  <artifactId>cruise-common</artifactId>
+  <name>Common library used in Cruise</name>
 
   <parent>
     <groupId>edu.snu.cay</groupId>
-    <artifactId>cay</artifactId>
+    <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>

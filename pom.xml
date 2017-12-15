@@ -21,9 +21,9 @@
   <groupId>edu.snu.cay</groupId>
   <version>0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>CAY</name>
-  <artifactId>cay</artifactId>
-  <description>Unified big data analytics stack on REEF.</description>
+  <name>Cruise</name>
+  <artifactId>cruise</artifactId>
+  <description>A machine learning platform with automatic system configuration.</description>
 
   <parent>
     <groupId>org.apache</groupId>
