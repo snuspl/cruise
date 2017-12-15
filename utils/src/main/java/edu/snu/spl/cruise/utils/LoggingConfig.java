@@ -26,6 +26,6 @@ public final class LoggingConfig {
   public LoggingConfig() throws IOException {
     LogManager.getLogManager().readConfiguration(
         Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("edu/snu/cay/utils/logging.properties"));
+            .getResourceAsStream("edu/snu/spl/cruise/utils/logging.properties"));
   }
 }

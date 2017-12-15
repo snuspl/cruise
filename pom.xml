@@ -23,7 +23,7 @@
   <packaging>pom</packaging>
   <name>Cruise</name>
   <artifactId>cruise</artifactId>
-  <description>A machine learning platform with automatic system configuration.</description>
+  <description>A machine learning framework with automatic system configuration.</description>
 
   <parent>
     <groupId>org.apache</groupId>
@@ -354,7 +354,7 @@
         <configuration>
           <instrumentation>
             <excludes>
-              <exclude>edu/snu/cay/dolphin/examples/**/*.class</exclude>
+              <exclude>edu/snu/spl/cruise/ps/examples/**/*.class</exclude>
             </excludes>
           </instrumentation>
           <aggregate>true</aggregate>

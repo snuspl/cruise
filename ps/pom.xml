@@ -25,8 +25,8 @@
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
-  <artifactId>dolphin-async</artifactId>
-  <name>Dolphin Async</name>
+  <artifactId>ps</artifactId>
+  <name>Cruise PS</name>
 
   <dependencies>
     <dependency>

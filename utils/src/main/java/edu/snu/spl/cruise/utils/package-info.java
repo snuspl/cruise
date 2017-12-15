@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Util classes for Cay.
+ * Utility classes used in Cruise.
  */
 package edu.snu.spl.cruise.utils;

@@ -102,7 +102,7 @@ function install_cay {
   cd cay
   mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
   
-  echo "Cay installed" >> $LOG_FILE
+  echo "Cruise installed" >> $LOG_FILE
 }
 
 # Hadoop RPCs may fail if IPv6 is enabled.
@@ -123,7 +123,7 @@ install_essential
 install_java
 install_hadoop
 
-# REEF and Cay can be built optionally.
+# REEF and Cruise can be built optionally.
 # Comment out this line only when you want to build [REEF|cay] on your machine.
 #install_reef 
 #install_cay

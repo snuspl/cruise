@@ -26,6 +26,6 @@ public final class TestLoggingConfig {
   public TestLoggingConfig() throws IOException {
     LogManager.getLogManager().readConfiguration(
         Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("edu/snu/cay/utils/testlogging.properties"));
+            .getResourceAsStream("edu/snu/spl/cruise/utils/testlogging.properties"));
   }
 }

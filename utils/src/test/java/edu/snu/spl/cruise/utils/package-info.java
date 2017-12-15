@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Test classes for Cay Utilities.
+ * Test classes for Cruise Utilities.
  */
 package edu.snu.spl.cruise.utils;

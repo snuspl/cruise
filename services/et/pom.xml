@@ -41,7 +41,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.16.0-SNAPSHOT</reef.version>
-    <cay.version>0.1-SNAPSHOT</cay.version>
     <htrace.version>3.0.4</htrace.version>
     <avro.version>1.7.7</avro.version>
     <junit.version>4.12</junit.version>
@@ -105,7 +104,7 @@
     <dependency>
       <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>evaluator-manager</artifactId>
-      <version>${cay.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <!-- HTrace -->
     <dependency>
