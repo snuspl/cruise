@@ -16,7 +16,7 @@
 # EXAMPLE USAGE
 # ./stop_jobserver.sh 
 
-SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
+SELF_JAR=`echo ../target/ps-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 

@@ -16,7 +16,7 @@
 # EXAMPLE USAGE
 # ./submit_lda.sh -input file://$(pwd)/sample_lda -num_workers 4 -number_servers 2 -num_topics 10 -num_vocabs 17935 -max_num_epochs 3 -num_mini_batches 20 -num_worker_blocks 20 -server_metric_flush_period_ms 1000
 
-SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
+SELF_JAR=`echo ../target/ps-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 

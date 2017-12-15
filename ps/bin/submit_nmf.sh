@@ -16,7 +16,7 @@
 # EXAMPLE USAGE
 # ./submit_nmf.sh -max_num_epochs 50 -number_servers 1 -num_workers 4 -input file://$(pwd)/sample_nmf -num_mini_batches 25 -num_worker_blocks 25 -rank 30 -step_size 0.01 -print_mat true -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -server_metric_flush_period_ms 1000
 
-SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
+SELF_JAR=`echo ../target/ps-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 

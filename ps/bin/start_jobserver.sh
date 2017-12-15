@@ -16,7 +16,7 @@
 # EXAMPLE USAGE
 # ./start_jobserver.sh -num_total_resources 10 -max_num_eval_local 10 -local true -timeout 300000 -scheduler edu.snu.spl.cruise.ps.jobserver.driver.FIFOJobScheduler
 
-SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
+SELF_JAR=`echo ../target/ps-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 
