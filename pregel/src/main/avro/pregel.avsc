@@ -18,7 +18,7 @@
  * Type of message that master sends to workers to control them.
  */
 {
-  "namespace": "edu.snu.cay.pregel",
+  "namespace": "edu.snu.spl.cruise.pregel",
   "type": "record",
   "name": "SuperstepControlMsg",
   "fields":
@@ -32,7 +32,7 @@
  * Type of message that workers send to master about the result of superstep.
  */
 {
-  "namespace": "edu.snu.cay.pregel",
+  "namespace": "edu.snu.spl.cruise.pregel",
   "type": "record",
   "name": "SuperstepResultMsg",
   "fields":

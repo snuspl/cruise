@@ -19,11 +19,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>pregel</artifactId>
-  <name>Cay Pregel</name>
+  <name>Cruise Pregel</name>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
-    <artifactId>cay</artifactId>
+    <groupId>edu.snu.spl.cruise</groupId>
+    <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
@@ -64,16 +64,16 @@
     </dependency>
     <dependency>
       <groupId>${project.parent.groupId}</groupId>
-      <artifactId>cay-utils</artifactId>
+      <artifactId>cruise-utils</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.parent.groupId}</groupId>
-      <artifactId>cay-common</artifactId>
+      <artifactId>cruise-common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>edu.snu.cay.services</groupId>
+      <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>elastic-tables</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>

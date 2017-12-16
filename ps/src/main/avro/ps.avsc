@@ -1,0 +1,68 @@
+/*
+ * Copyright (C) 2017 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+[
+{
+ "namespace": "edu.snu.spl.cruise.ps",
+  "type": "record",
+  "name": "ProgressMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "ProgressMsgType", "symbols": ["Batch", "Epoch"]}},
+    {"name": "executorId", "type": "string"},
+    {"name": "progress", "type": "int"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.spl.cruise.ps",
+  "type": "record",
+  "name": "SyncMsg",
+  "fields":
+  [
+    {"name": "executorId", "type": "string"},
+    {"name": "serializedState", "type": "bytes"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.spl.cruise.ps",
+  "type": "record",
+  "name": "ModelEvalAnsMsg",
+  "fields":
+  [
+    {"name": "doNext", "type": "boolean"}
+  ]
+},
+
+/**
+ * A message format for cruise PS app.
+ * With different job id, users can run multiple cruise jobs concurrently.
+ */
+{
+  "namespace": "edu.snu.spl.cruise.ps",
+  "type": "record",
+  "name": "PSMsg",
+  "fields":
+  [
+    {"name": "jobId", "type": "string"},
+    {"name": "type", "type": {"type": "enum", "name": "cruiseMsgType",
+        "symbols": ["ProgressMsg", "SyncMsg", "ReleaseMsg", "ModelEvalAskMsg", "ModelEvalAnsMsg"]}},
+    {"name": "progressMsg", "type": ["null", "ProgressMsg"], "default": null},
+    {"name": "syncMsg", "type": ["null", "SyncMsg"], "default": null},
+    {"name": "modelEvalAnsMsg", "type": ["null", "ModelEvalAnsMsg"], "default": null}
+  ]
+}
+]

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # DESCRIPTION
-# A script to visualize a json formatted DAG of edu.snu.cay.utils.DAGImpl
+# A script to visualize a json formatted DAG of edu.snu.spl.cruise.utils.DAGImpl
 # It outputs a pdf file to ./output-dag/
 
 # EXAMPLE_USAGE

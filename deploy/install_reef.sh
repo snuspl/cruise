@@ -92,17 +92,17 @@ function install_reef {
   echo "REEF installed" >> $LOG_FILE
 }
 
-# Normally we don't have to build cay in all machines.
-function install_cay {
+# Normally we don't have to build cruise in all machines.
+function install_cruise {
   # Install Fortran (which cay depends on)
   sudo apt-get install -y libgfortran3
 
   cd ~
-  git clone https://github.com/cmssnu/cay # Username/password is required
-  cd cay
+  git clone https://github.com/snuspl/cruise # Username/password is required
+  cd cruise
   mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
   
-  echo "Cay installed" >> $LOG_FILE
+  echo "Cruise installed" >> $LOG_FILE
 }
 
 # Hadoop RPCs may fail if IPv6 is enabled.
@@ -123,7 +123,7 @@ install_essential
 install_java
 install_hadoop
 
-# REEF and Cay can be built optionally.
+# REEF and Cruise can be built optionally.
 # Comment out this line only when you want to build [REEF|cay] on your machine.
 #install_reef 
 #install_cay

@@ -18,7 +18,7 @@
  * Message for Centralized Communication (CentComm) Service.
  */
 {
-  "namespace": "edu.snu.cay.common.centcomm.avro",
+  "namespace": "edu.snu.spl.cruise.common.centcomm.avro",
   "type": "record",
   "name": "CentCommMsg",
   "fields":

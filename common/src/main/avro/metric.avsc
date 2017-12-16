@@ -18,7 +18,7 @@
  * Contains a map which consists of metrics.
  */
 {
-  "namespace": "edu.snu.cay.common.metric.avro",
+  "namespace": "edu.snu.spl.cruise.common.metric.avro",
   "type": "record",
   "name": "Metrics",
   "fields":

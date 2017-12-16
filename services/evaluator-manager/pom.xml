@@ -18,13 +18,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.snu.cay.services</groupId>
+  <groupId>edu.snu.spl.cruise.services</groupId>
   <artifactId>evaluator-manager</artifactId>
   <name>Evaluator Manager</name>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
-    <artifactId>cay</artifactId>
+    <groupId>edu.snu.spl.cruise</groupId>
+    <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../../</relativePath>
   </parent>
@@ -32,7 +32,7 @@
   <dependencies>
     <dependency>
       <groupId>${project.parent.groupId}</groupId>
-      <artifactId>cay-common</artifactId>
+      <artifactId>cruise-common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>

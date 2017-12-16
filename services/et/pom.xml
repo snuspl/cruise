@@ -18,14 +18,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.snu.cay.services</groupId>
+  <groupId>edu.snu.spl.cruise.services</groupId>
   <version>0.1-SNAPSHOT</version>
   <name>Elastic Tables</name>
   <artifactId>elastic-tables</artifactId>
 
   <parent>
-    <groupId>edu.snu.cay</groupId>
-    <artifactId>cay</artifactId>
+    <groupId>edu.snu.spl.cruise</groupId>
+    <artifactId>cruise</artifactId>
     <version>0.1-SNAPSHOT</version>
     <relativePath>../../</relativePath>
   </parent>
@@ -41,7 +41,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.16.0-SNAPSHOT</reef.version>
-    <cay.version>0.1-SNAPSHOT</cay.version>
     <htrace.version>3.0.4</htrace.version>
     <avro.version>1.7.7</avro.version>
     <junit.version>4.12</junit.version>
@@ -102,13 +101,11 @@
       <scope>provided</scope>
     </dependency>
     <!-- End of HADOOP -->
-    <!-- CAY -->
     <dependency>
-      <groupId>edu.snu.cay.services</groupId>
+      <groupId>edu.snu.spl.cruise.services</groupId>
       <artifactId>evaluator-manager</artifactId>
-      <version>${cay.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
-    <!-- End of CAY -->
     <!-- HTrace -->
     <dependency>
       <groupId>org.htrace</groupId>

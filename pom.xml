@@ -18,12 +18,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.snu.cay</groupId>
+  <groupId>edu.snu.spl.cruise</groupId>
   <version>0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>CAY</name>
-  <artifactId>cay</artifactId>
-  <description>Unified big data analytics stack on REEF.</description>
+  <name>Cruise</name>
+  <artifactId>cruise</artifactId>
+  <description>A machine learning framework with automatic system configuration.</description>
 
   <parent>
     <groupId>org.apache</groupId>
@@ -64,7 +64,7 @@
   </prerequisites>
 
   <modules>
-    <module>dolphin/async</module>
+    <module>ps</module>
     <module>services/evaluator-manager</module>
     <module>services/et</module>
     <module>utils</module>
@@ -354,7 +354,7 @@
         <configuration>
           <instrumentation>
             <excludes>
-              <exclude>edu/snu/cay/dolphin/examples/**/*.class</exclude>
+              <exclude>edu/snu/spl/cruise/ps/examples/**/*.class</exclude>
             </excludes>
           </instrumentation>
           <aggregate>true</aggregate>
@@ -386,21 +386,21 @@
       <!-- only Unit tests-->
       <id>UnitTest</id>
       <properties>
-        <tests.excluded>edu.snu.cay.utils.test.IntensiveTest, edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
+        <tests.excluded>edu.snu.spl.cruise.utils.test.IntensiveTest, edu.snu.spl.cruise.utils.test.IntegrationTest</tests.excluded>
       </properties>
     </profile>
     <profile>
       <!-- Unit, Intensive tests-->
       <id>IntensiveTest</id>
       <properties>
-        <tests.excluded>edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
+        <tests.excluded>edu.snu.spl.cruise.utils.test.IntegrationTest</tests.excluded>
       </properties>
     </profile>
     <profile>
       <!-- Only Integration tests-->
       <id>IntegrationTest</id>
       <properties>
-        <tests.groups>edu.snu.cay.utils.test.IntegrationTest</tests.groups>
+        <tests.groups>edu.snu.spl.cruise.utils.test.IntegrationTest</tests.groups>
       </properties>
     </profile>
   </profiles>
