@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.spl.cruise.ps;
+package edu.snu.spl.cruise.ps.core.worker;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import edu.snu.spl.cruise.ps.core.worker.ModelAccessor;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.metric.Tracer;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import edu.snu.spl.cruise.services.et.evaluator.api.TableAccessor;
@@ -48,7 +48,7 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   private final Tracer pullTracer = new Tracer();
 
   @Inject
-  private CachedModelAccessor(@Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+  private CachedModelAccessor(@Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
                               final TableAccessor tableAccessor,
                               final UpdateFunction<K, V, P> modelUpdateFunction) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);

@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.mlapps.nmf;
 
 import edu.snu.spl.cruise.common.math.linalg.Vector;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -31,13 +31,13 @@ import static edu.snu.spl.cruise.ps.mlapps.nmf.NMFParameters.InitialMin;
  * Vectors are initialized with random values
  * between {@link InitialMin} and {@link InitialMax} using {@link java.util.Random}.
  */
-public final class NMFETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
+public final class NMFModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
   private final NMFModelGenerator modelGenerator;
   private final float stepSize;
 
   @Inject
-  private NMFETModelUpdateFunction(final NMFModelGenerator modelGenerator,
-                                   @Parameter(CruiseParameters.StepSize.class) final float stepSize) {
+  private NMFModelUpdateFunction(final NMFModelGenerator modelGenerator,
+                                 @Parameter(CruisePSParameters.StepSize.class) final float stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

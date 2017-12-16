@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.mlapps.gbt;
 
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeCodec;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeListCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -33,12 +33,12 @@ public final class GBTET {
   }
 
   public static void main(final String[] args) {
-    ETCruiseLauncher.launch("GBTET", args, ETCruiseConfiguration.newBuilder()
+    CruisePSLauncher.launch("GBTET", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(GBTTrainer.class)
-        .setInputParserClass(GBTETDataParser.class)
+        .setInputParserClass(GBTDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(GBTDataCodec.class)
-        .setModelUpdateFunctionClass(GBTETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(GBTModelUpdateFunction.class)
         .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(GBTreeListCodec.class)
         .setModelUpdateValueCodecClass(GBTreeCodec.class)

@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.ps.ProgressMsg;
 import org.apache.reef.tang.annotations.Parameter;
@@ -29,7 +29,7 @@ import java.util.logging.Level;
 /**
  * A component to track minibatch-progress by workers.
  * Different from {@link ProgressTracker}, it receives a progress message for every batch by workers.
- * And every {@link edu.snu.spl.cruise.ps.CruiseParameters.NumTotalMiniBatches} batches,
+ * And every {@link CruisePSParameters.NumTotalMiniBatches} batches,
  * it checkpoints a model table for offline model evaluation.
  */
 public final class BatchProgressTracker {
@@ -48,10 +48,10 @@ public final class BatchProgressTracker {
 
   @Inject
   private BatchProgressTracker(final JobLogger jobLogger,
-                               @Parameter(CruiseParameters.MaxNumEpochs.class) final int numEpochs,
-                               @Parameter(CruiseParameters.NumTotalMiniBatches.class)
+                               @Parameter(CruisePSParameters.MaxNumEpochs.class) final int numEpochs,
+                               @Parameter(CruisePSParameters.NumTotalMiniBatches.class)
                                  final int numMiniBatchesInEpoch,
-                               @Parameter(CruiseParameters.OfflineModelEvaluation.class)
+                               @Parameter(CruisePSParameters.OfflineModelEvaluation.class)
                                  final boolean offlineModelEval,
                                final ModelChkpManager modelChkpManager) {
     this.jobLogger = jobLogger;

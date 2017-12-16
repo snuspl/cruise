@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Beta;
@@ -37,12 +37,12 @@ public final class LDAJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("LDA", args, ETCruiseConfiguration.newBuilder()
+    JobLauncher.submitJob("LDA", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
-        .setInputParserClass(LDAETDataParser.class)
+        .setInputParserClass(LDADataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(LDADataCodec.class)
-        .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(LDAModelUpdateFunction.class)
         .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(SparseArrayCodec.class)
         .setModelUpdateValueCodecClass(SerializableCodec.class)

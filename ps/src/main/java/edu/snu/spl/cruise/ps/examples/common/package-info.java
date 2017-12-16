@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common classes for Cruise async example apps.
+ * Common classes for Cruise-PS example apps.
  */
 package edu.snu.spl.cruise.ps.examples.common;

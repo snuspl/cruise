@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.examples.addinteger;
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.ps.examples.common.ExampleDataParser;
 import edu.snu.spl.cruise.ps.examples.common.ExampleParameters;
 import org.apache.reef.client.LauncherStatus;
@@ -41,7 +41,7 @@ public final class AddIntegerET {
    * @return a LauncherStatus
    */
   public static LauncherStatus runAddInteger(final String[] args, final Configuration conf) {
-    return ETCruiseLauncher.launch("AddIntegerET", args, ETCruiseConfiguration.newBuilder()
+    return CruisePSLauncher.launch("AddIntegerET", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
         .setInputParserClass(ExampleDataParser.class)
         .setModelUpdateFunctionClass(AddIntegerUpdateFunction.class)

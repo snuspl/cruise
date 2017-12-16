@@ -16,9 +16,9 @@
 package edu.snu.spl.cruise.ps.jobserver.driver;
 
 import edu.snu.spl.cruise.common.param.Parameters;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.ps.jobserver.Parameters.*;
 import edu.snu.spl.cruise.services.et.configuration.ExecutorConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.RemoteAccessConfiguration;
@@ -79,9 +79,9 @@ public final class JobServerDriver {
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
   /**
-   * It maintains {@link CruiseMaster}s of running cruise jobs.
+   * It maintains {@link CruisePSMaster}s of running cruise jobs.
    */
-  private final Map<String, CruiseMaster> cruiseMasterMap = new ConcurrentHashMap<>();
+  private final Map<String, CruisePSMaster> cruiseMasterMap = new ConcurrentHashMap<>();
 
   private final Injector jobBaseInjector;
 
@@ -102,10 +102,10 @@ public final class JobServerDriver {
   }
 
   /**
-   * Gets a {@link CruiseMaster} with {@code cruiseJobId}.
+   * Gets a {@link CruisePSMaster} with {@code cruiseJobId}.
    * @param cruiseJobId a cruise job identifier
    */
-  CruiseMaster getCruiseMaster(final String cruiseJobId) {
+  CruisePSMaster getCruiseMaster(final String cruiseJobId) {
     return cruiseMasterMap.get(cruiseJobId);
   }
 
@@ -214,11 +214,11 @@ public final class JobServerDriver {
         inputTable.load(workers, jobEntity.getInputPath()).get();
 
         try {
-          LOG.log(Level.FINE, "Spawn new cruiseMaster with ID: {0}", jobId);
-          final CruiseMaster cruiseMaster = jobEntity.getJobInjector().getInstance(CruiseMaster.class);
-          cruiseMasterMap.put(jobId, cruiseMaster);
+          LOG.log(Level.FINE, "Spawn new cruisePSMaster with ID: {0}", jobId);
+          final CruisePSMaster cruisePSMaster = jobEntity.getJobInjector().getInstance(CruisePSMaster.class);
+          cruiseMasterMap.put(jobId, cruisePSMaster);
 
-          cruiseMaster.start(servers, workers, modelTable, inputTable);
+          cruisePSMaster.start(servers, workers, modelTable, inputTable);
 
           workers.forEach(AllocatedExecutor::close);
           servers.forEach(AllocatedExecutor::close);
@@ -255,13 +255,13 @@ public final class JobServerDriver {
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
 
-    jobInjector.bindVolatileParameter(CruiseJobId.class, cruiseJobId);
+    jobInjector.bindVolatileParameter(CruisePSJobId.class, cruiseJobId);
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
 
-    final String serializedParamConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedParamConf.class);
-    final String serializedServerConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedServerConf.class);
-    final String serializedWorkerConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedWorkerConf.class);
+    final String serializedParamConf = jobInjector.getNamedInstance(CruisePSLauncher.SerializedParamConf.class);
+    final String serializedServerConf = jobInjector.getNamedInstance(CruisePSLauncher.SerializedServerConf.class);
+    final String serializedWorkerConf = jobInjector.getNamedInstance(CruisePSLauncher.SerializedWorkerConf.class);
 
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = ConfigurationUtils.fromString(serializedParamConf);

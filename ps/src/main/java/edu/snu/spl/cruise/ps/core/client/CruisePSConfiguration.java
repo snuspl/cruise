@@ -32,15 +32,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Job configuration of a Cruise on ET application.
+ * Job configuration of a Cruise-PS application.
  *
  * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link UpdateFunction}, {@link DataParser}, codecs,
  * parameters, configuration for workers, and configuration for servers.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
- * Use with {@link ETCruiseLauncher#launch(String, String[], ETCruiseConfiguration)} to launch application.
+ * Use with {@link CruisePSLauncher#launch(String, String[], CruisePSConfiguration)} to launch application.
  */
 @ClientSide
-public final class ETCruiseConfiguration {
+public final class CruisePSConfiguration {
   private final Class<? extends Trainer> trainerClass;
   private final Class<? extends DataParser> inputParserClass;
   private final Class<? extends StreamingCodec> inputKeyCodecClass;
@@ -54,17 +54,17 @@ public final class ETCruiseConfiguration {
   private final Configuration workerConfiguration;
   private final Configuration serverConfiguration;
 
-  private ETCruiseConfiguration(final Class<? extends Trainer> trainerClass,
-                                 final Class<? extends DataParser> inputParserClass,
-                                 final Class<? extends StreamingCodec> inputKeyCodecClass,
-                                 final Class<? extends StreamingCodec> inputValueCodecClass,
-                                 final Class<? extends UpdateFunction> modelUpdateFunctionClass,
-                                 final Class<? extends StreamingCodec> modelKeyCodecClass,
-                                 final Class<? extends StreamingCodec> modelValueCodecClass,
-                                 final Class<? extends Codec> modelUpdateValueCodecClass,
-                                 final List<Class<? extends Name<?>>> parameterClassList,
-                                 final Configuration workerConfiguration,
-                                 final Configuration serverConfiguration) {
+  private CruisePSConfiguration(final Class<? extends Trainer> trainerClass,
+                                final Class<? extends DataParser> inputParserClass,
+                                final Class<? extends StreamingCodec> inputKeyCodecClass,
+                                final Class<? extends StreamingCodec> inputValueCodecClass,
+                                final Class<? extends UpdateFunction> modelUpdateFunctionClass,
+                                final Class<? extends StreamingCodec> modelKeyCodecClass,
+                                final Class<? extends StreamingCodec> modelValueCodecClass,
+                                final Class<? extends Codec> modelUpdateValueCodecClass,
+                                final List<Class<? extends Name<?>>> parameterClassList,
+                                final Configuration workerConfiguration,
+                                final Configuration serverConfiguration) {
     this.trainerClass = trainerClass;
     this.inputParserClass = inputParserClass;
     this.inputKeyCodecClass = inputKeyCodecClass;
@@ -126,7 +126,7 @@ public final class ETCruiseConfiguration {
     return new Builder();
   }
 
-  public static class Builder implements org.apache.reef.util.Builder<ETCruiseConfiguration> {
+  public static class Builder implements org.apache.reef.util.Builder<CruisePSConfiguration> {
     private Class<? extends Trainer> trainerClass;
     private Class<? extends DataParser> inputParserClass;
     private Class<? extends StreamingCodec> inputKeyCodecClass = StreamingSerializableCodec.class;
@@ -197,12 +197,12 @@ public final class ETCruiseConfiguration {
     }
 
     @Override
-    public ETCruiseConfiguration build() {
+    public CruisePSConfiguration build() {
       BuilderUtils.notNull(trainerClass);
       BuilderUtils.notNull(inputParserClass);
       BuilderUtils.notNull(modelUpdateFunctionClass);
 
-      return new ETCruiseConfiguration(trainerClass, inputParserClass, inputKeyCodecClass, inputValueCodecClass,
+      return new CruisePSConfiguration(trainerClass, inputParserClass, inputKeyCodecClass, inputValueCodecClass,
           modelUpdateFunctionClass, modelKeyCodecClass, modelValueCodecClass, modelUpdateValueCodecClass,
           parameterClassList, workerConfiguration, serverConfiguration);
     }

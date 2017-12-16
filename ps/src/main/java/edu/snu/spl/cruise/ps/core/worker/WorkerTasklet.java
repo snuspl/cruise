@@ -15,8 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.worker;
 
-import edu.snu.spl.cruise.ps.CachedModelAccessor;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.metric.avro.BatchMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.CruiseWorkerMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.EpochMetrics;
@@ -61,8 +60,8 @@ public final class WorkerTasklet<V> implements Tasklet {
 
   @Inject
   private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskletId,
-                        @Parameter(CruiseParameters.StartingEpochIdx.class) final int startingEpoch,
-                        @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                        @Parameter(CruisePSParameters.StartingEpochIdx.class) final int startingEpoch,
+                        @Parameter(CruisePSParameters.MaxNumEpochs.class) final int maxNumEpochs,
                         final ProgressReporter progressReporter,
                         final WorkerGlobalBarrier workerGlobalBarrier,
                         final TrainingDataProvider<V> trainingDataProvider,

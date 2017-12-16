@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.core.worker;
 
 import com.google.common.collect.Iterators;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.services.et.evaluator.api.Block;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import edu.snu.spl.cruise.services.et.evaluator.api.TableAccessor;
@@ -43,7 +43,7 @@ public final class ETTrainingDataProvider<V> implements TrainingDataProvider<V> 
   private final Table<?, V, Object> trainingDataTable;
 
   @Inject
-  private ETTrainingDataProvider(@Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
+  private ETTrainingDataProvider(@Parameter(CruisePSParameters.InputTableId.class) final String inputTableId,
                                  final TableAccessor tableAccessor) throws TableNotExistException {
     this.trainingDataTable = tableAccessor.getTable(inputTableId);
   }

@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.ps.core.worker.WorkerTasklet;
 import edu.snu.spl.cruise.services.et.driver.api.AllocatedExecutor;
@@ -45,7 +45,7 @@ public final class ETTaskRunner {
 
   private final JobMessageObserver jobMessageObserver;
 
-  private final InjectionFuture<CruiseMaster> etCruiseMasterFuture;
+  private final InjectionFuture<CruisePSMaster> etCruiseMasterFuture;
 
   private final WorkerStateManager workerStateManager;
 
@@ -58,12 +58,12 @@ public final class ETTaskRunner {
 
   @Inject
   private ETTaskRunner(final JobLogger jobLogger,
-                       final InjectionFuture<CruiseMaster> cruiseMasterFuture,
+                       final InjectionFuture<CruisePSMaster> cruiseMasterFuture,
                        final JobMessageObserver jobMessageObserver,
                        final ETMaster etMaster,
                        final WorkerStateManager workerStateManager,
-                       @Parameter(CruiseParameters.CruiseJobId.class) final String jobId,
-                       @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers) {
+                       @Parameter(CruisePSParameters.CruisePSJobId.class) final String jobId,
+                       @Parameter(CruisePSParameters.NumWorkers.class) final int numWorkers) {
     this.jobLogger = jobLogger;
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;

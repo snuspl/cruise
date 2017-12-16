@@ -15,8 +15,9 @@
  */
 package edu.snu.spl.cruise.ps.jobserver.driver;
 
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
-import edu.snu.spl.cruise.ps.CruiseMsg;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
+import edu.snu.spl.cruise.ps.PSMsg;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
@@ -24,10 +25,10 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler for JobServer, which manages multiple {@link CruiseMaster}s.
- * Therefore, it routes messages to an appropriate {@link CruiseMaster}
- * based on {@link edu.snu.spl.cruise.ps.CruiseParameters.CruiseJobId} embedded in
- * incoming {@link CruiseMsg}.
+ * A driver-side message handler for JobServer, which manages multiple {@link CruisePSMaster}s.
+ * Therefore, it routes messages to an appropriate {@link CruisePSMaster}
+ * based on {@link CruisePSParameters.CruisePSJobId} embedded in
+ * incoming {@link PSMsg}.
  */
 public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
@@ -40,10 +41,10 @@ public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
   @Override
   public void onNext(final byte[] bytes) {
-    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
+    final PSMsg cruiseMsg = AvroUtils.fromBytes(bytes, PSMsg.class);
 
     final String jobId = cruiseMsg.getJobId().toString();
-    final CruiseMaster cruiseMaster = jobServerDriverFuture.get().getCruiseMaster(jobId);
-    cruiseMaster.getMsgHandler().onCruiseMsg(cruiseMsg);
+    final CruisePSMaster cruisePSMaster = jobServerDriverFuture.get().getCruiseMaster(jobId);
+    cruisePSMaster.getMsgHandler().onPSMsg(cruiseMsg);
   }
 }

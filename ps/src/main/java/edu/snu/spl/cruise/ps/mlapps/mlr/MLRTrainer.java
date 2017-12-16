@@ -28,7 +28,7 @@ import edu.snu.spl.cruise.utils.ThreadUtils;
 import edu.snu.spl.cruise.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -124,7 +124,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(DecayRate.class) final float decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(HyperThreadEnabled.class) final boolean hyperThreadEnabled,
-                     @Parameter(CruiseParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
+                     @Parameter(CruisePSParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                      final VectorFactory vectorFactory) {
     this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;

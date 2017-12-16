@@ -23,11 +23,11 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-final class LDAETDataParser implements DataParser<Document> {
+final class LDADataParser implements DataParser<Document> {
   private final int numTopics;
 
   @Inject
-  private LDAETDataParser(@Parameter(LDAParameters.NumTopics.class) final int numTopics) {
+  private LDADataParser(@Parameter(LDAParameters.NumTopics.class) final int numTopics) {
     this.numTopics = numTopics;
   }
 

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes that are related to the Metrics Collection Service of Async-Cruise.
+ * Classes that are related to the Metrics Collection Service of Cruise-PS.
  */
 package edu.snu.spl.cruise.ps.metric;

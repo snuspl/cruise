@@ -27,11 +27,11 @@ import javax.inject.Inject;
  * numVocabs-th row as the total count vector for all word indices.
  * Note that the last (numTopics-th) element of the array represents number of non-zero elements in the array.
  */
-public final class LDAETModelUpdateFunction implements UpdateFunction<Integer, int[], int[]> {
+public final class LDAModelUpdateFunction implements UpdateFunction<Integer, int[], int[]> {
   private final int numTopics;
 
   @Inject
-  private LDAETModelUpdateFunction(@Parameter(NumTopics.class) final int numTopics) {
+  private LDAModelUpdateFunction(@Parameter(NumTopics.class) final int numTopics) {
     this.numTopics = numTopics;
   }
 

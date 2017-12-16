@@ -74,8 +74,8 @@ final class AddIntegerTrainer implements Trainer {
   @Inject
   private AddIntegerTrainer(final ModelAccessor<Integer, Integer, Integer> modelAccessor,
                             final TableAccessor tableAccessor,
-                            @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
-                            @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                            @Parameter(CruisePSParameters.InputTableId.class) final String inputTableId,
+                            @Parameter(CruisePSParameters.MaxNumEpochs.class) final int maxNumEpochs,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,

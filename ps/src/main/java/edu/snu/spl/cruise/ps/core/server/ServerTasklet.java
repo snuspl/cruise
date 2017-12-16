@@ -31,7 +31,7 @@ public final class ServerTasklet implements Tasklet {
 
   /**
    * A latch that will be released upon {@link #close()}.
-   * Then {@link #call(byte[])} will complete and the task will finish.
+   * Then {@link #run()} will complete and the task will finish.
    */
   private final CountDownLatch closeLatch = new CountDownLatch(1);
 

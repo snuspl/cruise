@@ -79,8 +79,8 @@ public final class WorkerStateManager {
   @Inject
   private WorkerStateManager(final JobLogger jobLogger,
                              final MasterSideMsgSender masterSideMsgSender,
-                             @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers,
-                             @Parameter(CruiseParameters.CruiseJobId.class) final String jobId,
+                             @Parameter(CruisePSParameters.NumWorkers.class) final int numWorkers,
+                             @Parameter(CruisePSParameters.CruisePSJobId.class) final String jobId,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
     this.jobLogger = jobLogger;
     this.masterSideMsgSender = masterSideMsgSender;

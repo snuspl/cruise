@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.plan.impl;
 
 import edu.snu.spl.cruise.ps.*;
-import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.core.driver.CruisePSDriver;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.ps.optimizer.impl.OptimizerType;
 import edu.snu.spl.cruise.ps.plan.api.Plan;
 import edu.snu.spl.cruise.ps.plan.api.TransferStep;
@@ -48,14 +48,14 @@ public final class PlanCompiler {
   private final String modelTableId;
   private final String inputTableId;
 
-  private final InjectionFuture<CruiseDriver> cruiseDriverFuture;
-  private final InjectionFuture<CruiseMaster> cruiseMasterFuture;
+  private final InjectionFuture<CruisePSDriver> cruiseDriverFuture;
+  private final InjectionFuture<CruisePSMaster> cruiseMasterFuture;
 
   @Inject
-  private PlanCompiler(@Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
-                       @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
-                       final InjectionFuture<CruiseDriver> cruiseDriverFuture,
-                       final InjectionFuture<CruiseMaster> cruiseMasterFuture) {
+  private PlanCompiler(@Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
+                       @Parameter(CruisePSParameters.InputTableId.class) final String inputTableId,
+                       final InjectionFuture<CruisePSDriver> cruiseDriverFuture,
+                       final InjectionFuture<CruisePSMaster> cruiseMasterFuture) {
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.cruiseDriverFuture = cruiseDriverFuture;

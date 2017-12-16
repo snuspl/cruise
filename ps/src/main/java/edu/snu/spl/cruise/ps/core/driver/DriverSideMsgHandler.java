@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.core.driver;
 
 
-import edu.snu.spl.cruise.ps.CruiseMsg;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.PSMsg;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
@@ -25,20 +25,20 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to {@link CruiseMaster}.
+ * A driver-side message handler that routes messages to {@link CruisePSMaster}.
  */
 public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
-  private final InjectionFuture<CruiseMaster> cruiseMasterFuture;
+  private final InjectionFuture<CruisePSMaster> cruiseMasterFuture;
 
   @Inject
-  private DriverSideMsgHandler(final InjectionFuture<CruiseMaster> cruiseMasterFuture) {
+  private DriverSideMsgHandler(final InjectionFuture<CruisePSMaster> cruiseMasterFuture) {
     this.cruiseMasterFuture = cruiseMasterFuture;
   }
 
   @Override
   public void onNext(final byte[] bytes) {
-    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
-    cruiseMasterFuture.get().getMsgHandler().onCruiseMsg(cruiseMsg);
+    final PSMsg cruiseMsg = AvroUtils.fromBytes(bytes, PSMsg.class);
+    cruiseMasterFuture.get().getMsgHandler().onPSMsg(cruiseMsg);
   }
 }

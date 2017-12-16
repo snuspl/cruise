@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Beta;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.NumTopics;
@@ -38,12 +38,12 @@ public final class LDAET {
   }
 
   public static void main(final String[] args) {
-    ETCruiseLauncher.launch("LDAET", args, ETCruiseConfiguration.newBuilder()
+    CruisePSLauncher.launch("LDAET", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
-        .setInputParserClass(LDAETDataParser.class)
+        .setInputParserClass(LDADataParser.class)
         .setInputKeyCodecClass(LongCodec.class)
         .setInputValueCodecClass(LDADataCodec.class)
-        .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(LDAModelUpdateFunction.class)
         .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(SparseArrayCodec.class)
         .setModelUpdateValueCodecClass(StreamingSerializableCodec.class)

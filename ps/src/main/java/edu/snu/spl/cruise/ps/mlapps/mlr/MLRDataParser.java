@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.spl.cruise.ps.mlapps.lasso;
+package edu.snu.spl.cruise.ps.mlapps.mlr;
 
 import edu.snu.spl.cruise.common.math.linalg.Vector;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.services.et.evaluator.api.DataParser;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -26,29 +26,33 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
+import static edu.snu.spl.cruise.ps.mlapps.mlr.MLRParameters.NumClasses;
 
 /**
- * A data parser for sparse vector regression input.
+ * A data parser for sparse vector classification input.
  * Assumes the following data format.
  * <p>
- *   [yValue] [index]:[value] [index]:[value] ...
+ *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
-final class LassoETParser implements DataParser<LassoData> {
+final class MLRDataParser implements DataParser<MLRData> {
 
   private final VectorFactory vectorFactory;
+  private final int numClasses;
   private final int numFeatures;
 
   @Inject
-  private LassoETParser(final VectorFactory vectorFactory,
+  private MLRDataParser(final VectorFactory vectorFactory,
+                        @Parameter(NumClasses.class)final int numClasses,
                         @Parameter(NumFeatures.class) final int numFeatures) {
     this.vectorFactory = vectorFactory;
+    this.numClasses = numClasses;
     this.numFeatures = numFeatures;
   }
 
   @Override
-  public List<LassoData> parse(final Collection<String> rawData) {
-    final List<LassoData> retList = new LinkedList<>();
+  public List<MLRData> parse(final Collection<String> rawData) {
+    final List<MLRData> result = new LinkedList<>();
 
     for (final String value : rawData) {
       final String line = value.trim();
@@ -58,7 +62,10 @@ final class LassoETParser implements DataParser<LassoData> {
       }
 
       final String[] split = line.split("\\s+|:");
-      final float yValue = Float.parseFloat(split[0]);
+      final int label = Integer.parseInt(split[0]);
+      if (label < 0 || label > numClasses) {
+        throw new RuntimeException(String.format("Label should be >= %d and < %d%n%s", 0, numClasses, line));
+      }
 
       final int[] indices = new int[split.length / 2];
       final float[] data = new float[split.length / 2];
@@ -68,9 +75,8 @@ final class LassoETParser implements DataParser<LassoData> {
       }
 
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-      retList.add(new LassoData(feature, yValue));
+      result.add(new MLRData(feature, label));
     }
-
-    return retList;
+    return result;
   }
 }

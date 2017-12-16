@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.CruiseMsg;
+import edu.snu.spl.cruise.ps.PSMsg;
 import edu.snu.spl.cruise.ps.ProgressMsg;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
 import org.apache.reef.tang.InjectionFuture;
@@ -54,7 +54,7 @@ public final class MasterSideMsgHandler {
   /**
    * Handles cruise msgs from workers.
    */
-  public void onCruiseMsg(final CruiseMsg cruiseMsg) {
+  public void onPSMsg(final PSMsg cruiseMsg) {
     switch (cruiseMsg.getType()) {
     case ProgressMsg:
       final ProgressMsg progressMsg = cruiseMsg.getProgressMsg();

@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 
 /**
  * A logger for cruise jobs, which distinguishes jobs with the injected
- * {@link edu.snu.spl.cruise.ps.CruiseParameters.CruiseJobId}.
+ * {@link CruisePSParameters.CruisePSJobId}.
  * This class relays log messages to the {@link Logger}, appending job id to log messages.
  */
 public final class JobLogger {
@@ -35,7 +35,7 @@ public final class JobLogger {
   private final Logger logger;
 
   @Inject
-  private JobLogger(@Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId) throws IOException {
+  private JobLogger(@Parameter(CruisePSParameters.CruisePSJobId.class) final String cruiseJobId) throws IOException {
     this.msgPrefix = "[JobId: " + cruiseJobId + "] ";
     this.logger = Logger.getLogger(JobLogger.class.getName());
   }

@@ -29,11 +29,11 @@ import java.util.logging.Logger;
  * numVocabs-th row as the total count vector for all word indices.
  * Note that the last (numTopics-th) element of the array represents number of non-zero elements in the array.
  */
-public final class GBTETModelUpdateFunction implements UpdateFunction<Integer, List<GBTree>, GBTree> {
-  private static final Logger LOG = Logger.getLogger(GBTETModelUpdateFunction.class.getName());
+public final class GBTModelUpdateFunction implements UpdateFunction<Integer, List<GBTree>, GBTree> {
+  private static final Logger LOG = Logger.getLogger(GBTModelUpdateFunction.class.getName());
 
   @Inject
-  private GBTETModelUpdateFunction() {
+  private GBTModelUpdateFunction() {
   }
 
   @Override

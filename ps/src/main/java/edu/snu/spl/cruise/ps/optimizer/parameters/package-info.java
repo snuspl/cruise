@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters used in Optimizer for Cruise Async.
+ * Parameters used in Optimizer for Cruise-PS.
  */
 package edu.snu.spl.cruise.ps.optimizer.parameters;

@@ -16,9 +16,9 @@
 package edu.snu.spl.cruise.ps.core.driver;
 
 import edu.snu.spl.cruise.common.param.Parameters;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.services.et.configuration.ExecutorConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.ResourceConfiguration;
@@ -60,15 +60,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver code for Cruise on ET.
+ * Driver code for Cruise-PS.
  * Upon start, it initializes executors and tables for running a cruise job.
  */
 @Unit
-public final class CruiseDriver {
-  private static final Logger LOG = Logger.getLogger(CruiseDriver.class.getName());
+public final class CruisePSDriver {
+  private static final Logger LOG = Logger.getLogger(CruisePSDriver.class.getName());
 
   private final ETMaster etMaster;
-  private final CruiseMaster cruiseMaster;
+  private final CruisePSMaster cruisePSMaster;
   private final JobMessageObserver jobMessageObserver;
 
   private final boolean offlineModelEval;
@@ -89,34 +89,34 @@ public final class CruiseDriver {
   private final String jobId;
 
   @Inject
-  private CruiseDriver(final CruiseMaster cruiseMaster,
-                        final ETMaster etMaster,
-                        final JobMessageObserver jobMessageObserver,
-                        final ConfigurationSerializer confSerializer,
-                        @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
-                        @Parameter(NumServers.class) final int numServers,
-                        @Parameter(ServerMemSize.class) final int serverMemSize,
-                        @Parameter(NumServerCores.class) final int numServerCores,
-                        @Parameter(NumWorkers.class) final int numWorkers,
-                        @Parameter(WorkerMemSize.class) final int workerMemSize,
-                        @Parameter(NumWorkerCores.class) final int numWorkerCores,
-                        @Parameter(NumServerSenderThreads.class) final int numServerSenderThreads,
-                        @Parameter(NumServerHandlerThreads.class) final int numServerHandlerThreads,
-                        @Parameter(ServerSenderQueueSize.class) final int serverSenderQueueSize,
-                        @Parameter(ServerHandlerQueueSize.class) final int serverHandlerQueueSize,
-                        @Parameter(NumWorkerSenderThreads.class) final int numWorkerSenderThreads,
-                        @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
-                        @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
-                        @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
-                        @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
-                        @Parameter(NumServerBlocks.class) final int numServerBlocks,
-                        @Parameter(JobIdentifier.class) final String jobId,
-                        @Parameter(ETCruiseLauncher.SerializedParamConf.class) final String serializedParamConf,
-                        @Parameter(ETCruiseLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
-                        @Parameter(ETCruiseLauncher.SerializedServerConf.class) final String serializedServerConf)
+  private CruisePSDriver(final CruisePSMaster cruisePSMaster,
+                         final ETMaster etMaster,
+                         final JobMessageObserver jobMessageObserver,
+                         final ConfigurationSerializer confSerializer,
+                         @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
+                         @Parameter(NumServers.class) final int numServers,
+                         @Parameter(ServerMemSize.class) final int serverMemSize,
+                         @Parameter(NumServerCores.class) final int numServerCores,
+                         @Parameter(NumWorkers.class) final int numWorkers,
+                         @Parameter(WorkerMemSize.class) final int workerMemSize,
+                         @Parameter(NumWorkerCores.class) final int numWorkerCores,
+                         @Parameter(NumServerSenderThreads.class) final int numServerSenderThreads,
+                         @Parameter(NumServerHandlerThreads.class) final int numServerHandlerThreads,
+                         @Parameter(ServerSenderQueueSize.class) final int serverSenderQueueSize,
+                         @Parameter(ServerHandlerQueueSize.class) final int serverHandlerQueueSize,
+                         @Parameter(NumWorkerSenderThreads.class) final int numWorkerSenderThreads,
+                         @Parameter(NumWorkerHandlerThreads.class) final int numWorkerHandlerThreads,
+                         @Parameter(WorkerSenderQueueSize.class) final int workerSenderQueueSize,
+                         @Parameter(WorkerHandlerQueueSize.class) final int workerHandlerQueueSize,
+                         @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
+                         @Parameter(NumServerBlocks.class) final int numServerBlocks,
+                         @Parameter(JobIdentifier.class) final String jobId,
+                         @Parameter(CruisePSLauncher.SerializedParamConf.class) final String serializedParamConf,
+                         @Parameter(CruisePSLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
+                         @Parameter(CruisePSLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
-    this.cruiseMaster = cruiseMaster;
+    this.cruisePSMaster = cruisePSMaster;
     this.jobMessageObserver = jobMessageObserver;
 
     this.offlineModelEval = offlineModelEval;
@@ -243,7 +243,7 @@ public final class CruiseDriver {
             inputTable.load(workers, inputPath).get();
 
             jobMessageObserver.sendMessageToClient("Start training a model".getBytes());
-            cruiseMaster.start(servers, workers, modelTable, inputTable);
+            cruisePSMaster.start(servers, workers, modelTable, inputTable);
 
             // need to evaluate model tables loaded from checkpoints with new workers executors
             if (offlineModelEval) {
@@ -281,7 +281,7 @@ public final class CruiseDriver {
 
               modelTable.subscribe(workersForEvaluation).get();
 
-              cruiseMaster.evaluate(servers, workersForEvaluation);
+              cruisePSMaster.evaluate(servers, workersForEvaluation);
 
               workersForEvaluation.forEach(AllocatedExecutor::close);
               servers.forEach(AllocatedExecutor::close);

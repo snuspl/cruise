@@ -42,7 +42,7 @@ public final class WorkerSideMsgSender {
   @Inject
   private WorkerSideMsgSender(final TaskletCustomMsgSender taskletCustomMsgSender,
                               final SerializableCodec<WorkerGlobalBarrier.State> codec,
-                              @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId,
+                              @Parameter(CruisePSParameters.CruisePSJobId.class) final String cruiseJobId,
                               @Parameter(ExecutorIdentifier.class) final String executorId) {
     this.taskletCustomMsgSender = taskletCustomMsgSender;
     this.cruiseJobId = cruiseJobId;
@@ -61,13 +61,13 @@ public final class WorkerSideMsgSender {
         .setProgress(epochIdx)
         .build();
 
-    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+    final PSMsg cruiseMsg = PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, PSMsg.class));
   }
 
   /**
@@ -81,13 +81,13 @@ public final class WorkerSideMsgSender {
         .setProgress(batchIdx)
         .build();
 
-    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+    final PSMsg cruiseMsg = PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, PSMsg.class));
   }
 
   /**
@@ -102,24 +102,24 @@ public final class WorkerSideMsgSender {
         .setSerializedState(ByteBuffer.wrap(serializedState))
         .build();
 
-    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+    final PSMsg cruiseMsg = PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.SyncMsg)
         .setSyncMsg(syncMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, PSMsg.class));
   }
 
   /**
    * Send a msg to master for asking model evaluation.
    */
   void sendModelEvalAskMsg() throws NetworkException {
-    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+    final PSMsg cruiseMsg = PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.ModelEvalAskMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, PSMsg.class));
   }
 }

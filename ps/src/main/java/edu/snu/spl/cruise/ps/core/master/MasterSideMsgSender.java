@@ -39,15 +39,15 @@ final class MasterSideMsgSender {
   @Inject
   private MasterSideMsgSender(final JobLogger jobLogger,
                               final InjectionFuture<ETTaskRunner> taskRunnerFuture,
-                              @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId) {
+                              @Parameter(CruisePSParameters.CruisePSJobId.class) final String cruiseJobId) {
     this.jobLogger = jobLogger;
     this.taskRunnerFuture = taskRunnerFuture;
     this.cruiseJobId = cruiseJobId;
 
-    this.serializedReleaseMsg = AvroUtils.toBytes(CruiseMsg.newBuilder()
+    this.serializedReleaseMsg = AvroUtils.toBytes(PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.ReleaseMsg)
-        .build(), CruiseMsg.class);
+        .build(), PSMsg.class);
   }
 
   /**
@@ -68,7 +68,7 @@ final class MasterSideMsgSender {
    * @param doNext a boolean indicating whether a worker do one more evaluation or not
    */
   void sendModelEvalAnsMsg(final String workerId, final boolean doNext) {
-    final CruiseMsg msg = CruiseMsg.newBuilder()
+    final PSMsg msg = PSMsg.newBuilder()
         .setJobId(cruiseJobId)
         .setType(cruiseMsgType.ModelEvalAnsMsg)
         .setModelEvalAnsMsg(ModelEvalAnsMsg.newBuilder()
@@ -76,7 +76,7 @@ final class MasterSideMsgSender {
         .build();
 
     try {
-      taskRunnerFuture.get().getRunningTasklet(workerId).send(AvroUtils.toBytes(msg, CruiseMsg.class));
+      taskRunnerFuture.get().getRunningTasklet(workerId).send(AvroUtils.toBytes(msg, PSMsg.class));
     } catch (NetworkException e) {
       jobLogger.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
     }

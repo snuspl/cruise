@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.mlr;
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.IntegerCodec;
 import edu.snu.spl.cruise.utils.LongCodec;
@@ -35,12 +35,12 @@ public final class MLRET {
   }
 
   public static void main(final String[] args) {
-    ETCruiseLauncher.launch("MLRET", args, ETCruiseConfiguration.newBuilder()
+    CruisePSLauncher.launch("MLRET", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(MLRTrainer.class)
-        .setInputParserClass(MLRETDataParser.class)
+        .setInputParserClass(MLRDataParser.class)
         .setInputKeyCodecClass(LongCodec.class)
         .setInputValueCodecClass(MLRDataCodec.class)
-        .setModelUpdateFunctionClass(MLRETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(MLRModelUpdateFunction.class)
         .setModelKeyCodecClass(IntegerCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)

@@ -18,7 +18,7 @@ package edu.snu.spl.cruise.ps.mlapps.gbt;
 import edu.snu.spl.cruise.common.math.linalg.Vector;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.services.et.evaluator.api.DataParser;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -33,14 +33,14 @@ import java.util.List;
  *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
-final class GBTETDataParser implements DataParser<GBTData> {
+final class GBTDataParser implements DataParser<GBTData> {
 
   private final VectorFactory vectorFactory;
   private final int numFeatures;
 
   @Inject
-  private GBTETDataParser(final VectorFactory vectorFactory,
-                          @Parameter(NumFeatures.class) final int numFeatures) {
+  private GBTDataParser(final VectorFactory vectorFactory,
+                        @Parameter(NumFeatures.class) final int numFeatures) {
     this.vectorFactory = vectorFactory;
     this.numFeatures = numFeatures;
   }

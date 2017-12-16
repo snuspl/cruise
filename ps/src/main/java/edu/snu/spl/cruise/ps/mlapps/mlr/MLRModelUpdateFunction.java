@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.spl.cruise.ps.mlapps.lasso;
+package edu.snu.spl.cruise.ps.mlapps.mlr;
 
 import edu.snu.spl.cruise.common.math.linalg.Vector;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.services.et.evaluator.api.UpdateFunction;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -26,20 +26,21 @@ import java.util.Random;
 
 
 /**
- * An {@link UpdateFunction} for the LassoREEF application.
+ * An UpdateFunction for the MLR application.
  * Simply adds delta vectors to the old vectors stored in this server.
  * Vectors are initialized with values drawn from the normal distribution.
  */
-public final class LassoETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
+public final class MLRModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
+
   private final int numFeaturesPerPartition;
   private final double modelGaussian;
   private final VectorFactory vectorFactory;
   private final Random random;
 
   @Inject
-  private LassoETModelUpdateFunction(@Parameter(ModelGaussian.class) final double modelGaussian,
-                                     @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                                     final VectorFactory vectorFactory) {
+  private MLRModelUpdateFunction(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                                 @Parameter(ModelGaussian.class) final double modelGaussian,
+                                 final VectorFactory vectorFactory) {
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.modelGaussian = modelGaussian;
     this.vectorFactory = vectorFactory;
@@ -57,10 +58,6 @@ public final class LassoETModelUpdateFunction implements UpdateFunction<Integer,
 
   @Override
   public Vector updateValue(final Integer integer, final Vector oldValue, final Vector deltaValue) {
-    final float[] features = new float[numFeaturesPerPartition];
-    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = (float) (random.nextGaussian() * modelGaussian);
-    }
-    return vectorFactory.createDense(features);
+    return oldValue.addi(deltaValue);
   }
 }

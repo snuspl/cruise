@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.core.worker;
 
 import edu.snu.spl.cruise.common.metric.avro.Metrics;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.ModelEvalAnsMsg;
 import edu.snu.spl.cruise.ps.metric.avro.CruiseWorkerMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.WorkerMetricsType;
@@ -56,8 +56,8 @@ public final class ModelEvaluator {
   private ModelEvaluator(final InjectionFuture<TableAccessor> tableAccessorFuture,
                          final InjectionFuture<WorkerSideMsgSender> msgSenderFuture,
                          final InjectionFuture<MetricCollector> metricCollectorFuture,
-                         @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
-                         @Parameter(CruiseParameters.InputTableId.class) final String inputTableId) {
+                         @Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
+                         @Parameter(CruisePSParameters.InputTableId.class) final String inputTableId) {
     this.tableAccessorFuture = tableAccessorFuture;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;

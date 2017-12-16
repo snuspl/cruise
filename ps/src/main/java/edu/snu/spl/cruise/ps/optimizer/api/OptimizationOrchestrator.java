@@ -15,13 +15,12 @@
  */
 package edu.snu.spl.cruise.ps.optimizer.api;
 
-import edu.snu.spl.cruise.ps.optimizer.impl.ETOptimizationOrchestrator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * A class that orchestrates the overall optimization process for a Cruise job.
  */
-@DefaultImplementation(ETOptimizationOrchestrator.class)
+@DefaultImplementation(edu.snu.spl.cruise.ps.optimizer.impl.OptimizationOrchestrator.class)
 public interface OptimizationOrchestrator {
 
   /**

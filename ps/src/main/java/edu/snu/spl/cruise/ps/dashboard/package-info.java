@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes that are related to Dashboard of Async-Cruise.
+ * Classes that are related to Dashboard of Cruise-PS.
  */
 package edu.snu.spl.cruise.ps.dashboard;

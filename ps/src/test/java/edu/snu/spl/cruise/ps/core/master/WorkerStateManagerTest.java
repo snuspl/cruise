@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.CruiseMsg;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.PSMsg;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.SyncMsg;
 import edu.snu.spl.cruise.ps.core.worker.*;
 import edu.snu.spl.cruise.ps.cruiseMsgType;
@@ -89,7 +89,7 @@ public class WorkerStateManagerTest {
    */
   private void setupDriver(final List<String> workerIds) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(CruiseParameters.NumWorkers.class, workerIds.size());
+    injector.bindVolatileParameter(CruisePSParameters.NumWorkers.class, workerIds.size());
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
     injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
@@ -157,7 +157,7 @@ public class WorkerStateManagerTest {
 
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
-      final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+      final PSMsg cruiseMsg = PSMsg.newBuilder()
           .setJobId(JOB_ID)
           .setType(cruiseMsgType.SyncMsg)
           .setSyncMsg(
@@ -170,7 +170,7 @@ public class WorkerStateManagerTest {
 
       LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
       final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getRight();
-      masterSideMsgHandler.onCruiseMsg(cruiseMsg);
+      masterSideMsgHandler.onPSMsg(cruiseMsg);
       return null;
     }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }

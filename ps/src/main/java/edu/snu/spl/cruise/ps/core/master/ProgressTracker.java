@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.ps.ProgressMsg;
 import edu.snu.spl.cruise.utils.StateMachine;
@@ -56,9 +56,9 @@ public final class ProgressTracker implements ProgressProvider {
   @Inject
   private ProgressTracker(final JobLogger jobLogger,
                           final JobMessageObserver jobMessageObserver,
-                          @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId,
-                          @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                          @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers) {
+                          @Parameter(CruisePSParameters.CruisePSJobId.class) final String cruiseJobId,
+                          @Parameter(CruisePSParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                          @Parameter(CruisePSParameters.NumWorkers.class) final int numWorkers) {
     this.jobLogger = jobLogger;
     this.jobMessageObserver = jobMessageObserver;
     this.cruiseJobId = cruiseJobId;

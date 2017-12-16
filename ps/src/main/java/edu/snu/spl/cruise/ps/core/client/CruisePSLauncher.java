@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 package edu.snu.spl.cruise.ps.core.client;
-import edu.snu.spl.cruise.ps.CachedModelAccessor;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.core.worker.CachedModelAccessor;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import edu.snu.spl.cruise.common.param.Parameters.*;
-import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
+import edu.snu.spl.cruise.ps.core.driver.CruisePSDriver;
 import edu.snu.spl.cruise.ps.core.driver.DriverSideMsgHandler;
 import edu.snu.spl.cruise.ps.core.master.ProgressTracker;
 import edu.snu.spl.cruise.ps.core.worker.*;
-import edu.snu.spl.cruise.ps.metric.ETCruiseMetricReceiver;
+import edu.snu.spl.cruise.ps.metric.CruisePSMetricReceiver;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.spl.cruise.ps.optimizer.api.Optimizer;
 import edu.snu.spl.cruise.ps.optimizer.conf.OptimizerClass;
@@ -70,12 +70,12 @@ import java.util.logging.Logger;
 import static edu.snu.spl.cruise.utils.ConfigurationUtils.extractParameterConf;
 
 /**
- * Main entry point for launching a Cruise on ET application.
- * See {@link ETCruiseLauncher#launch(String, String[], ETCruiseConfiguration)}.
+ * Main entry point for launching a Cruise-PS application.
+ * See {@link CruisePSLauncher#launch(String, String[], CruisePSConfiguration)}.
  */
 @ClientSide
-public final class ETCruiseLauncher {
-  private static final Logger LOG = Logger.getLogger(ETCruiseLauncher.class.getName());
+public final class CruisePSLauncher {
+  private static final Logger LOG = Logger.getLogger(CruisePSLauncher.class.getName());
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   public final class SerializedParamConf implements Name<String> {
@@ -92,7 +92,7 @@ public final class ETCruiseLauncher {
   /**
    * Should not be instantiated.
    */
-  private ETCruiseLauncher() {
+  private CruisePSLauncher() {
   }
 
   /**
@@ -104,7 +104,7 @@ public final class ETCruiseLauncher {
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final ETCruiseConfiguration cruiseConf,
+                                      final CruisePSConfiguration cruiseConf,
                                       final Configuration customDriverConf) {
     LauncherStatus status;
 
@@ -187,12 +187,12 @@ public final class ETCruiseLauncher {
    * Launch an application on the Cruise on ET framework.
    * @param jobName string identifier of this application
    * @param args command line arguments
-   * @param etCruiseConfiguration job configuration of this application
+   * @param cruisePSConfiguration job configuration of this application
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final ETCruiseConfiguration etCruiseConfiguration) {
-    return launch(jobName, args, etCruiseConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
+                                      final CruisePSConfiguration cruisePSConfiguration) {
+    return launch(jobName, args, cruisePSConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
   @SuppressWarnings("unchecked")
@@ -319,13 +319,13 @@ public final class ETCruiseLauncher {
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(CruiseDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(CruisePSDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, CruiseDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, CruiseDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, CruiseDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, CruiseDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, CruisePSDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, CruisePSDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, CruisePSDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, CruisePSDriver.FailedTaskHandler.class)
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
@@ -336,7 +336,7 @@ public final class ETCruiseLauncher {
         .build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
-        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETCruiseMetricReceiver.class)
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, CruisePSMetricReceiver.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();

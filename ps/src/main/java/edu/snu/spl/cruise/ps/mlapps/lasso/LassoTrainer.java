@@ -19,7 +19,7 @@ import edu.snu.spl.cruise.common.math.linalg.Matrix;
 import edu.snu.spl.cruise.common.math.linalg.MatrixFactory;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.common.math.linalg.Vector;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import edu.snu.spl.cruise.ps.core.worker.ETModelAccessor;
 import edu.snu.spl.cruise.ps.core.worker.ModelAccessor;
 import edu.snu.spl.cruise.ps.core.worker.Trainer;

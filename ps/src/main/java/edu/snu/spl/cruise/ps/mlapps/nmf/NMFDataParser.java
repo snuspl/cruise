@@ -36,11 +36,11 @@ import java.util.List;
  * </p>
  * In this format, one-based indexing is used.
  */
-final class NMFETDataParser implements DataParser<NMFData> {
+final class NMFDataParser implements DataParser<NMFData> {
   private final NMFModelGenerator modelGenerator;
 
   @Inject
-  private NMFETDataParser(final NMFModelGenerator modelGenerator) {
+  private NMFDataParser(final NMFModelGenerator modelGenerator) {
     this.modelGenerator = modelGenerator;
   }
 

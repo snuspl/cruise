@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.mlapps.gbt;
 
 
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeCodec;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeListCodec;
@@ -33,12 +33,12 @@ public final class GBTJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("GBT", args, ETCruiseConfiguration.newBuilder()
+    JobLauncher.submitJob("GBT", args, CruisePSConfiguration.newBuilder()
         .setTrainerClass(GBTTrainer.class)
-        .setInputParserClass(GBTETDataParser.class)
+        .setInputParserClass(GBTDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)
         .setInputValueCodecClass(GBTDataCodec.class)
-        .setModelUpdateFunctionClass(GBTETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(GBTModelUpdateFunction.class)
         .setModelKeyCodecClass(StreamingSerializableCodec.class)
         .setModelValueCodecClass(GBTreeListCodec.class)
         .setModelUpdateValueCodecClass(GBTreeCodec.class)

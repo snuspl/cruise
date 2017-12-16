@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.worker;
 
-import edu.snu.spl.cruise.ps.CruiseMsg;
+import edu.snu.spl.cruise.ps.PSMsg;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
@@ -45,7 +45,7 @@ public final class WorkerSideMsgHandler implements TaskletCustomMsgHandler {
 
   @Override
   public void onNext(final byte[] bytes) {
-    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
+    final PSMsg cruiseMsg = AvroUtils.fromBytes(bytes, PSMsg.class);
     switch (cruiseMsg.getType()) {
     case ReleaseMsg:
       releaseMsgExecutor.submit(workerGlobalBarrier::onReleaseMsg);

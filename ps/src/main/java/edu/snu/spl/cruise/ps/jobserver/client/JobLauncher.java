@@ -16,10 +16,10 @@
 package edu.snu.spl.cruise.ps.jobserver.client;
 
 import edu.snu.spl.cruise.common.param.Parameters.*;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
+import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.ps.core.worker.*;
 import edu.snu.spl.cruise.ps.jobserver.Parameters.*;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
@@ -51,7 +51,7 @@ import static edu.snu.spl.cruise.utils.ConfigurationUtils.extractParameterConf;
  * through the connection between {@link CommandSender} and {@link CommandListener}.
  *
  * Users can run different apps with different parameters by changing
- * args and cruise configuration for {@link #submitJob(String, String[], ETCruiseConfiguration)}.
+ * args and cruise configuration for {@link #submitJob(String, String[], CruisePSConfiguration)}.
  */
 @ClientSide
 public final class JobLauncher {
@@ -71,7 +71,7 @@ public final class JobLauncher {
    */
   public static void submitJob(final String appId,
                                final String[] args,
-                               final ETCruiseConfiguration cruiseConf) {
+                               final CruisePSConfiguration cruiseConf) {
     try {
 
       final List<Configuration> configurations = parseCommandLine(args, cruiseConf.getParameterClassList());
@@ -168,7 +168,7 @@ public final class JobLauncher {
   }
 
   /**
-   * @return a configuration for spawning a {@link CruiseMaster}.
+   * @return a configuration for spawning a {@link CruisePSMaster}.
    */
   private static Configuration getJobConfiguration(final String appId,
                                                    final Configuration masterConf,
@@ -178,9 +178,9 @@ public final class JobLauncher {
     return Configurations.merge(masterConf, Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(AppIdentifier.class, appId)
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
-        .bindNamedParameter(ETCruiseLauncher.SerializedServerConf.class, Configurations.toString(serverConf))
-        .bindNamedParameter(ETCruiseLauncher.SerializedWorkerConf.class, Configurations.toString(workerConf))
-        .bindNamedParameter(ETCruiseLauncher.SerializedParamConf.class, Configurations.toString(userParamConf))
+        .bindNamedParameter(CruisePSLauncher.SerializedServerConf.class, Configurations.toString(serverConf))
+        .bindNamedParameter(CruisePSLauncher.SerializedWorkerConf.class, Configurations.toString(workerConf))
+        .bindNamedParameter(CruisePSLauncher.SerializedParamConf.class, Configurations.toString(userParamConf))
         .build());
   }
 }

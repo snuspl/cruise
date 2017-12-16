@@ -22,11 +22,11 @@ import org.apache.reef.io.serialization.Codec;
 import javax.inject.Inject;
 
 /**
- * Codec that (de-)serializes the Cruise-specific metrics.
+ * Codec that (de-)serializes the Cruise-PS-specific metrics.
  */
-public final class ETCruiseMetricMsgCodec implements Codec<CruiseWorkerMetrics> {
+public final class CruisePSMetricMsgCodec implements Codec<CruiseWorkerMetrics> {
   @Inject
-  private ETCruiseMetricMsgCodec() {
+  private CruisePSMetricMsgCodec() {
   }
 
   @Override

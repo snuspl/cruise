@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.metric;
 
 import edu.snu.spl.cruise.common.metric.avro.Metrics;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.metric.avro.*;
 import edu.snu.spl.cruise.services.et.avro.MetricMsg;
 import edu.snu.spl.cruise.services.et.avro.MetricMsgType;
@@ -33,12 +33,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implementation of Metric receiver for Cruise on ET.
+ * Implementation of Metric receiver for Cruise-PS.
  */
-public final class ETCruiseMetricReceiver implements MetricReceiver {
-  private static final Logger LOG = Logger.getLogger(ETCruiseMetricReceiver.class.getName());
+public final class CruisePSMetricReceiver implements MetricReceiver {
+  private static final Logger LOG = Logger.getLogger(CruisePSMetricReceiver.class.getName());
 
-  private final ETCruiseMetricMsgCodec metricMsgCodec;
+  private final CruisePSMetricMsgCodec metricMsgCodec;
 
   private final MetricManager metricManager;
 
@@ -48,11 +48,11 @@ public final class ETCruiseMetricReceiver implements MetricReceiver {
   private final String inputTableId;
 
   @Inject
-  ETCruiseMetricReceiver(final ETCruiseMetricMsgCodec metricMsgCodec,
-                          final MetricManager metricManager,
-                          final ETMaster etMaster,
-                          @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
-                          @Parameter(CruiseParameters.InputTableId.class) final String inputTableId) {
+  CruisePSMetricReceiver(final CruisePSMetricMsgCodec metricMsgCodec,
+                         final MetricManager metricManager,
+                         final ETMaster etMaster,
+                         @Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
+                         @Parameter(CruisePSParameters.InputTableId.class) final String inputTableId) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.etMaster = etMaster;

@@ -16,13 +16,13 @@
 package edu.snu.spl.cruise.ps.core.master;
 
 import edu.snu.spl.cruise.ps.*;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
+import edu.snu.spl.cruise.ps.core.client.CruisePSLauncher;
 import edu.snu.spl.cruise.ps.core.server.ServerTasklet;
 import edu.snu.spl.cruise.ps.core.worker.WorkerSideMsgHandler;
 import edu.snu.spl.cruise.ps.core.worker.ModelEvaluationTasklet;
 import edu.snu.spl.cruise.ps.core.worker.WorkerTasklet;
-import edu.snu.spl.cruise.ps.metric.ETCruiseMetricMsgCodec;
+import edu.snu.spl.cruise.ps.metric.CruisePSMetricMsgCodec;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.spl.cruise.ps.optimizer.api.OptimizationOrchestrator;
 import edu.snu.spl.cruise.services.et.configuration.TaskletConfiguration;
@@ -51,7 +51,7 @@ import java.util.logging.Level;
 /**
  * A Cruise master, which runs a cruise job with given executors and tables.
  */
-public final class CruiseMaster {
+public final class CruisePSMaster {
   private final JobLogger jobLogger;
 
   private final ModelChkpManager modelChkpManager;
@@ -70,20 +70,20 @@ public final class CruiseMaster {
   private final Configuration workerConf;
 
   @Inject
-  private CruiseMaster(final JobLogger jobLogger,
-                        final MetricManager metricManager,
-                        final OptimizationOrchestrator optimizationOrchestrator,
-                        final ModelChkpManager modelChkpManager,
-                        final ETTaskRunner taskRunner,
-                        final ProgressTracker progressTracker,
-                        final ConfigurationSerializer confSerializer,
-                        final MasterSideMsgHandler masterSideMsgHandler,
-                        @Parameter(CruiseJobId.class) final String cruiseJobId,
-                        @Parameter(ModelTableId.class) final String modelTableId,
-                        @Parameter(InputTableId.class) final String inputTableId,
-                        @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
-                        @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
-                        @Parameter(ETCruiseLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
+  private CruisePSMaster(final JobLogger jobLogger,
+                         final MetricManager metricManager,
+                         final OptimizationOrchestrator optimizationOrchestrator,
+                         final ModelChkpManager modelChkpManager,
+                         final ETTaskRunner taskRunner,
+                         final ProgressTracker progressTracker,
+                         final ConfigurationSerializer confSerializer,
+                         final MasterSideMsgHandler masterSideMsgHandler,
+                         @Parameter(CruisePSJobId.class) final String cruiseJobId,
+                         @Parameter(ModelTableId.class) final String modelTableId,
+                         @Parameter(InputTableId.class) final String inputTableId,
+                         @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
+                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
+                         @Parameter(CruisePSLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
     this.jobLogger = jobLogger;
     this.modelChkpManager = modelChkpManager;
@@ -107,7 +107,7 @@ public final class CruiseMaster {
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(CruiseJobId.class, cruiseJobId)
+                .bindNamedParameter(CruisePSJobId.class, cruiseJobId)
                 .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
                 .bindNamedParameter(ModelTableId.class, modelTableId)
                 .bindNamedParameter(InputTableId.class, inputTableId)
@@ -123,7 +123,7 @@ public final class CruiseMaster {
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(CruiseJobId.class, cruiseJobId)
+                .bindNamedParameter(CruisePSJobId.class, cruiseJobId)
                 .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
                 .bindNamedParameter(ModelTableId.class, modelTableId)
                 .bindNamedParameter(InputTableId.class, inputTableId)
@@ -142,7 +142,7 @@ public final class CruiseMaster {
 
   public MetricServiceExecutorConf getWorkerMetricConf() {
     return MetricServiceExecutorConf.newBuilder()
-        .setCustomMetricCodec(ETCruiseMetricMsgCodec.class)
+        .setCustomMetricCodec(CruisePSMetricMsgCodec.class)
         .build();
   }
 
@@ -153,7 +153,7 @@ public final class CruiseMaster {
   }
 
   /**
-   * Returns a msg handler, which handles {@link CruiseMsg}.
+   * Returns a msg handler, which handles {@link PSMsg}.
    * It should be called when driver-side msg handler has been called.
    * @return a master
    */

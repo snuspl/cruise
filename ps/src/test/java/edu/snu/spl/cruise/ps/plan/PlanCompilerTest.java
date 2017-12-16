@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.plan;
 
-import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
-import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.core.driver.CruisePSDriver;
+import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.ps.optimizer.api.DataInfo;
 import edu.snu.spl.cruise.ps.optimizer.impl.DataInfoImpl;
 import edu.snu.spl.cruise.ps.optimizer.parameters.Constants;
@@ -46,7 +46,7 @@ import static org.junit.Assert.*;
  * A test for {@link PlanCompiler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({CruiseMaster.class, CruiseDriver.class})
+@PrepareForTest({CruisePSMaster.class, CruisePSDriver.class})
 public class PlanCompilerTest {
   private static final Logger LOG = Logger.getLogger(PlanCompilerTest.class.getName());
   private static final String EVAL_ID_PREFIX = "EVAL-";
@@ -58,8 +58,8 @@ public class PlanCompilerTest {
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    injector.bindVolatileInstance(CruiseMaster.class, mock(CruiseMaster.class));
-    injector.bindVolatileInstance(CruiseDriver.class, mock(CruiseDriver.class));
+    injector.bindVolatileInstance(CruisePSMaster.class, mock(CruisePSMaster.class));
+    injector.bindVolatileInstance(CruisePSDriver.class, mock(CruisePSDriver.class));
 
     compiler = injector.getInstance(PlanCompiler.class);
   }

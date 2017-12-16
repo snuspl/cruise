@@ -21,7 +21,6 @@ import edu.snu.spl.cruise.ps.core.master.ProgressTracker;
 import edu.snu.spl.cruise.ps.core.master.WorkerStateManager;
 import edu.snu.spl.cruise.ps.metric.MetricManager;
 import edu.snu.spl.cruise.ps.metric.avro.WorkerMetrics;
-import edu.snu.spl.cruise.ps.optimizer.api.OptimizationOrchestrator;
 import edu.snu.spl.cruise.ps.optimizer.api.EvaluatorParameters;
 import edu.snu.spl.cruise.ps.optimizer.api.Optimizer;
 import edu.snu.spl.cruise.ps.optimizer.parameters.*;
@@ -46,10 +45,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Orchestrates the Optimization in Cruise on ET.
+ * Orchestrates the Optimization in Cruise-PS.
  */
-public final class ETOptimizationOrchestrator implements OptimizationOrchestrator {
-  private static final Logger LOG = Logger.getLogger(ETOptimizationOrchestrator.class.getName());
+public final class OptimizationOrchestrator implements edu.snu.spl.cruise.ps.optimizer.api.OptimizationOrchestrator {
+  private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
 
   private final Optimizer optimizer;
 
@@ -88,25 +87,25 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
   private final int minNumReqBatchMetrics;
 
   @Inject
-  private ETOptimizationOrchestrator(final Optimizer optimizer,
-                                     final ETMaster etMaster,
-                                     final PlanExecutor planExecutor,
-                                     final MetricManager metricManager,
-                                     final PlanCompiler planCompiler,
-                                     final ETTaskRunner taskRunner,
-                                     final WorkerStateManager workerStateManager,
-                                     final ProgressTracker progressTracker,
-                                     final JobMessageObserver jobMessageObserver,
-                                     @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
-                                     @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
-                                     @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
-                                     @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
-                                     @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
-                                     @Parameter(NumExtraResources.class) final int numExtraResources,
-                                     @Parameter(NumInitialResources.class) final int numInitialResources,
-                                     @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
-                                     @Parameter(MovingAverageWindowSize.class) final int movingAverageWindowSize,
-                                     @Parameter(MinNumRequiredBatchMetrics.class) final int minNumReqBatchMetrics) {
+  private OptimizationOrchestrator(final Optimizer optimizer,
+                                   final ETMaster etMaster,
+                                   final PlanExecutor planExecutor,
+                                   final MetricManager metricManager,
+                                   final PlanCompiler planCompiler,
+                                   final ETTaskRunner taskRunner,
+                                   final WorkerStateManager workerStateManager,
+                                   final ProgressTracker progressTracker,
+                                   final JobMessageObserver jobMessageObserver,
+                                   @Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
+                                   @Parameter(CruisePSParameters.InputTableId.class) final String inputTableId,
+                                   @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
+                                   @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
+                                   @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
+                                   @Parameter(NumExtraResources.class) final int numExtraResources,
+                                   @Parameter(NumInitialResources.class) final int numInitialResources,
+                                   @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                   @Parameter(MovingAverageWindowSize.class) final int movingAverageWindowSize,
+                                   @Parameter(MinNumRequiredBatchMetrics.class) final int minNumReqBatchMetrics) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.planCompiler = planCompiler;
@@ -278,7 +277,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     final int numDataBlocks = getNumBlocks(inputTable);
 
     // Calculate the total number of data instances distributed across workers,
-    // as this is used by the optimization model in AsyncCruiseOptimizer.
+    // as this is used by the optimization model in CruiseOptimizer.
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
 
@@ -403,7 +402,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     int numTotalKeys = 0;
     for (final List<EvaluatorParameters> workerMetrics : evalParams.values()) {
       // Estimate the number of keys distributed across servers using the number of pulls from worker-side,
-      // as this is used by the optimization model in AsyncCruiseOptimizer.
+      // as this is used by the optimization model in CruiseOptimizer.
       numTotalKeys += workerMetrics.stream().mapToInt(
           param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
               .getTotalPullCount()).average().orElse(0);

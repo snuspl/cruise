@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.core.worker;
 
 import edu.snu.spl.cruise.common.dataloader.*;
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.services.et.evaluator.api.DataParser;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.tang.annotations.Parameter;
@@ -35,7 +35,7 @@ public final class TestDataProvider<T> {
   private final DataParser<T> dataParser;
 
   @Inject
-  private TestDataProvider(@Parameter(CruiseParameters.TestDataPath.class) final String testDataPath,
+  private TestDataProvider(@Parameter(CruisePSParameters.TestDataPath.class) final String testDataPath,
                            final DataParser<T> dataParser) {
     this.testDataPath = testDataPath;
     this.dataParser = dataParser;
@@ -47,7 +47,7 @@ public final class TestDataProvider<T> {
    * @throws IOException when fails to read test data
    */
   public List<T> getTestData() throws IOException {
-    if (testDataPath.equals(CruiseParameters.TestDataPath.NONE)) {
+    if (testDataPath.equals(CruisePSParameters.TestDataPath.NONE)) {
       return Collections.emptyList();
     }
 

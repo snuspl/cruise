@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.spl.cruise.ps.mlapps.mlr;
+package edu.snu.spl.cruise.ps.mlapps.lasso;
 
 import edu.snu.spl.cruise.common.math.linalg.Vector;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.services.et.evaluator.api.UpdateFunction;
-import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.CruisePSParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -26,20 +26,19 @@ import java.util.Random;
 
 
 /**
- * An UpdateFunction for the MLR application.
+ * An {@link UpdateFunction} for the LassoREEF application.
  * Simply adds delta vectors to the old vectors stored in this server.
  * Vectors are initialized with values drawn from the normal distribution.
  */
-public final class MLRETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
-
+public final class LassoModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
   private final int numFeaturesPerPartition;
   private final double modelGaussian;
   private final VectorFactory vectorFactory;
   private final Random random;
 
   @Inject
-  private MLRETModelUpdateFunction(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                                   @Parameter(ModelGaussian.class) final double modelGaussian,
+  private LassoModelUpdateFunction(@Parameter(ModelGaussian.class) final double modelGaussian,
+                                   @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                                    final VectorFactory vectorFactory) {
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.modelGaussian = modelGaussian;
@@ -58,6 +57,10 @@ public final class MLRETModelUpdateFunction implements UpdateFunction<Integer, V
 
   @Override
   public Vector updateValue(final Integer integer, final Vector oldValue, final Vector deltaValue) {
-    return oldValue.addi(deltaValue);
+    final float[] features = new float[numFeaturesPerPartition];
+    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
+      features[featureIndex] = (float) (random.nextGaussian() * modelGaussian);
+    }
+    return vectorFactory.createDense(features);
   }
 }

@@ -48,13 +48,13 @@
 },
 
 /**
- * A message format for cruise app.
+ * A message format for cruise PS app.
  * With different job id, users can run multiple cruise jobs concurrently.
  */
 {
   "namespace": "edu.snu.spl.cruise.ps",
   "type": "record",
-  "name": "CruiseMsg",
+  "name": "PSMsg",
   "fields":
   [
     {"name": "jobId", "type": "string"},

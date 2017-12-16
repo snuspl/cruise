@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.worker;
 
-import edu.snu.spl.cruise.ps.CruiseParameters;
+import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.metric.Tracer;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import edu.snu.spl.cruise.services.et.evaluator.api.TableAccessor;
@@ -49,7 +49,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   private final Tracer pullTracer = new Tracer();
 
   @Inject
-  private ETModelAccessor(@Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+  private ETModelAccessor(@Parameter(CruisePSParameters.ModelTableId.class) final String modelTableId,
                   final TableAccessor tableAccessor) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);
   }

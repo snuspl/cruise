@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for the client of the cruise jobserver, which supports multiple cruise jobs concurrently.
+ * Classes for the client of the Cruise JobServer, which supports multiple Cruise-PS jobs concurrently.
  */
 package edu.snu.spl.cruise.ps.jobserver.client;
