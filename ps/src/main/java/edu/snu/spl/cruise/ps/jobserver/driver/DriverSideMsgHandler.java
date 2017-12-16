@@ -15,7 +15,6 @@
  */
 package edu.snu.spl.cruise.ps.jobserver.driver;
 
-import edu.snu.spl.cruise.ps.CruisePSParameters;
 import edu.snu.spl.cruise.ps.core.master.CruisePSMaster;
 import edu.snu.spl.cruise.ps.PSMsg;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
@@ -27,7 +26,7 @@ import javax.inject.Inject;
 /**
  * A driver-side message handler for JobServer, which manages multiple {@link CruisePSMaster}s.
  * Therefore, it routes messages to an appropriate {@link CruisePSMaster}
- * based on {@link CruisePSParameters.CruisePSJobId} embedded in
+ * based on {@link edu.snu.spl.cruise.ps.CruisePSParameters.CruisePSJobId} embedded in
  * incoming {@link PSMsg}.
  */
 public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {

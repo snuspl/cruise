@@ -15,7 +15,6 @@
  */
 package edu.snu.spl.cruise.ps.core.worker;
 
-import edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import org.apache.reef.annotations.audience.TaskSide;
 
@@ -35,7 +34,7 @@ import java.util.Map;
  * annotation, so that the framework can successfully instantiate the class via dependency injection.
  *
  * Other parameters specified with
- * {@link CruisePSConfiguration.Builder#addParameterClass(Class)}
+ * {@link edu.snu.spl.cruise.ps.core.client.CruisePSConfiguration.Builder#addParameterClass(Class)}
  * can also be received as constructor parameters, given that the parameter itself is tagged with
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
  *
