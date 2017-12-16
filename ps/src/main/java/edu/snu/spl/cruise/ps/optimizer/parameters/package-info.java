@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters used in Optimizer for Dolphin Async.
+ * Parameters used in Optimizer for Cruise Async.
  */
 package edu.snu.spl.cruise.ps.optimizer.parameters;

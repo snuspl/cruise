@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.metric;
 
 import edu.snu.spl.cruise.common.metric.avro.Metrics;
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.metric.avro.*;
 import edu.snu.spl.cruise.services.et.avro.MetricMsg;
 import edu.snu.spl.cruise.services.et.avro.MetricMsgType;
@@ -33,12 +33,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implementation of Metric receiver for Dolphin on ET.
+ * Implementation of Metric receiver for Cruise on ET.
  */
-public final class ETDolphinMetricReceiver implements MetricReceiver {
-  private static final Logger LOG = Logger.getLogger(ETDolphinMetricReceiver.class.getName());
+public final class ETCruiseMetricReceiver implements MetricReceiver {
+  private static final Logger LOG = Logger.getLogger(ETCruiseMetricReceiver.class.getName());
 
-  private final ETDolphinMetricMsgCodec metricMsgCodec;
+  private final ETCruiseMetricMsgCodec metricMsgCodec;
 
   private final MetricManager metricManager;
 
@@ -48,11 +48,11 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   private final String inputTableId;
 
   @Inject
-  ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
+  ETCruiseMetricReceiver(final ETCruiseMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
                           final ETMaster etMaster,
-                          @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                          @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
+                          @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+                          @Parameter(CruiseParameters.InputTableId.class) final String inputTableId) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
     this.etMaster = etMaster;
@@ -89,10 +89,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Processes worker metrics and passes them to the {@link MetricManager}.
    * For now the worker metrics are converted to be compatible to the EM's Optimizers.
    */
-  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  // TODO #1072: Make the entire optimization pipeline use the Cruise-on-ET-specific metrics
   private void processWorkerMetrics(final String srcId, final MetricReportMsg metricReportMsg) {
     for (final ByteBuffer encodedBuffer : metricReportMsg.getCustomMetrics()) {
-      final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
+      final CruiseWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
       final Map<String, Integer> tableToNumBlocks = metricReportMsg.getTableToNumBlocks();
       final String hostname = metricReportMsg.getHostname();
       
@@ -127,10 +127,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   }
 
   /**
-   * Convert the metrics collected in an epoch to that is compatible with Dolphin-on-PS's.
-   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   * Convert the metrics collected in an epoch to that is compatible with Cruise-on-PS's.
+   * Note that this method will be removed when we fix the workaround of using the Cruise-on-PS's metrics.
    */
-  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  // TODO #1072: Make the entire optimization pipeline use the Cruise-on-ET-specific metrics
   private WorkerMetrics convertEpochMetrics(final MetricReportMsg metricReportMsg,
                                             final String hostname,
                                             final EpochMetrics epochMetrics) {
@@ -149,10 +149,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   }
 
   /**
-   * Convert the metrics collected in a batch to that is compatible with Dolphin-on-PS's.
-   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   * Convert the metrics collected in a batch to that is compatible with Cruise-on-PS's.
+   * Note that this method will be removed when we fix the workaround of using the Cruise-on-PS's metrics.
    */
-  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  // TODO #1072: Make the entire optimization pipeline use the Cruise-on-ET-specific metrics
   private WorkerMetrics convertBatchMetrics(final MetricReportMsg metricReportMsg,
                                             final Map<String, Integer> tableToNumBlocks,
                                             final String hostname,
@@ -172,10 +172,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   }
 
   /**
-   * Build a ParameterWorkerMetrics that Dolphin-on-PS uses.
-   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   * Build a ParameterWorkerMetrics that Cruise-on-PS uses.
+   * Note that this method will be removed when we fix the workaround of using the Cruise-on-PS's metrics.
    */
-  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  // TODO #1072: Make the entire optimization pipeline use the Cruise-on-ET-specific metrics
   private ParameterWorkerMetrics buildParameterWorkerMetrics(final MetricReportMsg metricReportMsg) {
     return ParameterWorkerMetrics.newBuilder()
         .setTotalPullCount(metricReportMsg.getCountSentGetReq().getOrDefault(modelTableId, 0))
@@ -188,7 +188,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * For now the server metrics only contain ET-level information, because the current cost model does not use
    * any server-specific information.
    */
-  // TODO #1104: Collect metrics from Servers in Dolphin-on-ET
+  // TODO #1104: Collect metrics from Servers in Cruise-on-ET
   private void processServerMetrics(final String srcId, final MetricReportMsg metricReportMsg) {
     final String hostname = metricReportMsg.getHostname();
     final ServerMetrics serverMetrics = ServerMetrics.newBuilder()

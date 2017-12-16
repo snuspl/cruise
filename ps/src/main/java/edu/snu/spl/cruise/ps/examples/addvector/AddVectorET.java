@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.examples.addvector;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.examples.common.ExampleDataParser;
 import edu.snu.spl.cruise.ps.examples.common.ExampleParameters;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
@@ -41,7 +41,7 @@ public final class AddVectorET {
    * @return a LauncherStatus
    */
   public static LauncherStatus runAddVector(final String[] args) {
-    return ETDolphinLauncher.launch("AddVectorET", args, ETDolphinConfiguration.newBuilder()
+    return ETCruiseLauncher.launch("AddVectorET", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(AddVectorTrainer.class)
         .setModelUpdateFunctionClass(AddVectorUpdateFunction.class)
         .setInputParserClass(ExampleDataParser.class)

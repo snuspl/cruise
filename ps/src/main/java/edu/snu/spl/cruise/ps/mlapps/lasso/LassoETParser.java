@@ -18,7 +18,7 @@ package edu.snu.spl.cruise.ps.mlapps.lasso;
 import edu.snu.spl.cruise.common.math.linalg.Vector;
 import edu.snu.spl.cruise.common.math.linalg.VectorFactory;
 import edu.snu.spl.cruise.services.et.evaluator.api.DataParser;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

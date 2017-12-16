@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;
 
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.core.worker.ModelHolder;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.*;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
@@ -63,7 +63,7 @@ final class SparseLDASampler {
                            @Parameter(Beta.class) final double beta,
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
-                           @Parameter(DolphinParameters.HyperThreadEnabled.class) final boolean hyperThreadEnabled,
+                           @Parameter(CruiseParameters.HyperThreadEnabled.class) final boolean hyperThreadEnabled,
                            final ModelHolder<LDAModel> modelHolder) {
     this.alpha = alpha;
     this.beta = beta;

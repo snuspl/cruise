@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Beta;
@@ -27,7 +27,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import javax.inject.Inject;
 
 /**
- * Run Latent Dirichlet Allocation algorithm on dolphin JobServer.
+ * Run Latent Dirichlet Allocation algorithm on cruise JobServer.
  * Input dataset should be preprocessed to have continuous (no missing) vocabulary indices.
  */
 public final class LDAJob {
@@ -37,7 +37,7 @@ public final class LDAJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("LDA", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("LDA", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setInputParserClass(LDAETDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

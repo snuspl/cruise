@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.mlapps.gbt;
 
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeCodec;
 import edu.snu.spl.cruise.ps.mlapps.serialization.GBTreeListCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -33,7 +33,7 @@ public final class GBTET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("GBTET", args, ETDolphinConfiguration.newBuilder()
+    ETCruiseLauncher.launch("GBTET", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(GBTTrainer.class)
         .setInputParserClass(GBTETDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

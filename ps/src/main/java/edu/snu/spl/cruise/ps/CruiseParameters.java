@@ -20,11 +20,11 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Dolphin-async specific parameters.
+ * Cruise-async specific parameters.
  */
-public final class DolphinParameters {
-  @NamedParameter(doc = "Dolphin job identifier", default_value = "dolphin")
-  public final class DolphinJobId implements Name<String> {
+public final class CruiseParameters {
+  @NamedParameter(doc = "Cruise job identifier", default_value = "cruise")
+  public final class CruiseJobId implements Name<String> {
   }
 
   @NamedParameter(doc = "input table identifier", default_value = InputTableId.DEFAULT_VALUE)

@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.plan;
 
-import edu.snu.spl.cruise.ps.core.driver.DolphinDriver;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
+import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
 import edu.snu.spl.cruise.ps.optimizer.api.DataInfo;
 import edu.snu.spl.cruise.ps.optimizer.impl.DataInfoImpl;
 import edu.snu.spl.cruise.ps.optimizer.parameters.Constants;
@@ -46,7 +46,7 @@ import static org.junit.Assert.*;
  * A test for {@link PlanCompiler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({DolphinMaster.class, DolphinDriver.class})
+@PrepareForTest({CruiseMaster.class, CruiseDriver.class})
 public class PlanCompilerTest {
   private static final Logger LOG = Logger.getLogger(PlanCompilerTest.class.getName());
   private static final String EVAL_ID_PREFIX = "EVAL-";
@@ -58,8 +58,8 @@ public class PlanCompilerTest {
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    injector.bindVolatileInstance(DolphinMaster.class, mock(DolphinMaster.class));
-    injector.bindVolatileInstance(DolphinDriver.class, mock(DolphinDriver.class));
+    injector.bindVolatileInstance(CruiseMaster.class, mock(CruiseMaster.class));
+    injector.bindVolatileInstance(CruiseDriver.class, mock(CruiseDriver.class));
 
     compiler = injector.getInstance(PlanCompiler.class);
   }

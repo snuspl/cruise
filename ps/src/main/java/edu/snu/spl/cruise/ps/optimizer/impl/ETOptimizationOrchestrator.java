@@ -46,7 +46,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Orchestrates the Optimization in Dolphin on ET.
+ * Orchestrates the Optimization in Cruise on ET.
  */
 public final class ETOptimizationOrchestrator implements OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(ETOptimizationOrchestrator.class.getName());
@@ -97,8 +97,8 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
                                      final WorkerStateManager workerStateManager,
                                      final ProgressTracker progressTracker,
                                      final JobMessageObserver jobMessageObserver,
-                                     @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                                     @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
+                                     @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+                                     @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                      @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
@@ -278,7 +278,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     final int numDataBlocks = getNumBlocks(inputTable);
 
     // Calculate the total number of data instances distributed across workers,
-    // as this is used by the optimization model in AsyncDolphinOptimizer.
+    // as this is used by the optimization model in AsyncCruiseOptimizer.
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
 
@@ -403,7 +403,7 @@ public final class ETOptimizationOrchestrator implements OptimizationOrchestrato
     int numTotalKeys = 0;
     for (final List<EvaluatorParameters> workerMetrics : evalParams.values()) {
       // Estimate the number of keys distributed across servers using the number of pulls from worker-side,
-      // as this is used by the optimization model in AsyncDolphinOptimizer.
+      // as this is used by the optimization model in AsyncCruiseOptimizer.
       numTotalKeys += workerMetrics.stream().mapToInt(
           param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
               .getTotalPullCount()).average().orElse(0);

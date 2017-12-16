@@ -61,7 +61,7 @@ public final class DashboardConnector {
    * Constructor of DashboardConnector.
    * @param hostAddress Host address of the dashboard server. The address is set lazily at the constructor
    *                    if the client has configured a feasible port number.
-   * @param port        Port number of dolphin dashboard server.
+   * @param port        Port number of cruise dashboard server.
    */
   @Inject
   private DashboardConnector(@Parameter(DashboardEnabled.class) final boolean dashboardEnabled,
@@ -77,7 +77,7 @@ public final class DashboardConnector {
     private final boolean dashboardEnabled;
 
     /**
-     * URL of Dolphin dashboard server. Empty if not using dashboard.
+     * URL of Cruise dashboard server. Empty if not using dashboard.
      */
     private final String dashboardURL;
 

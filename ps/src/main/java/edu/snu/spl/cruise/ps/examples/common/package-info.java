@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common classes for Dolphin async example apps.
+ * Common classes for Cruise async example apps.
  */
 package edu.snu.spl.cruise.ps.examples.common;

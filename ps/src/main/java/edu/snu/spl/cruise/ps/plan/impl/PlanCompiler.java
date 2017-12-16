@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.plan.impl;
 
 import edu.snu.spl.cruise.ps.*;
-import edu.snu.spl.cruise.ps.core.driver.DolphinDriver;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
+import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
 import edu.snu.spl.cruise.ps.optimizer.impl.OptimizerType;
 import edu.snu.spl.cruise.ps.plan.api.Plan;
 import edu.snu.spl.cruise.ps.plan.api.TransferStep;
@@ -40,7 +40,7 @@ import static edu.snu.spl.cruise.ps.optimizer.parameters.Constants.NAMESPACE_WOR
 import static edu.snu.spl.cruise.ps.optimizer.parameters.Constants.NAMESPACE_SERVER;
 
 /**
- * A plan compiler that compiles down Dolphin's plan to {@link ETPlan}.
+ * A plan compiler that compiles down Cruise's plan to {@link ETPlan}.
  */
 public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
@@ -48,18 +48,18 @@ public final class PlanCompiler {
   private final String modelTableId;
   private final String inputTableId;
 
-  private final InjectionFuture<DolphinDriver> dolphinDriverFuture;
-  private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
+  private final InjectionFuture<CruiseDriver> cruiseDriverFuture;
+  private final InjectionFuture<CruiseMaster> cruiseMasterFuture;
 
   @Inject
-  private PlanCompiler(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                       @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                       final InjectionFuture<DolphinDriver> dolphinDriverFuture,
-                       final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
+  private PlanCompiler(@Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+                       @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
+                       final InjectionFuture<CruiseDriver> cruiseDriverFuture,
+                       final InjectionFuture<CruiseMaster> cruiseMasterFuture) {
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
-    this.dolphinDriverFuture = dolphinDriverFuture;
-    this.dolphinMasterFuture = dolphinMasterFuture;
+    this.cruiseDriverFuture = cruiseDriverFuture;
+    this.cruiseMasterFuture = cruiseMasterFuture;
   }
 
   /**
@@ -151,20 +151,20 @@ public final class PlanCompiler {
   }
 
   /**
-   * Compiles a Dolphin's plan to {@link ETPlan}.
-   * @param dolphinPlan a Dolphin's plan
+   * Compiles a Cruise's plan to {@link ETPlan}.
+   * @param cruisePlan a Cruise's plan
    * @param numAvailableExtraEvals the number of extra executors
    * @return a {@link ETPlan}
    */
-  public ETPlan compile(final Plan dolphinPlan, final int numAvailableExtraEvals) {
+  public ETPlan compile(final Plan cruisePlan, final int numAvailableExtraEvals) {
     final Map<String, Collection<String>> srcNamespaceToEvalsToSwitch = new HashMap<>();
 
-    final List<String> serversToDel = new ArrayList<>(dolphinPlan.getEvaluatorsToDelete(NAMESPACE_SERVER));
-    final List<String> workersToDel = new ArrayList<>(dolphinPlan.getEvaluatorsToDelete(NAMESPACE_WORKER));
-    final List<String> serversToAdd = new ArrayList<>(dolphinPlan.getEvaluatorsToAdd(NAMESPACE_SERVER));
-    final List<String> workersToAdd = new ArrayList<>(dolphinPlan.getEvaluatorsToAdd(NAMESPACE_WORKER));
-    List<TransferStep> serverTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
-    List<TransferStep> workerTransferSteps = new ArrayList<>(dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
+    final List<String> serversToDel = new ArrayList<>(cruisePlan.getEvaluatorsToDelete(NAMESPACE_SERVER));
+    final List<String> workersToDel = new ArrayList<>(cruisePlan.getEvaluatorsToDelete(NAMESPACE_WORKER));
+    final List<String> serversToAdd = new ArrayList<>(cruisePlan.getEvaluatorsToAdd(NAMESPACE_SERVER));
+    final List<String> workersToAdd = new ArrayList<>(cruisePlan.getEvaluatorsToAdd(NAMESPACE_WORKER));
+    List<TransferStep> serverTransferSteps = new ArrayList<>(cruisePlan.getTransferSteps(NAMESPACE_SERVER));
+    List<TransferStep> workerTransferSteps = new ArrayList<>(cruisePlan.getTransferSteps(NAMESPACE_WORKER));
 
     /*
     We have two switch translations here.
@@ -180,7 +180,7 @@ public final class PlanCompiler {
      */
   
     // First switch translation.
-    if (dolphinPlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
+    if (cruisePlan.getOptimizerType() == OptimizerType.HETEROGENEOUS) {
       final Pair<List<String>, List<TransferStep>> evalIdsToTransfersForSwitch0 =
           translateToSwitch(serversToDel, workersToAdd, workerTransferSteps); // server -> worker
   
@@ -194,7 +194,7 @@ public final class PlanCompiler {
       serverTransferSteps = evalIdsToTransfersForSwitch1.getRight();
 
       // Second switch translation.
-    } else if (dolphinPlan.getOptimizerType() == OptimizerType.HOMOGENEOUS) {
+    } else if (cruisePlan.getOptimizerType() == OptimizerType.HOMOGENEOUS) {
       final int numSwitchesFromServerToWorker = Math.min(workersToAdd.size(), serversToDel.size());
       final int numSwitchesFromWorkerToServer = Math.min(serversToAdd.size(), workersToDel.size());
 
@@ -337,8 +337,8 @@ public final class PlanCompiler {
           associateOps.put(executor, associateOp);
           dag.addVertex(associateOp);
 
-          final StartOp workerStartOp = new StartOp(executor, dolphinMasterFuture.get().getWorkerTaskletConf(),
-              dolphinMasterFuture.get().getWorkerMetricConf());
+          final StartOp workerStartOp = new StartOp(executor, cruiseMasterFuture.get().getWorkerTaskletConf(),
+              cruiseMasterFuture.get().getWorkerMetricConf());
           startOps.put(executor, workerStartOp);
           dag.addVertex(workerStartOp);
           dag.addEdge(associateOp, workerStartOp);
@@ -369,8 +369,8 @@ public final class PlanCompiler {
           dag.addVertex(associateOp);
           dag.addEdge(unsubscribeOp, associateOp);
 
-          final StartOp serverStartOp = new StartOp(executor, dolphinMasterFuture.get().getServerTaskletConf(),
-              dolphinMasterFuture.get().getServerMetricConf());
+          final StartOp serverStartOp = new StartOp(executor, cruiseMasterFuture.get().getServerTaskletConf(),
+              cruiseMasterFuture.get().getServerMetricConf());
           startOps.put(executor, serverStartOp);
           dag.addVertex(serverStartOp);
           dag.addEdge(associateOp, serverStartOp);
@@ -433,7 +433,7 @@ public final class PlanCompiler {
       final Collection<String> evalsToAdd = entry.getValue();
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
-          dolphinDriverFuture.get().getWorkerExecutorConf() : dolphinDriverFuture.get().getServerExecutorConf();
+          cruiseDriverFuture.get().getWorkerExecutorConf() : cruiseDriverFuture.get().getServerExecutorConf();
       final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? inputTableId : modelTableId;
 
       for (final String evalToAdd : evalsToAdd) {
@@ -448,8 +448,8 @@ public final class PlanCompiler {
 
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StartOp startOp = new StartOp(evalToAdd,
-              dolphinMasterFuture.get().getWorkerTaskletConf(),
-              dolphinMasterFuture.get().getWorkerMetricConf());
+              cruiseMasterFuture.get().getWorkerTaskletConf(),
+              cruiseMasterFuture.get().getWorkerMetricConf());
           startOps.put(evalToAdd, startOp);
           final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, modelTableId);
           subscribeOps.put(evalToAdd, subscribeOp);
@@ -460,8 +460,8 @@ public final class PlanCompiler {
           dag.addEdge(subscribeOp, startOp);
         } else {
           final StartOp startOp = new StartOp(evalToAdd,
-              dolphinMasterFuture.get().getServerTaskletConf(),
-              dolphinMasterFuture.get().getServerMetricConf());
+              cruiseMasterFuture.get().getServerTaskletConf(),
+              cruiseMasterFuture.get().getServerMetricConf());
           startOps.put(evalToAdd, startOp);
 
           dag.addVertex(startOp);

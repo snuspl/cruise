@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.nmf;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -34,7 +34,7 @@ public final class NMFJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("NMF", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("NMF", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

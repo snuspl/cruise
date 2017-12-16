@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lasso;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
 
@@ -32,7 +32,7 @@ public final class LassoET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("LassoET", args, ETDolphinConfiguration.newBuilder()
+    ETCruiseLauncher.launch("LassoET", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(LassoTrainer.class)
         .setInputParserClass(LassoETParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

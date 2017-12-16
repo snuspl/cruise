@@ -16,10 +16,10 @@
 package edu.snu.spl.cruise.ps.jobserver.client;
 
 import edu.snu.spl.cruise.common.param.Parameters.*;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
 import edu.snu.spl.cruise.ps.core.worker.*;
 import edu.snu.spl.cruise.ps.jobserver.Parameters.*;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
@@ -51,7 +51,7 @@ import static edu.snu.spl.cruise.utils.ConfigurationUtils.extractParameterConf;
  * through the connection between {@link CommandSender} and {@link CommandListener}.
  *
  * Users can run different apps with different parameters by changing
- * args and dolphin configuration for {@link #submitJob(String, String[], ETDolphinConfiguration)}.
+ * args and cruise configuration for {@link #submitJob(String, String[], ETCruiseConfiguration)}.
  */
 @ClientSide
 public final class JobLauncher {
@@ -67,14 +67,14 @@ public final class JobLauncher {
    * Submits a job to JobServer.
    * @param appId an app id
    * @param args arguments for app
-   * @param dolphinConf dolphin configuration
+   * @param cruiseConf cruise configuration
    */
   public static void submitJob(final String appId,
                                final String[] args,
-                               final ETDolphinConfiguration dolphinConf) {
+                               final ETCruiseConfiguration cruiseConf) {
     try {
 
-      final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
+      final List<Configuration> configurations = parseCommandLine(args, cruiseConf.getParameterClassList());
       final Configuration masterParamConf = configurations.get(0);
       final Configuration serverParamConf = configurations.get(1);
       final Configuration workerParamConf = configurations.get(2);
@@ -84,22 +84,22 @@ public final class JobLauncher {
       final Configuration serverConf = Configurations.merge(
           serverParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
-              .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
-              .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
-              .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
+              .bindImplementation(UpdateFunction.class, cruiseConf.getModelUpdateFunctionClass())
+              .bindNamedParameter(KeyCodec.class, cruiseConf.getModelKeyCodecClass())
+              .bindNamedParameter(ValueCodec.class, cruiseConf.getModelValueCodecClass())
+              .bindNamedParameter(UpdateValueCodec.class, cruiseConf.getModelUpdateValueCodecClass())
               .build());
 
       // worker conf. workers will be spawned with this configuration
       final Configuration workerConf = Configurations.merge(
           workerParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
-              .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
+              .bindImplementation(Trainer.class, cruiseConf.getTrainerClass())
+              .bindImplementation(DataParser.class, cruiseConf.getInputParserClass())
               .bindImplementation(TrainingDataProvider.class, ETTrainingDataProvider.class)
               .bindImplementation(ModelAccessor.class, ETModelAccessor.class)
-              .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
-              .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
+              .bindNamedParameter(KeyCodec.class, cruiseConf.getInputKeyCodecClass())
+              .bindNamedParameter(ValueCodec.class, cruiseConf.getInputValueCodecClass())
               .build());
 
       // job configuration. driver will use this configuration to spawn a job
@@ -168,7 +168,7 @@ public final class JobLauncher {
   }
 
   /**
-   * @return a configuration for spawning a {@link DolphinMaster}.
+   * @return a configuration for spawning a {@link CruiseMaster}.
    */
   private static Configuration getJobConfiguration(final String appId,
                                                    final Configuration masterConf,
@@ -178,9 +178,9 @@ public final class JobLauncher {
     return Configurations.merge(masterConf, Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(AppIdentifier.class, appId)
         .bindImplementation(OptimizationOrchestrator.class, DummyOrchestrator.class)
-        .bindNamedParameter(ETDolphinLauncher.SerializedServerConf.class, Configurations.toString(serverConf))
-        .bindNamedParameter(ETDolphinLauncher.SerializedWorkerConf.class, Configurations.toString(workerConf))
-        .bindNamedParameter(ETDolphinLauncher.SerializedParamConf.class, Configurations.toString(userParamConf))
+        .bindNamedParameter(ETCruiseLauncher.SerializedServerConf.class, Configurations.toString(serverConf))
+        .bindNamedParameter(ETCruiseLauncher.SerializedWorkerConf.class, Configurations.toString(workerConf))
+        .bindNamedParameter(ETCruiseLauncher.SerializedParamConf.class, Configurations.toString(userParamConf))
         .build());
   }
 }

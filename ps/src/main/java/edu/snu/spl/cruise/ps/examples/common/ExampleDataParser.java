@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Data parser that mimics data loading in Dolphin Async examples.
+ * Data parser that mimics data loading in Cruise Async examples.
  * Random integers as many as {@link ExampleParameters.NumTrainingData} are assigned to each Worker.
  */
 public final class ExampleDataParser implements DataParser<Integer> {

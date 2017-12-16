@@ -79,8 +79,8 @@ public final class WorkerStateManager {
   @Inject
   private WorkerStateManager(final JobLogger jobLogger,
                              final MasterSideMsgSender masterSideMsgSender,
-                             @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
-                             @Parameter(DolphinParameters.DolphinJobId.class) final String jobId,
+                             @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers,
+                             @Parameter(CruiseParameters.CruiseJobId.class) final String jobId,
                              final SerializableCodec<WorkerGlobalBarrier.State> codec) {
     this.jobLogger = jobLogger;
     this.masterSideMsgSender = masterSideMsgSender;

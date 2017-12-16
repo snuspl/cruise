@@ -15,11 +15,11 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.DolphinMsg;
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseMsg;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.SyncMsg;
 import edu.snu.spl.cruise.ps.core.worker.*;
-import edu.snu.spl.cruise.ps.dolphinMsgType;
+import edu.snu.spl.cruise.ps.cruiseMsgType;
 import edu.snu.spl.cruise.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.spl.cruise.services.et.driver.impl.RunningTasklet;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
@@ -89,7 +89,7 @@ public class WorkerStateManagerTest {
    */
   private void setupDriver(final List<String> workerIds) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, workerIds.size());
+    injector.bindVolatileParameter(CruiseParameters.NumWorkers.class, workerIds.size());
     injector.bindVolatileParameter(JobIdentifier.class, JOB_ID);
     injector.bindVolatileParameter(DriverIdentifier.class, DRIVER_ID);
 
@@ -157,9 +157,9 @@ public class WorkerStateManagerTest {
 
     doAnswer(invocation -> {
       final WorkerGlobalBarrier.State state = invocation.getArgumentAt(0, WorkerGlobalBarrier.State.class);
-      final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
+      final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
           .setJobId(JOB_ID)
-          .setType(dolphinMsgType.SyncMsg)
+          .setType(cruiseMsgType.SyncMsg)
           .setSyncMsg(
               SyncMsg.newBuilder()
               .setExecutorId(workerId)
@@ -170,7 +170,7 @@ public class WorkerStateManagerTest {
 
       LOG.log(Level.INFO, "sending a progress msg from {0}", workerId);
       final MasterSideMsgHandler masterSideMsgHandler = driverComponents.getRight();
-      masterSideMsgHandler.onDolphinMsg(dolphinMsg);
+      masterSideMsgHandler.onCruiseMsg(cruiseMsg);
       return null;
     }).when(mockedWorkerSideMsgSender).sendSyncMsg(any(WorkerGlobalBarrier.State.class));
   }

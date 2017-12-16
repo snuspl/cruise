@@ -48,7 +48,7 @@ public final class CachedModelAccessor<K, P, V> implements ModelAccessor<K, P, V
   private final Tracer pullTracer = new Tracer();
 
   @Inject
-  private CachedModelAccessor(@Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
+  private CachedModelAccessor(@Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
                               final TableAccessor tableAccessor,
                               final UpdateFunction<K, V, P> modelUpdateFunction) throws TableNotExistException {
     this.modelTable = tableAccessor.getTable(modelTableId);

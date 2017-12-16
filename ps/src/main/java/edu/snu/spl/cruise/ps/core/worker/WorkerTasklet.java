@@ -16,9 +16,9 @@
 package edu.snu.spl.cruise.ps.core.worker;
 
 import edu.snu.spl.cruise.ps.CachedModelAccessor;
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.metric.avro.BatchMetrics;
-import edu.snu.spl.cruise.ps.metric.avro.DolphinWorkerMetrics;
+import edu.snu.spl.cruise.ps.metric.avro.CruiseWorkerMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.EpochMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.WorkerMetricsType;
 import edu.snu.spl.cruise.services.et.configuration.parameters.TaskletIdentifier;
@@ -35,7 +35,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Tasklet for running Dolphin trainers on ET.
+ * Tasklet for running Cruise trainers on ET.
  */
 public final class WorkerTasklet<V> implements Tasklet {
   private static final Logger LOG = Logger.getLogger(WorkerTasklet.class.getName());
@@ -61,8 +61,8 @@ public final class WorkerTasklet<V> implements Tasklet {
 
   @Inject
   private WorkerTasklet(@Parameter(TaskletIdentifier.class) final String taskletId,
-                        @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
-                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                        @Parameter(CruiseParameters.StartingEpochIdx.class) final int startingEpoch,
+                        @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
                         final ProgressReporter progressReporter,
                         final WorkerGlobalBarrier workerGlobalBarrier,
                         final TrainingDataProvider<V> trainingDataProvider,
@@ -185,7 +185,7 @@ public final class WorkerTasklet<V> implements Tasklet {
                 .build();
 
     // Encapsulate the metrics for ET
-    final DolphinWorkerMetrics encapsulatedMetrics = DolphinWorkerMetrics.newBuilder()
+    final CruiseWorkerMetrics encapsulatedMetrics = CruiseWorkerMetrics.newBuilder()
         .setType(WorkerMetricsType.BatchMetrics)
         .setBatchMetrics(batchMetrics)
         .build();
@@ -217,7 +217,7 @@ public final class WorkerTasklet<V> implements Tasklet {
         .build();
 
     // Encapsulate the metrics for ET
-    final DolphinWorkerMetrics encapsulatedMetrics = DolphinWorkerMetrics.newBuilder()
+    final CruiseWorkerMetrics encapsulatedMetrics = CruiseWorkerMetrics.newBuilder()
         .setType(WorkerMetricsType.EpochMetrics)
         .setEpochMetrics(epochMetrics)
         .build();

@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.mlr;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -34,7 +34,7 @@ public final class MLRJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("MLR", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("MLR", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(MLRTrainer.class)
         .setInputParserClass(MLRETDataParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

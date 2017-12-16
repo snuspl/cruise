@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for the driver of the dolphin jobserver, which supports multiple dolphin jobs concurrently.
+ * Classes for the driver of the cruise jobserver, which supports multiple cruise jobs concurrently.
  */
 package edu.snu.spl.cruise.ps.jobserver.driver;

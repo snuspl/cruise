@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters used in Dashboard of Dolphin Async.
+ * Parameters used in Dashboard of Cruise Async.
  */
 package edu.snu.spl.cruise.ps.dashboard.parameters;

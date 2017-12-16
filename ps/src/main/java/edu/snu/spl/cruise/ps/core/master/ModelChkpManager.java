@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.spl.cruise.services.et.driver.api.AllocatedExecutor;
@@ -70,8 +70,8 @@ final class ModelChkpManager {
                            final InjectionFuture<ETMaster> etMasterFuture,
                            final InjectionFuture<MasterSideMsgSender> msgSender,
                            final InjectionFuture<JobMessageObserver> jobMessageObserverFuture,
-                           @Parameter(DolphinParameters.ModelTableId.class) final String modelTableId,
-                           @Parameter(DolphinParameters.InputTableId.class) final String inputTableId) {
+                           @Parameter(CruiseParameters.ModelTableId.class) final String modelTableId,
+                           @Parameter(CruiseParameters.InputTableId.class) final String inputTableId) {
     this.jobLogger = jobLogger;
     this.etMasterFuture = etMasterFuture;
     this.jobMessageObserverFuture = jobMessageObserverFuture;

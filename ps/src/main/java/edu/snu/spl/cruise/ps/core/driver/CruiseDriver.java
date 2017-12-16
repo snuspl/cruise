@@ -16,9 +16,9 @@
 package edu.snu.spl.cruise.ps.core.driver;
 
 import edu.snu.spl.cruise.common.param.Parameters;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.services.et.configuration.ExecutorConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.ResourceConfiguration;
@@ -60,15 +60,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver code for Dolphin on ET.
- * Upon start, it initializes executors and tables for running a dolphin job.
+ * Driver code for Cruise on ET.
+ * Upon start, it initializes executors and tables for running a cruise job.
  */
 @Unit
-public final class DolphinDriver {
-  private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
+public final class CruiseDriver {
+  private static final Logger LOG = Logger.getLogger(CruiseDriver.class.getName());
 
   private final ETMaster etMaster;
-  private final DolphinMaster dolphinMaster;
+  private final CruiseMaster cruiseMaster;
   private final JobMessageObserver jobMessageObserver;
 
   private final boolean offlineModelEval;
@@ -89,7 +89,7 @@ public final class DolphinDriver {
   private final String jobId;
 
   @Inject
-  private DolphinDriver(final DolphinMaster dolphinMaster,
+  private CruiseDriver(final CruiseMaster cruiseMaster,
                         final ETMaster etMaster,
                         final JobMessageObserver jobMessageObserver,
                         final ConfigurationSerializer confSerializer,
@@ -111,12 +111,12 @@ public final class DolphinDriver {
                         @Parameter(NumWorkerBlocks.class) final int numWorkerBlocks,
                         @Parameter(NumServerBlocks.class) final int numServerBlocks,
                         @Parameter(JobIdentifier.class) final String jobId,
-                        @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
-                        @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
-                        @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
+                        @Parameter(ETCruiseLauncher.SerializedParamConf.class) final String serializedParamConf,
+                        @Parameter(ETCruiseLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
+                        @Parameter(ETCruiseLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
-    this.dolphinMaster = dolphinMaster;
+    this.cruiseMaster = cruiseMaster;
     this.jobMessageObserver = jobMessageObserver;
 
     this.offlineModelEval = offlineModelEval;
@@ -222,7 +222,7 @@ public final class DolphinDriver {
   }
 
   /**
-   * A driver start handler for requesting executors and creating tables to run a dolphin job.
+   * A driver start handler for requesting executors and creating tables to run a cruise job.
    */
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
@@ -243,7 +243,7 @@ public final class DolphinDriver {
             inputTable.load(workers, inputPath).get();
 
             jobMessageObserver.sendMessageToClient("Start training a model".getBytes());
-            dolphinMaster.start(servers, workers, modelTable, inputTable);
+            cruiseMaster.start(servers, workers, modelTable, inputTable);
 
             // need to evaluate model tables loaded from checkpoints with new workers executors
             if (offlineModelEval) {
@@ -281,7 +281,7 @@ public final class DolphinDriver {
 
               modelTable.subscribe(workersForEvaluation).get();
 
-              dolphinMaster.evaluate(servers, workersForEvaluation);
+              cruiseMaster.evaluate(servers, workersForEvaluation);
 
               workersForEvaluation.forEach(AllocatedExecutor::close);
               servers.forEach(AllocatedExecutor::close);

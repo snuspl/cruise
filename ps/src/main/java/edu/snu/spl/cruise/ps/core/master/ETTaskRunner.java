@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.ps.core.worker.WorkerTasklet;
 import edu.snu.spl.cruise.services.et.driver.api.AllocatedExecutor;
@@ -45,7 +45,7 @@ public final class ETTaskRunner {
 
   private final JobMessageObserver jobMessageObserver;
 
-  private final InjectionFuture<DolphinMaster> etDolphinMasterFuture;
+  private final InjectionFuture<CruiseMaster> etCruiseMasterFuture;
 
   private final WorkerStateManager workerStateManager;
 
@@ -58,16 +58,16 @@ public final class ETTaskRunner {
 
   @Inject
   private ETTaskRunner(final JobLogger jobLogger,
-                       final InjectionFuture<DolphinMaster> dolphinMasterFuture,
+                       final InjectionFuture<CruiseMaster> cruiseMasterFuture,
                        final JobMessageObserver jobMessageObserver,
                        final ETMaster etMaster,
                        final WorkerStateManager workerStateManager,
-                       @Parameter(DolphinParameters.DolphinJobId.class) final String jobId,
-                       @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+                       @Parameter(CruiseParameters.CruiseJobId.class) final String jobId,
+                       @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers) {
     this.jobLogger = jobLogger;
     this.etMaster = etMaster;
     this.jobMessageObserver = jobMessageObserver;
-    this.etDolphinMasterFuture = dolphinMasterFuture;
+    this.etCruiseMasterFuture = cruiseMasterFuture;
     this.workerStateManager = workerStateManager;
     this.jobId = jobId;
     jobLogger.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
@@ -85,8 +85,8 @@ public final class ETTaskRunner {
     servers.forEach(server -> serverExecutors.put(server.getId(), server));
 
     // submit dummy tasks to servers
-    servers.forEach(server -> server.submitTasklet(etDolphinMasterFuture.get().getServerTaskletConf()));
-    workers.forEach(worker -> worker.submitTasklet(etDolphinMasterFuture.get().getWorkerTaskletConf())
+    servers.forEach(server -> server.submitTasklet(etCruiseMasterFuture.get().getServerTaskletConf()));
+    workers.forEach(worker -> worker.submitTasklet(etCruiseMasterFuture.get().getWorkerTaskletConf())
         .addListener(runningTasklet -> executorIdToTasklet.put(worker.getId(), runningTasklet)));
 
     jobLogger.log(Level.INFO, "Wait for workers to finish run stage");

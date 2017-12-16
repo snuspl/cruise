@@ -23,7 +23,7 @@ import edu.snu.spl.cruise.ps.plan.api.TransferStep;
 import java.util.*;
 
 /**
- * A plan implementation that supports EM's default plan operations and Dolphin-specific plan operations.
+ * A plan implementation that supports EM's default plan operations and Cruise-specific plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
  */
 // TODO #725: clean up duplicate code with the plan implementation of EM package

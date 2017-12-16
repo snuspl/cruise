@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.JobLogger;
 import edu.snu.spl.cruise.ps.ProgressMsg;
 import edu.snu.spl.cruise.utils.StateMachine;
@@ -40,7 +40,7 @@ import java.util.logging.Level;
 public final class ProgressTracker implements ProgressProvider {
   private final JobLogger jobLogger;
 
-  private final String dolphinJobId;
+  private final String cruiseJobId;
   private final int maxNumEpochs;
   private final int numWorkers;
   private volatile int globalMinEpochIdx;
@@ -56,12 +56,12 @@ public final class ProgressTracker implements ProgressProvider {
   @Inject
   private ProgressTracker(final JobLogger jobLogger,
                           final JobMessageObserver jobMessageObserver,
-                          @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
-                          @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                          @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+                          @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId,
+                          @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                          @Parameter(CruiseParameters.NumWorkers.class) final int numWorkers) {
     this.jobLogger = jobLogger;
     this.jobMessageObserver = jobMessageObserver;
-    this.dolphinJobId = dolphinJobId;
+    this.cruiseJobId = cruiseJobId;
     this.maxNumEpochs = maxNumEpochs;
     this.numWorkers = numWorkers;
     this.globalMinEpochIdx = 0;
@@ -108,7 +108,7 @@ public final class ProgressTracker implements ProgressProvider {
   private void updateGlobalMinEpochIdx(final int newMinEpochIdx) {
     globalMinEpochIdx = newMinEpochIdx;
     final String msgToClient = String.format("Epoch progress: [%d / %d], JobId: %s",
-        newMinEpochIdx, maxNumEpochs, dolphinJobId);
+        newMinEpochIdx, maxNumEpochs, cruiseJobId);
     jobMessageObserver.sendMessageToClient(msgToClient.getBytes(StandardCharsets.UTF_8));
   }
 

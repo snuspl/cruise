@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.master;
 
-import edu.snu.spl.cruise.ps.DolphinMsg;
+import edu.snu.spl.cruise.ps.CruiseMsg;
 import edu.snu.spl.cruise.ps.ProgressMsg;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
 import org.apache.reef.tang.InjectionFuture;
@@ -52,12 +52,12 @@ public final class MasterSideMsgHandler {
   }
 
   /**
-   * Handles dolphin msgs from workers.
+   * Handles cruise msgs from workers.
    */
-  public void onDolphinMsg(final DolphinMsg dolphinMsg) {
-    switch (dolphinMsg.getType()) {
+  public void onCruiseMsg(final CruiseMsg cruiseMsg) {
+    switch (cruiseMsg.getType()) {
     case ProgressMsg:
-      final ProgressMsg progressMsg = dolphinMsg.getProgressMsg();
+      final ProgressMsg progressMsg = cruiseMsg.getProgressMsg();
       switch (progressMsg.getType()) {
       case Batch:
         progressMsgExecutor.submit(() -> batchProgressTrackerFuture.get().onProgressMsg(progressMsg));
@@ -70,13 +70,13 @@ public final class MasterSideMsgHandler {
       }
       break;
     case SyncMsg:
-      syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(dolphinMsg.getSyncMsg()));
+      syncMsgExecutor.submit(() -> workerStateManagerFuture.get().onSyncMsg(cruiseMsg.getSyncMsg()));
       break;
     case ModelEvalAskMsg:
       modelEvalMsgExecutor.submit(() -> modelChkpManagerFuture.get().onWorkerMsg());
       break;
     default:
-      throw new RuntimeException("Unexpected msg type" + dolphinMsg.getType());
+      throw new RuntimeException("Unexpected msg type" + cruiseMsg.getType());
     }
   }
 }

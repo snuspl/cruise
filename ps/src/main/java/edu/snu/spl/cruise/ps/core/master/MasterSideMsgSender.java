@@ -31,7 +31,7 @@ import java.util.logging.Level;
 final class MasterSideMsgSender {
   private final JobLogger jobLogger;
 
-  private final String dolphinJobId;
+  private final String cruiseJobId;
 
   private final InjectionFuture<ETTaskRunner> taskRunnerFuture;
   private final byte[] serializedReleaseMsg;
@@ -39,15 +39,15 @@ final class MasterSideMsgSender {
   @Inject
   private MasterSideMsgSender(final JobLogger jobLogger,
                               final InjectionFuture<ETTaskRunner> taskRunnerFuture,
-                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId) {
+                              @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId) {
     this.jobLogger = jobLogger;
     this.taskRunnerFuture = taskRunnerFuture;
-    this.dolphinJobId = dolphinJobId;
+    this.cruiseJobId = cruiseJobId;
 
-    this.serializedReleaseMsg = AvroUtils.toBytes(DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.ReleaseMsg)
-        .build(), DolphinMsg.class);
+    this.serializedReleaseMsg = AvroUtils.toBytes(CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.ReleaseMsg)
+        .build(), CruiseMsg.class);
   }
 
   /**
@@ -68,15 +68,15 @@ final class MasterSideMsgSender {
    * @param doNext a boolean indicating whether a worker do one more evaluation or not
    */
   void sendModelEvalAnsMsg(final String workerId, final boolean doNext) {
-    final DolphinMsg msg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.ModelEvalAnsMsg)
+    final CruiseMsg msg = CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.ModelEvalAnsMsg)
         .setModelEvalAnsMsg(ModelEvalAnsMsg.newBuilder()
             .setDoNext(doNext).build())
         .build();
 
     try {
-      taskRunnerFuture.get().getRunningTasklet(workerId).send(AvroUtils.toBytes(msg, DolphinMsg.class));
+      taskRunnerFuture.get().getRunningTasklet(workerId).send(AvroUtils.toBytes(msg, CruiseMsg.class));
     } catch (NetworkException e) {
       jobLogger.log(Level.INFO, String.format("Fail to send ModelEvalAns msg to worker %s.", workerId), e);
     }

@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Computes Dolphin's optimal cost and configuration (w.r.t. w, s, d, m).
+ * Computes Cruise's optimal cost and configuration (w.r.t. w, s, d, m).
  *
  * There are some empirical issues. You should keep in mind the following issues when you use ILPSolver.
  * 1. GUROBI environment setting(e.g. IntFeasTol, MIPGap). ILPSolver's search time and quality of solution is sensitive
@@ -159,9 +159,9 @@ final class ILPSolver {
     }
     model.setObjective(sumT, GRB.MAXIMIZE);
     
-    model.write("dolphin-cost.lp");
+    model.write("cruise-cost.lp");
     final long startTimeMs = System.currentTimeMillis();
-    model.setCallback(new DolphinSolverCallback(startTimeMs, n, m));
+    model.setCallback(new CruiseSolverCallback(startTimeMs, n, m));
     
     // Optimize model
     model.optimize();
@@ -184,7 +184,7 @@ final class ILPSolver {
     printResult(startTimeMs, mVal);
     
     model.update();
-    model.write("dolphin-cost-opt.lp");
+    model.write("cruise-cost-opt.lp");
     
     // Dispose of model and environment
     model.dispose();
@@ -480,12 +480,12 @@ final class ILPSolver {
   /**
    * A callback triggered by Gurobi. This callback is used to print the intermediate solutions.
    */
-  private static class DolphinSolverCallback extends GRBCallback {
+  private static class CruiseSolverCallback extends GRBCallback {
     private final long startTimeMs;
     private final int n;
     private final GRBVar[] m;
     
-    DolphinSolverCallback(final long startTimeMs, final int n, final GRBVar[] m) {
+    CruiseSolverCallback(final long startTimeMs, final int n, final GRBVar[] m) {
       this.startTimeMs = startTimeMs;
       this.n = n;
       this.m = m;

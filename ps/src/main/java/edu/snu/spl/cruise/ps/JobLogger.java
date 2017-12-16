@@ -26,8 +26,8 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 /**
- * A logger for dolphin jobs, which distinguishes jobs with the injected
- * {@link edu.snu.spl.cruise.ps.DolphinParameters.DolphinJobId}.
+ * A logger for cruise jobs, which distinguishes jobs with the injected
+ * {@link edu.snu.spl.cruise.ps.CruiseParameters.CruiseJobId}.
  * This class relays log messages to the {@link Logger}, appending job id to log messages.
  */
 public final class JobLogger {
@@ -35,8 +35,8 @@ public final class JobLogger {
   private final Logger logger;
 
   @Inject
-  private JobLogger(@Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId) throws IOException {
-    this.msgPrefix = "[JobId: " + dolphinJobId + "] ";
+  private JobLogger(@Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId) throws IOException {
+    this.msgPrefix = "[JobId: " + cruiseJobId + "] ";
     this.logger = Logger.getLogger(JobLogger.class.getName());
   }
 

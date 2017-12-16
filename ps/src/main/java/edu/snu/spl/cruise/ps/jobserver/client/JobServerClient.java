@@ -51,7 +51,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main entry point for launching a JobServer for Dolphin applications.
+ * Main entry point for launching a JobServer for Cruise applications.
  * See {@link JobServerClient#run(String[])}.
  * This is called by {#start_jobserver.sh}
  */
@@ -64,7 +64,7 @@ public final class JobServerClient {
   }
 
   /**
-   * Run a job server on the Dolphin on ET framework with an additional configuration for the driver.
+   * Run a job server on the Cruise on ET framework with an additional configuration for the driver.
    * @param args command line arguments
    * @param customDriverConf additional Tang configuration to be injected at the driver
    */
@@ -106,7 +106,7 @@ public final class JobServerClient {
   }
 
   /**
-   * Run a job server on the Dolphin on ET framework.
+   * Run a job server on the Cruise on ET framework.
    * @param args command line arguments
    */
   public static LauncherStatus run(final String[] args) {

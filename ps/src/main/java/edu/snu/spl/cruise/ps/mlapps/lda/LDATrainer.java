@@ -59,7 +59,7 @@ final class LDATrainer implements Trainer<Document> {
                      final ModelHolder<LDAModel> modelHolder,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
-                     @Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches) {
+                     @Parameter(CruiseParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.trainingDataProvider = trainingDataProvider;

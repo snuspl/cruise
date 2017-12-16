@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.mlapps.nmf;
 
 import edu.snu.spl.cruise.common.math.linalg.Vector;
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -37,7 +37,7 @@ public final class NMFETModelUpdateFunction implements UpdateFunction<Integer, V
 
   @Inject
   private NMFETModelUpdateFunction(final NMFModelGenerator modelGenerator,
-                                   @Parameter(DolphinParameters.StepSize.class) final float stepSize) {
+                                   @Parameter(CruiseParameters.StepSize.class) final float stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

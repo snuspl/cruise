@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.core.worker;
 
-import edu.snu.spl.cruise.ps.DolphinMsg;
+import edu.snu.spl.cruise.ps.CruiseMsg;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
@@ -45,17 +45,17 @@ public final class WorkerSideMsgHandler implements TaskletCustomMsgHandler {
 
   @Override
   public void onNext(final byte[] bytes) {
-    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
-    switch (dolphinMsg.getType()) {
+    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
+    switch (cruiseMsg.getType()) {
     case ReleaseMsg:
       releaseMsgExecutor.submit(workerGlobalBarrier::onReleaseMsg);
       break;
 
     case ModelEvalAnsMsg:
-      modelEvalMsgExecutor.submit(() -> modelEvaluator.onMasterMsg(dolphinMsg.getModelEvalAnsMsg()));
+      modelEvalMsgExecutor.submit(() -> modelEvaluator.onMasterMsg(cruiseMsg.getModelEvalAnsMsg()));
       break;
     default:
-      throw new RuntimeException("Unexpected msg type: " + dolphinMsg.getType());
+      throw new RuntimeException("Unexpected msg type: " + cruiseMsg.getType());
     }
   }
 }

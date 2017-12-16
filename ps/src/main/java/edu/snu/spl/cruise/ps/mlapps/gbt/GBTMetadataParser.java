@@ -19,7 +19,7 @@ import edu.snu.spl.cruise.common.dataloader.HdfsSplitFetcher;
 import edu.snu.spl.cruise.common.dataloader.HdfsSplitInfo;
 import edu.snu.spl.cruise.common.dataloader.HdfsSplitManager;
 import edu.snu.spl.cruise.common.dataloader.TextInputFormat;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
 import edu.snu.spl.cruise.ps.mlapps.gbt.GBTTrainer.FeatureType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.io.LongWritable;

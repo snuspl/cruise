@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes that are related to the Metrics Collection Service of Async-Dolphin.
+ * Classes that are related to the Metrics Collection Service of Async-Cruise.
  */
 package edu.snu.spl.cruise.ps.metric;

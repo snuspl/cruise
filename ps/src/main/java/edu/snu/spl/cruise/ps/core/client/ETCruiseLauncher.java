@@ -15,13 +15,13 @@
  */
 package edu.snu.spl.cruise.ps.core.client;
 import edu.snu.spl.cruise.ps.CachedModelAccessor;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
 import edu.snu.spl.cruise.common.param.Parameters.*;
-import edu.snu.spl.cruise.ps.core.driver.DolphinDriver;
+import edu.snu.spl.cruise.ps.core.driver.CruiseDriver;
 import edu.snu.spl.cruise.ps.core.driver.DriverSideMsgHandler;
 import edu.snu.spl.cruise.ps.core.master.ProgressTracker;
 import edu.snu.spl.cruise.ps.core.worker.*;
-import edu.snu.spl.cruise.ps.metric.ETDolphinMetricReceiver;
+import edu.snu.spl.cruise.ps.metric.ETCruiseMetricReceiver;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.spl.cruise.ps.optimizer.api.Optimizer;
 import edu.snu.spl.cruise.ps.optimizer.conf.OptimizerClass;
@@ -70,12 +70,12 @@ import java.util.logging.Logger;
 import static edu.snu.spl.cruise.utils.ConfigurationUtils.extractParameterConf;
 
 /**
- * Main entry point for launching a Dolphin on ET application.
- * See {@link ETDolphinLauncher#launch(String, String[], ETDolphinConfiguration)}.
+ * Main entry point for launching a Cruise on ET application.
+ * See {@link ETCruiseLauncher#launch(String, String[], ETCruiseConfiguration)}.
  */
 @ClientSide
-public final class ETDolphinLauncher {
-  private static final Logger LOG = Logger.getLogger(ETDolphinLauncher.class.getName());
+public final class ETCruiseLauncher {
+  private static final Logger LOG = Logger.getLogger(ETCruiseLauncher.class.getName());
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   public final class SerializedParamConf implements Name<String> {
@@ -92,25 +92,25 @@ public final class ETDolphinLauncher {
   /**
    * Should not be instantiated.
    */
-  private ETDolphinLauncher() {
+  private ETCruiseLauncher() {
   }
 
   /**
-   * Launch an application on the Dolphin on ET framework with an additional configuration for the driver.
+   * Launch an application on the Cruise on ET framework with an additional configuration for the driver.
    * @param jobName string identifier of this application
    * @param args command line arguments
-   * @param dolphinConf job configuration of this application
+   * @param cruiseConf job configuration of this application
    * @param customDriverConf additional Tang configuration to be injected at the driver
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final ETDolphinConfiguration dolphinConf,
+                                      final ETCruiseConfiguration cruiseConf,
                                       final Configuration customDriverConf) {
     LauncherStatus status;
 
     try {
       // parse command line arguments, separate them into basic & user parameters
-      final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
+      final List<Configuration> configurations = parseCommandLine(args, cruiseConf.getParameterClassList());
 
       final Configuration clientParamConf = configurations.get(0);
       final Configuration driverParamConf = configurations.get(1);
@@ -122,10 +122,10 @@ public final class ETDolphinLauncher {
       final Configuration serverConf = Configurations.merge(
           serverParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
-              .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
-              .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
-              .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
+              .bindImplementation(UpdateFunction.class, cruiseConf.getModelUpdateFunctionClass())
+              .bindNamedParameter(KeyCodec.class, cruiseConf.getModelKeyCodecClass())
+              .bindNamedParameter(ValueCodec.class, cruiseConf.getModelValueCodecClass())
+              .bindNamedParameter(UpdateValueCodec.class, cruiseConf.getModelUpdateValueCodecClass())
               .build());
 
       final Injector workerParameterInjector = Tang.Factory.getTang().newInjector(workerParamConf);
@@ -138,13 +138,13 @@ public final class ETDolphinLauncher {
       final Configuration workerConf = Configurations.merge(
           workerParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
-              .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
+              .bindImplementation(Trainer.class, cruiseConf.getTrainerClass())
+              .bindImplementation(DataParser.class, cruiseConf.getInputParserClass())
               .bindImplementation(TrainingDataProvider.class, ETTrainingDataProvider.class)
               .bindImplementation(ModelAccessor.class, modelAccessorClass)
-              .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
-              .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
-              .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
+              .bindImplementation(UpdateFunction.class, cruiseConf.getModelUpdateFunctionClass())
+              .bindNamedParameter(KeyCodec.class, cruiseConf.getInputKeyCodecClass())
+              .bindNamedParameter(ValueCodec.class, cruiseConf.getInputValueCodecClass())
               .build());
 
       final Injector clientParameterInjector = Tang.Factory.getTang().newInjector(clientParamConf);
@@ -184,15 +184,15 @@ public final class ETDolphinLauncher {
   }
 
   /**
-   * Launch an application on the Dolphin on ET framework.
+   * Launch an application on the Cruise on ET framework.
    * @param jobName string identifier of this application
    * @param args command line arguments
-   * @param etDolphinConfiguration job configuration of this application
+   * @param etCruiseConfiguration job configuration of this application
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final ETDolphinConfiguration etDolphinConfiguration) {
-    return launch(jobName, args, etDolphinConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
+                                      final ETCruiseConfiguration etCruiseConfiguration) {
+    return launch(jobName, args, etCruiseConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
   @SuppressWarnings("unchecked")
@@ -319,13 +319,13 @@ public final class ETDolphinLauncher {
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(CruiseDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, CruiseDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, CruiseDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, CruiseDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, CruiseDriver.FailedTaskHandler.class)
         .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
@@ -336,7 +336,7 @@ public final class ETDolphinLauncher {
         .build();
 
     final Configuration metricServiceConf = MetricServiceDriverConf.CONF
-        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETCruiseMetricReceiver.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();

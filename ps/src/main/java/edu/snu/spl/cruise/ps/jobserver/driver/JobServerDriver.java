@@ -16,9 +16,9 @@
 package edu.snu.spl.cruise.ps.jobserver.driver;
 
 import edu.snu.spl.cruise.common.param.Parameters;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
 import edu.snu.spl.cruise.ps.jobserver.Parameters.*;
 import edu.snu.spl.cruise.services.et.configuration.ExecutorConfiguration;
 import edu.snu.spl.cruise.services.et.configuration.RemoteAccessConfiguration;
@@ -64,7 +64,7 @@ import java.util.logging.Logger;
 import static edu.snu.spl.cruise.ps.jobserver.Parameters.*;
 
 /**
- * Driver code for Dolphin on ET.
+ * Driver code for Cruise on ET.
  * It executes a job or finishes itself upon request from clients.
  */
 @Unit
@@ -79,9 +79,9 @@ public final class JobServerDriver {
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
   /**
-   * It maintains {@link DolphinMaster}s of running dolphin jobs.
+   * It maintains {@link CruiseMaster}s of running cruise jobs.
    */
-  private final Map<String, DolphinMaster> dolphinMasterMap = new ConcurrentHashMap<>();
+  private final Map<String, CruiseMaster> cruiseMasterMap = new ConcurrentHashMap<>();
 
   private final Injector jobBaseInjector;
 
@@ -102,11 +102,11 @@ public final class JobServerDriver {
   }
 
   /**
-   * Gets a {@link DolphinMaster} with {@code dolphinJobId}.
-   * @param dolphinJobId a dolphin job identifier
+   * Gets a {@link CruiseMaster} with {@code cruiseJobId}.
+   * @param cruiseJobId a cruise job identifier
    */
-  DolphinMaster getDolphinMaster(final String dolphinJobId) {
-    return dolphinMasterMap.get(dolphinJobId);
+  CruiseMaster getCruiseMaster(final String cruiseJobId) {
+    return cruiseMasterMap.get(cruiseJobId);
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -214,11 +214,11 @@ public final class JobServerDriver {
         inputTable.load(workers, jobEntity.getInputPath()).get();
 
         try {
-          LOG.log(Level.FINE, "Spawn new dolphinMaster with ID: {0}", jobId);
-          final DolphinMaster dolphinMaster = jobEntity.getJobInjector().getInstance(DolphinMaster.class);
-          dolphinMasterMap.put(jobId, dolphinMaster);
+          LOG.log(Level.FINE, "Spawn new cruiseMaster with ID: {0}", jobId);
+          final CruiseMaster cruiseMaster = jobEntity.getJobInjector().getInstance(CruiseMaster.class);
+          cruiseMasterMap.put(jobId, cruiseMaster);
 
-          dolphinMaster.start(servers, workers, modelTable, inputTable);
+          cruiseMaster.start(servers, workers, modelTable, inputTable);
 
           workers.forEach(AllocatedExecutor::close);
           servers.forEach(AllocatedExecutor::close);
@@ -227,7 +227,7 @@ public final class JobServerDriver {
           final String jobFinishMsg = String.format("Job execution has been finished. JobId: %s", jobId);
           LOG.log(Level.INFO, jobFinishMsg);
           sendMessageToClient(jobFinishMsg);
-          dolphinMasterMap.remove(jobId);
+          cruiseMasterMap.remove(jobId);
           jobScheduler.onJobFinish(workers.size() + servers.size());
         }
 
@@ -247,21 +247,21 @@ public final class JobServerDriver {
   private JobEntity getJobEntity(final Configuration jobConf) throws InjectionException, IOException {
     final Injector jobInjector = jobBaseInjector.forkInjector(jobConf);
 
-    // generate different dolphin job id for each job
+    // generate different cruise job id for each job
     final int jobCount = jobCounter.getAndIncrement();
 
     final String appId = jobInjector.getNamedInstance(AppIdentifier.class);
-    final String dolphinJobId = appId + "-" + jobCount;
+    final String cruiseJobId = appId + "-" + jobCount;
     final String modelTableId = ModelTableId.DEFAULT_VALUE + jobCount;
     final String inputTableId = InputTableId.DEFAULT_VALUE + jobCount;
 
-    jobInjector.bindVolatileParameter(DolphinJobId.class, dolphinJobId);
+    jobInjector.bindVolatileParameter(CruiseJobId.class, cruiseJobId);
     jobInjector.bindVolatileParameter(ModelTableId.class, modelTableId);
     jobInjector.bindVolatileParameter(InputTableId.class, inputTableId);
 
-    final String serializedParamConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedParamConf.class);
-    final String serializedServerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedServerConf.class);
-    final String serializedWorkerConf = jobInjector.getNamedInstance(ETDolphinLauncher.SerializedWorkerConf.class);
+    final String serializedParamConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedParamConf.class);
+    final String serializedServerConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedServerConf.class);
+    final String serializedWorkerConf = jobInjector.getNamedInstance(ETCruiseLauncher.SerializedWorkerConf.class);
 
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = ConfigurationUtils.fromString(serializedParamConf);
@@ -315,7 +315,7 @@ public final class JobServerDriver {
 
     return JobEntity.newBuilder()
         .setJobInjector(jobInjector)
-        .setJobId(dolphinJobId)
+        .setJobId(cruiseJobId)
         .setNumServers(numServers)
         .setServerExecutorConf(serverExecutorConf)
         .setServerTableConf(serverTableConf)

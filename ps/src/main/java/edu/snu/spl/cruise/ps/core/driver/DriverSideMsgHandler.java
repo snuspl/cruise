@@ -16,8 +16,8 @@
 package edu.snu.spl.cruise.ps.core.driver;
 
 
-import edu.snu.spl.cruise.ps.DolphinMsg;
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
+import edu.snu.spl.cruise.ps.CruiseMsg;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
@@ -25,20 +25,20 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler that routes messages to {@link DolphinMaster}.
+ * A driver-side message handler that routes messages to {@link CruiseMaster}.
  */
 public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
-  private final InjectionFuture<DolphinMaster> dolphinMasterFuture;
+  private final InjectionFuture<CruiseMaster> cruiseMasterFuture;
 
   @Inject
-  private DriverSideMsgHandler(final InjectionFuture<DolphinMaster> dolphinMasterFuture) {
-    this.dolphinMasterFuture = dolphinMasterFuture;
+  private DriverSideMsgHandler(final InjectionFuture<CruiseMaster> cruiseMasterFuture) {
+    this.cruiseMasterFuture = cruiseMasterFuture;
   }
 
   @Override
   public void onNext(final byte[] bytes) {
-    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
-    dolphinMasterFuture.get().getMsgHandler().onDolphinMsg(dolphinMsg);
+    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
+    cruiseMasterFuture.get().getMsgHandler().onCruiseMsg(cruiseMsg);
   }
 }

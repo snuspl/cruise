@@ -16,7 +16,7 @@
 # EXAMPLE USAGE
 # ./run_exception.sh 
 
-SELF_JAR=`echo ../target/cay-common-*-shaded.jar`
+SELF_JAR=`echo ../target/cruise-common-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.spl.cruise.utils.LoggingConfig'
 

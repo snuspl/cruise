@@ -23,7 +23,7 @@ import edu.snu.spl.cruise.ps.mlapps.gbt.tree.*;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
 import edu.snu.spl.cruise.utils.Tuple3;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
 import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.reef.tang.annotations.Parameter;

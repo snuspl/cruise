@@ -25,7 +25,7 @@ import edu.snu.spl.cruise.ps.core.worker.TrainingDataProvider;
 import edu.snu.spl.cruise.services.et.evaluator.api.Table;
 import edu.snu.spl.cruise.utils.CatchableExecutors;
 import edu.snu.spl.cruise.utils.ThreadUtils;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 

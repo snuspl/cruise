@@ -19,7 +19,7 @@ import edu.snu.spl.cruise.ps.optimizer.impl.ETOptimizationOrchestrator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * A class that orchestrates the overall optimization process for a Dolphin job.
+ * A class that orchestrates the overall optimization process for a Cruise job.
  */
 @DefaultImplementation(ETOptimizationOrchestrator.class)
 public interface OptimizationOrchestrator {

@@ -74,8 +74,8 @@ final class AddVectorTrainer implements Trainer {
   @Inject
   private AddVectorTrainer(final ModelAccessor<Integer, Integer, Vector> modelAccessor,
                            final TableAccessor tableAccessor,
-                           @Parameter(DolphinParameters.InputTableId.class) final String inputTableId,
-                           @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                           @Parameter(CruiseParameters.InputTableId.class) final String inputTableId,
+                           @Parameter(CruiseParameters.MaxNumEpochs.class) final int maxNumEpochs,
                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,

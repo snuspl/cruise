@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lda;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Alpha;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.Beta;
 import edu.snu.spl.cruise.ps.mlapps.lda.LDAParameters.NumTopics;
@@ -38,7 +38,7 @@ public final class LDAET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("LDAET", args, ETDolphinConfiguration.newBuilder()
+    ETCruiseLauncher.launch("LDAET", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setInputParserClass(LDAETDataParser.class)
         .setInputKeyCodecClass(LongCodec.class)

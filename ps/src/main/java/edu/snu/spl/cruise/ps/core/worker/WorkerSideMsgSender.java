@@ -33,7 +33,7 @@ import java.nio.ByteBuffer;
  */
 @EvaluatorSide
 public final class WorkerSideMsgSender {
-  private final String dolphinJobId;
+  private final String cruiseJobId;
   private final String executorId;
   private final TaskletCustomMsgSender taskletCustomMsgSender;
 
@@ -42,10 +42,10 @@ public final class WorkerSideMsgSender {
   @Inject
   private WorkerSideMsgSender(final TaskletCustomMsgSender taskletCustomMsgSender,
                               final SerializableCodec<WorkerGlobalBarrier.State> codec,
-                              @Parameter(DolphinParameters.DolphinJobId.class) final String dolphinJobId,
+                              @Parameter(CruiseParameters.CruiseJobId.class) final String cruiseJobId,
                               @Parameter(ExecutorIdentifier.class) final String executorId) {
     this.taskletCustomMsgSender = taskletCustomMsgSender;
-    this.dolphinJobId = dolphinJobId;
+    this.cruiseJobId = cruiseJobId;
     this.executorId = executorId;
     this.codec = codec;
   }
@@ -61,13 +61,13 @@ public final class WorkerSideMsgSender {
         .setProgress(epochIdx)
         .build();
 
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.ProgressMsg)
+    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
   }
 
   /**
@@ -81,13 +81,13 @@ public final class WorkerSideMsgSender {
         .setProgress(batchIdx)
         .build();
 
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.ProgressMsg)
+    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.ProgressMsg)
         .setProgressMsg(progressMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
   }
 
   /**
@@ -102,24 +102,24 @@ public final class WorkerSideMsgSender {
         .setSerializedState(ByteBuffer.wrap(serializedState))
         .build();
 
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.SyncMsg)
+    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.SyncMsg)
         .setSyncMsg(syncMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
   }
 
   /**
    * Send a msg to master for asking model evaluation.
    */
   void sendModelEvalAskMsg() throws NetworkException {
-    final DolphinMsg dolphinMsg = DolphinMsg.newBuilder()
-        .setJobId(dolphinJobId)
-        .setType(dolphinMsgType.ModelEvalAskMsg)
+    final CruiseMsg cruiseMsg = CruiseMsg.newBuilder()
+        .setJobId(cruiseJobId)
+        .setType(cruiseMsgType.ModelEvalAskMsg)
         .build();
 
-    taskletCustomMsgSender.send(AvroUtils.toBytes(dolphinMsg, DolphinMsg.class));
+    taskletCustomMsgSender.send(AvroUtils.toBytes(cruiseMsg, CruiseMsg.class));
   }
 }

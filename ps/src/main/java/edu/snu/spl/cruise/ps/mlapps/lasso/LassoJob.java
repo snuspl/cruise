@@ -15,7 +15,7 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.lasso;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
 import edu.snu.spl.cruise.ps.jobserver.client.JobLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -32,7 +32,7 @@ public final class LassoJob {
   }
 
   public static void main(final String[] args) {
-    JobLauncher.submitJob("Lasso", args, ETDolphinConfiguration.newBuilder()
+    JobLauncher.submitJob("Lasso", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(LassoTrainer.class)
         .setInputParserClass(LassoETParser.class)
         .setInputKeyCodecClass(StreamingSerializableCodec.class)

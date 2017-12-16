@@ -234,7 +234,7 @@
 {
   "namespace": "edu.snu.spl.cruise.ps.metric.avro",
   "type": "record",
-  "name": "DolphinWorkerMetrics",
+  "name": "CruiseWorkerMetrics",
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "WorkerMetricsType",

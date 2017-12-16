@@ -16,7 +16,7 @@
 package edu.snu.spl.cruise.ps.optimizer.impl;
 
 import edu.snu.spl.cruise.common.param.Parameters;
-import edu.snu.spl.cruise.ps.DolphinParameters;
+import edu.snu.spl.cruise.ps.CruiseParameters;
 import edu.snu.spl.cruise.ps.metric.avro.ServerMetrics;
 import edu.snu.spl.cruise.ps.metric.avro.WorkerMetrics;
 import edu.snu.spl.cruise.ps.optimizer.api.DataInfo;
@@ -60,7 +60,7 @@ public final class HomogeneousOptimizer implements Optimizer {
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
-  private HomogeneousOptimizer(@Parameter(DolphinParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
+  private HomogeneousOptimizer(@Parameter(CruiseParameters.NumTotalMiniBatches.class) final int numTotalMiniBatches,
                                @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                                @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                    final double optBenefitThreshold,

@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.mlapps.nmf;
 
-import edu.snu.spl.cruise.ps.core.client.ETDolphinConfiguration;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseConfiguration;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.mlapps.serialization.DenseVectorCodec;
 import edu.snu.spl.cruise.utils.IntegerCodec;
 import edu.snu.spl.cruise.utils.LongCodec;
@@ -35,7 +35,7 @@ public final class NMFET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("NMFET", args, ETDolphinConfiguration.newBuilder()
+    ETCruiseLauncher.launch("NMFET", args, ETCruiseConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setInputParserClass(NMFETDataParser.class)
         .setInputKeyCodecClass(LongCodec.class)

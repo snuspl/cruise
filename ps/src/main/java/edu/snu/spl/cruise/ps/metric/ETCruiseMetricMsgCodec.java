@@ -15,27 +15,27 @@
  */
 package edu.snu.spl.cruise.ps.metric;
 
-import edu.snu.spl.cruise.ps.metric.avro.DolphinWorkerMetrics;
+import edu.snu.spl.cruise.ps.metric.avro.CruiseWorkerMetrics;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec that (de-)serializes the Dolphin-specific metrics.
+ * Codec that (de-)serializes the Cruise-specific metrics.
  */
-public final class ETDolphinMetricMsgCodec implements Codec<DolphinWorkerMetrics> {
+public final class ETCruiseMetricMsgCodec implements Codec<CruiseWorkerMetrics> {
   @Inject
-  private ETDolphinMetricMsgCodec() {
+  private ETCruiseMetricMsgCodec() {
   }
 
   @Override
-  public DolphinWorkerMetrics decode(final byte[] bytes) {
-    return AvroUtils.fromBytes(bytes, DolphinWorkerMetrics.class);
+  public CruiseWorkerMetrics decode(final byte[] bytes) {
+    return AvroUtils.fromBytes(bytes, CruiseWorkerMetrics.class);
   }
 
   @Override
-  public byte[] encode(final DolphinWorkerMetrics dolphinMetrics) {
-    return AvroUtils.toBytes(dolphinMetrics, DolphinWorkerMetrics.class);
+  public byte[] encode(final CruiseWorkerMetrics cruiseMetrics) {
+    return AvroUtils.toBytes(cruiseMetrics, CruiseWorkerMetrics.class);
   }
 }

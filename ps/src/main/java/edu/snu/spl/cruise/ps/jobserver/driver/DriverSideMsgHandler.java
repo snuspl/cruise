@@ -15,8 +15,8 @@
  */
 package edu.snu.spl.cruise.ps.jobserver.driver;
 
-import edu.snu.spl.cruise.ps.core.master.DolphinMaster;
-import edu.snu.spl.cruise.ps.DolphinMsg;
+import edu.snu.spl.cruise.ps.core.master.CruiseMaster;
+import edu.snu.spl.cruise.ps.CruiseMsg;
 import edu.snu.spl.cruise.services.et.evaluator.api.TaskletCustomMsgHandler;
 import edu.snu.spl.cruise.utils.AvroUtils;
 import org.apache.reef.tang.InjectionFuture;
@@ -24,10 +24,10 @@ import org.apache.reef.tang.InjectionFuture;
 import javax.inject.Inject;
 
 /**
- * A driver-side message handler for JobServer, which manages multiple {@link DolphinMaster}s.
- * Therefore, it routes messages to an appropriate {@link DolphinMaster}
- * based on {@link edu.snu.spl.cruise.ps.DolphinParameters.DolphinJobId} embedded in
- * incoming {@link DolphinMsg}.
+ * A driver-side message handler for JobServer, which manages multiple {@link CruiseMaster}s.
+ * Therefore, it routes messages to an appropriate {@link CruiseMaster}
+ * based on {@link edu.snu.spl.cruise.ps.CruiseParameters.CruiseJobId} embedded in
+ * incoming {@link CruiseMsg}.
  */
 public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
@@ -40,10 +40,10 @@ public final class DriverSideMsgHandler implements TaskletCustomMsgHandler {
 
   @Override
   public void onNext(final byte[] bytes) {
-    final DolphinMsg dolphinMsg = AvroUtils.fromBytes(bytes, DolphinMsg.class);
+    final CruiseMsg cruiseMsg = AvroUtils.fromBytes(bytes, CruiseMsg.class);
 
-    final String jobId = dolphinMsg.getJobId().toString();
-    final DolphinMaster dolphinMaster = jobServerDriverFuture.get().getDolphinMaster(jobId);
-    dolphinMaster.getMsgHandler().onDolphinMsg(dolphinMsg);
+    final String jobId = cruiseMsg.getJobId().toString();
+    final CruiseMaster cruiseMaster = jobServerDriverFuture.get().getCruiseMaster(jobId);
+    cruiseMaster.getMsgHandler().onCruiseMsg(cruiseMsg);
   }
 }

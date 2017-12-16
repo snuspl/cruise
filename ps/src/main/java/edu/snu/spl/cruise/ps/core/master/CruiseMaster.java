@@ -16,13 +16,13 @@
 package edu.snu.spl.cruise.ps.core.master;
 
 import edu.snu.spl.cruise.ps.*;
-import edu.snu.spl.cruise.ps.DolphinParameters.*;
-import edu.snu.spl.cruise.ps.core.client.ETDolphinLauncher;
+import edu.snu.spl.cruise.ps.CruiseParameters.*;
+import edu.snu.spl.cruise.ps.core.client.ETCruiseLauncher;
 import edu.snu.spl.cruise.ps.core.server.ServerTasklet;
 import edu.snu.spl.cruise.ps.core.worker.WorkerSideMsgHandler;
 import edu.snu.spl.cruise.ps.core.worker.ModelEvaluationTasklet;
 import edu.snu.spl.cruise.ps.core.worker.WorkerTasklet;
-import edu.snu.spl.cruise.ps.metric.ETDolphinMetricMsgCodec;
+import edu.snu.spl.cruise.ps.metric.ETCruiseMetricMsgCodec;
 import edu.snu.spl.cruise.ps.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.spl.cruise.ps.optimizer.api.OptimizationOrchestrator;
 import edu.snu.spl.cruise.services.et.configuration.TaskletConfiguration;
@@ -49,9 +49,9 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 
 /**
- * A Dolphin master, which runs a dolphin job with given executors and tables.
+ * A Cruise master, which runs a cruise job with given executors and tables.
  */
-public final class DolphinMaster {
+public final class CruiseMaster {
   private final JobLogger jobLogger;
 
   private final ModelChkpManager modelChkpManager;
@@ -62,7 +62,7 @@ public final class DolphinMaster {
 
   private final long serverMetricFlushPeriodMs;
 
-  private final String dolphinJobId;
+  private final String cruiseJobId;
 
   private final boolean offlineModelEval; // whether to perform model evaluation offline or online
   private final String modelTableId;
@@ -70,7 +70,7 @@ public final class DolphinMaster {
   private final Configuration workerConf;
 
   @Inject
-  private DolphinMaster(final JobLogger jobLogger,
+  private CruiseMaster(final JobLogger jobLogger,
                         final MetricManager metricManager,
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final ModelChkpManager modelChkpManager,
@@ -78,12 +78,12 @@ public final class DolphinMaster {
                         final ProgressTracker progressTracker,
                         final ConfigurationSerializer confSerializer,
                         final MasterSideMsgHandler masterSideMsgHandler,
-                        @Parameter(DolphinJobId.class) final String dolphinJobId,
+                        @Parameter(CruiseJobId.class) final String cruiseJobId,
                         @Parameter(ModelTableId.class) final String modelTableId,
                         @Parameter(InputTableId.class) final String inputTableId,
                         @Parameter(OfflineModelEvaluation.class) final boolean offlineModelEval,
                         @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
-                        @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
+                        @Parameter(ETCruiseLauncher.SerializedWorkerConf.class) final String serializedWorkerConf)
       throws IOException, InjectionException {
     this.jobLogger = jobLogger;
     this.modelChkpManager = modelChkpManager;
@@ -92,7 +92,7 @@ public final class DolphinMaster {
     this.progressTracker = progressTracker;
     this.msgHandler = masterSideMsgHandler;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
-    this.dolphinJobId = dolphinJobId;
+    this.cruiseJobId = cruiseJobId;
     this.modelTableId = modelTableId;
     this.inputTableId = inputTableId;
     this.workerConf = confSerializer.fromString(serializedWorkerConf);
@@ -102,12 +102,12 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getWorkerTaskletConf() {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID)
+        .setId(cruiseJobId + "-" + WorkerTasklet.TASKLET_ID)
         .setTaskletClass(WorkerTasklet.class)
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+                .bindNamedParameter(CruiseJobId.class, cruiseJobId)
                 .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
                 .bindNamedParameter(ModelTableId.class, modelTableId)
                 .bindNamedParameter(InputTableId.class, inputTableId)
@@ -118,12 +118,12 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getWorkerTaskletConf(final Class<? extends Tasklet> taskletClass) {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + WorkerTasklet.TASKLET_ID)
+        .setId(cruiseJobId + "-" + WorkerTasklet.TASKLET_ID)
         .setTaskletClass(taskletClass)
         .setTaskletMsgHandlerClass(WorkerSideMsgHandler.class)
         .setUserParamConf(Configurations.merge(
             Tang.Factory.getTang().newConfigurationBuilder()
-                .bindNamedParameter(DolphinJobId.class, dolphinJobId)
+                .bindNamedParameter(CruiseJobId.class, cruiseJobId)
                 .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
                 .bindNamedParameter(ModelTableId.class, modelTableId)
                 .bindNamedParameter(InputTableId.class, inputTableId)
@@ -135,14 +135,14 @@ public final class DolphinMaster {
 
   public TaskletConfiguration getServerTaskletConf() {
     return TaskletConfiguration.newBuilder()
-        .setId(dolphinJobId + "-" + ServerTasklet.TASKLET_ID)
+        .setId(cruiseJobId + "-" + ServerTasklet.TASKLET_ID)
         .setTaskletClass(ServerTasklet.class)
         .build();
   }
 
   public MetricServiceExecutorConf getWorkerMetricConf() {
     return MetricServiceExecutorConf.newBuilder()
-        .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
+        .setCustomMetricCodec(ETCruiseMetricMsgCodec.class)
         .build();
   }
 
@@ -153,7 +153,7 @@ public final class DolphinMaster {
   }
 
   /**
-   * Returns a msg handler, which handles {@link DolphinMsg}.
+   * Returns a msg handler, which handles {@link CruiseMsg}.
    * It should be called when driver-side msg handler has been called.
    * @return a master
    */
@@ -164,7 +164,7 @@ public final class DolphinMaster {
   /**
    * Start running a job with given executors and tables.
    * It returns after checking the result of tasks.
-   * TODO #1175: In multi-job mode, each dolphin master will use given tables
+   * TODO #1175: In multi-job mode, each cruise master will use given tables
    */
   public void start(final List<AllocatedExecutor> servers, final List<AllocatedExecutor> workers,
                     final AllocatedTable modelTable, final AllocatedTable trainingDataTable) {
@@ -178,7 +178,7 @@ public final class DolphinMaster {
       servers.forEach(server -> metricManager.stopMetricCollection(server.getId()));
       workers.forEach(worker -> metricManager.stopMetricCollection(worker.getId()));
     } catch (Exception e) {
-      throw new RuntimeException("Dolphin job has been failed", e);
+      throw new RuntimeException("Cruise job has been failed", e);
     }
   }
 
