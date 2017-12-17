@@ -18,7 +18,7 @@ package edu.snu.spl.cruise.pregel.combiner;
 /**
  * A combiner that finds the message with the minimum Long value.
  */
-public class MinimumLongMessageCombiner implements MessageCombiner<Long, Long> {
+public final class MinimumLongMessageCombiner implements MessageCombiner<Long, Long> {
 
   @Override
   public Long combine(final Long vertexId,

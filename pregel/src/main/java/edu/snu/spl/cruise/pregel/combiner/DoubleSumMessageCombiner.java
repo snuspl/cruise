@@ -18,7 +18,7 @@ package edu.snu.spl.cruise.pregel.combiner;
 /**
  * A combiner that sums double-valued messages.
  */
-public class DoubleSumMessageCombiner implements MessageCombiner<Long, Double> {
+public final class DoubleSumMessageCombiner implements MessageCombiner<Long, Double> {
 
   @Override
   public Double combine(final Long vertexId,

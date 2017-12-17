@@ -32,7 +32,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 /**
- * Manage message stores that contains messages from the previous superstep.
+ * Manage message stores that contain messages from the previous superstep.
  * Determine the incoming message store depending on the state of a worker.
  * It also accumulates messages generated from the current superstep, which is for next superstep.
  *
@@ -85,7 +85,7 @@ public final class MessageManager<Long, M> {
 
   /**
    * Add a message towards a vertex.
-   * It'll be flushed by {@link #flushAllMessages()}.
+   * All the messages are flushed by {@link #flushAllMessages()} altogether.
    *
    * @param vertexId a vertex id
    * @param message message
