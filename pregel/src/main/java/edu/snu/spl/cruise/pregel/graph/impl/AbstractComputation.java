@@ -15,15 +15,8 @@
  */
 package edu.snu.spl.cruise.pregel.graph.impl;
 
-import com.google.common.collect.Lists;
 import edu.snu.spl.cruise.pregel.graph.api.Computation;
 import edu.snu.spl.cruise.pregel.graph.api.Vertex;
-import edu.snu.spl.cruise.services.et.evaluator.api.Table;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 /**
  * This is an abstract helper class for users to implement their computations.
@@ -34,26 +27,16 @@ import java.util.concurrent.Future;
 public abstract class AbstractComputation<V, E, M> implements Computation<V, E, M> {
 
   private Integer superstep;
-  /**
-   * All messages are passed to this table during computation in a single superstep.
-   */
-  private Table<Long, List<M>, M> nextMessageTable;
 
-  /**
-   * All table commands are added the list for sync the non-blocking methods.
-   * At the finish of a single superstep, worker task calls {@link #flushAllMessages()} and gets all futures in it.
-   * Then clear it.
-   */
-  private final List<Future<?>> msgFutureList = Collections.synchronizedList(Lists.newArrayList());
+  private MessageManager<Long, M> messageManager;
 
-  protected AbstractComputation() {
-
+  protected AbstractComputation(final MessageManager<Long, M> messageManager) {
+    this.messageManager = messageManager;
   }
 
   @Override
-  public void initialize(final Integer currentStep, final Table<Long, List<M>, M> nextTable) {
+  public void initialize(final Integer currentStep) {
     this.superstep = currentStep;
-    this.nextMessageTable = nextTable;
   }
 
   @Override
@@ -66,21 +49,12 @@ public abstract class AbstractComputation<V, E, M> implements Computation<V, E, 
 
   @Override
   public void sendMessage(final Long id, final M message) {
-    msgFutureList.add(nextMessageTable.update(id, message));
+    messageManager.addMessage(id, message);
   }
 
   @Override
   public void sendMessagesToAdjacents(final Vertex<V, E> vertex, final M message) {
-    vertex.getEdges().forEach(edge -> msgFutureList.add(nextMessageTable.update(edge.getTargetVertexId(), message)));
-  }
-
-  @Override
-  public int flushAllMessages() throws ExecutionException, InterruptedException {
-    final int numMsgs = msgFutureList.size();
-    for (final Future<?> msgFuture : msgFutureList) {
-      msgFuture.get();
-    }
-    msgFutureList.clear();
-    return numMsgs;
+    vertex.getEdges().forEach(edge ->
+        messageManager.addMessage(edge.getTargetVertexId(), message));
   }
 }

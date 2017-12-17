@@ -79,7 +79,7 @@ public final class PregelWorkerTask<V, E, M> implements Tasklet {
     // run supersteps until all vertices halt
     // each loop is a superstep
     while (true) {
-      computation.initialize(superStepCount, messageManager.getNextMessageTable());
+      computation.initialize(superStepCount);
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       // partition local graph-dataset as the number of threads
@@ -101,7 +101,7 @@ public final class PregelWorkerTask<V, E, M> implements Tasklet {
       }
 
       // before finishing superstep, confirm that all outgoing messages are completely sent out
-      final int numSentMsgs = computation.flushAllMessages();
+      final int numSentMsgs = messageManager.flushAllMessages();
 
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCount);
 

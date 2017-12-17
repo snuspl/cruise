@@ -15,6 +15,7 @@
  */
 package edu.snu.spl.cruise.pregel;
 
+import edu.snu.spl.cruise.pregel.combiner.MessageCombiner;
 import edu.snu.spl.cruise.pregel.graph.api.Computation;
 import edu.snu.spl.cruise.services.et.evaluator.api.DataParser;
 import org.apache.reef.annotations.audience.ClientSide;
@@ -41,6 +42,7 @@ public final class PregelConfiguration {
   private final Class<? extends StreamingCodec> edgeCodecClass;
   private final Class<? extends DataParser> dataParserClass;
 
+  private final Class<? extends MessageCombiner> messageCombinerClass;
   private final Class<? extends StreamingCodec> messageValueCodecClass;
   private final List<Class<? extends Name<?>>> userParamList;
 
@@ -48,12 +50,14 @@ public final class PregelConfiguration {
                               final Class<? extends StreamingCodec> vertexValueCodecClass,
                               final Class<? extends StreamingCodec> edgeCodecClass,
                               final Class<? extends DataParser> dataParserClass,
+                              final Class<? extends MessageCombiner> messageCombinerClass,
                               final Class<? extends StreamingCodec> messageValueCodecClass,
                               final List<Class<? extends Name<?>>> userParamList) {
     this.computationClass = computationClass;
     this.vertexValueCodecClass = vertexValueCodecClass;
     this.edgeCodecClass = edgeCodecClass;
     this.dataParserClass = dataParserClass;
+    this.messageCombinerClass = messageCombinerClass;
     this.messageValueCodecClass = messageValueCodecClass;
     this.userParamList = userParamList;
   }
@@ -72,6 +76,10 @@ public final class PregelConfiguration {
 
   public Class<? extends DataParser> getDataParserClass() {
     return dataParserClass;
+  }
+
+  public Class<? extends MessageCombiner> getMessageCombinerClass() {
+    return messageCombinerClass;
   }
 
   public Class<? extends StreamingCodec> getMessageValueCodecClass() {
@@ -94,6 +102,7 @@ public final class PregelConfiguration {
 
     private Class<? extends DataParser> dataParserClass;
 
+    private Class<? extends MessageCombiner> messageCombinerClass;
     private Class<? extends StreamingCodec> messageValueCodecClass;
     private List<Class<? extends Name<?>>> userParamList = new ArrayList<>();
 
@@ -117,6 +126,11 @@ public final class PregelConfiguration {
       return this;
     }
 
+    public Builder setMessageCombinerClass(final Class<? extends MessageCombiner> messageCombinerClass) {
+      this.messageCombinerClass = messageCombinerClass;
+      return this;
+    }
+
     public Builder setMessageValueCodecClass(final Class<? extends StreamingCodec> messageValueCodecClass) {
       this.messageValueCodecClass = messageValueCodecClass;
       return this;
@@ -130,7 +144,7 @@ public final class PregelConfiguration {
     @Override
     public PregelConfiguration build() {
       return new PregelConfiguration(computationClass, vertexValueCodecClass, edgeCodecClass, dataParserClass,
-          messageValueCodecClass, userParamList);
+          messageCombinerClass, messageValueCodecClass, userParamList);
     }
   }
 }
