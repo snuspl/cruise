@@ -17,6 +17,7 @@ package edu.snu.spl.cruise.pregel.graphapps.pagerank;
 
 import edu.snu.spl.cruise.pregel.PregelConfiguration;
 import edu.snu.spl.cruise.pregel.PregelLauncher;
+import edu.snu.spl.cruise.pregel.combiner.DoubleSumMessageCombiner;
 import edu.snu.spl.cruise.pregel.common.NoneEdgeValueGraphParser;
 import edu.snu.spl.cruise.pregel.common.NoneValueEdgeCodec;
 import edu.snu.spl.cruise.utils.StreamingSerializableCodec;
@@ -40,6 +41,7 @@ public final class PagerankET {
     PregelLauncher.launch(PagerankET.class.getSimpleName(), args, PregelConfiguration.newBuilder()
         .setComputationClass(PagerankComputation.class)
         .setDataParserClass(NoneEdgeValueGraphParser.class)
+        .setMessageCombinerClass(DoubleSumMessageCombiner.class)
         .setMessageValueCodecClass(StreamingSerializableCodec.class)
         .setVertexValueCodecClass(StreamingSerializableCodec.class)
         .setEdgeCodecClass(NoneValueEdgeCodec.class)

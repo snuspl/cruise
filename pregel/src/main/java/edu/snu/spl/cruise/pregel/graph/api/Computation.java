@@ -15,11 +15,6 @@
  */
 package edu.snu.spl.cruise.pregel.graph.api;
 
-import edu.snu.spl.cruise.services.et.evaluator.api.Table;
-
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-
 /**
  * Interface for an application for computation for a superstep.
  *
@@ -33,9 +28,8 @@ public interface Computation<V, E, M> {
    * This class must be initialized before a single superstep starts.
    *
    * @param superstep current superstep
-   * @param nextMessageTable messages are sent to this and will be used in next superstep
    */
-  void initialize(Integer superstep, Table<Long, List<M>, M> nextMessageTable);
+  void initialize(Integer superstep);
 
   /**
    * Must be defined by user to do computation on a single vertex.
@@ -67,13 +61,5 @@ public interface Computation<V, E, M> {
    * @param message message to send
    */
   void sendMessagesToAdjacents(Vertex<V, E> vertex, M message);
-
-  /**
-   * Flushes out all messages sent by {@link #sendMessage} and {@link #sendMessagesToAdjacents}.
-   * It returns after receiving ack messages.
-   *
-   * @return the number of flushed messages
-   */
-  int flushAllMessages() throws ExecutionException, InterruptedException;
 }
 
