@@ -5,9 +5,9 @@ Currently, Cruise consists of a Parameter Server (`Cruise PS`) for asynchronous 
 
 ## Submodules
 
-* `ps`: An asynchronous ML processing engine based on Parameter Server.
-* `pregel`: A BSP-style graph processing engines
-* `elastic-tables`: An Elastic Runtime that allows changing system configurations transparently at runtime.
+* [`ps`](https://github.com/snuspl/cay/tree/master/ps): An asynchronous ML processing engine based on Parameter Server.
+* [`pregel`](https://github.com/snuspl/cay/tree/master/pregel): A BSP-style graph processing engines
+* [`elastic-tables`](https://github.com/snuspl/cay/tree/master/services/et): An Elastic Runtime that allows changing system configurations transparently at runtime.
 
 ## Requirements
 
@@ -22,6 +22,10 @@ git clone https://github.com/snuspl/cruise
 cd cruise
 mvn clean install
 ```
+
+## How to run
+
+Please take a look at the instructions for submodules ([`ps`](https://github.com/snuspl/cay/tree/master/ps) and [`pregel`](https://github.com/snuspl/cay/tree/master/pregel))
 
 ## Mailing list
 All type of discussions such as questions, bug reports and feature requests are always welcome!
