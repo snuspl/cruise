@@ -1,8 +1,10 @@
 # Cruise Pregel: BSP-style graph processing engine
-(writing in progress)
-
-- Cruise Pregel processes data with a graph structure (i.e., set of vertices and edges).
-- The notion of superstep; which messages are exchanged and which computation are done
+Cruise Pregel processes data represented as a graph structure (i.e., set of vertices and edges) in a synchronous way. We built Cruise Pregel on top of Elastic Table based on [the paper from Google](https://dl.acm.org/citation.cfm?id=1807184). In high-level, Pregel applications work as follows:
+1. Each iteration is called `superstep`, where each Task receives messages from the previous superstep if the Task has vertices that are connected with Vertices in other Tasks. 
+2. Then Tasks update their local state and prepare the updates to propagate to other Tasks. 
+3. Tasks wait until all of them to finish the local computation.
+4. Messages are exchanged and start the next superstep.
+5. Repeat 1-4 until converged.
   
 ## How to run applications?
 
