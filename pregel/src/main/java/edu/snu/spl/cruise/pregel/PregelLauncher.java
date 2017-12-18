@@ -18,6 +18,7 @@ package edu.snu.spl.cruise.pregel;
 
 import edu.snu.spl.cruise.common.centcomm.CentCommConf;
 import edu.snu.spl.cruise.common.param.Parameters.*;
+import edu.snu.spl.cruise.pregel.combiner.MessageCombiner;
 import edu.snu.spl.cruise.pregel.graph.api.Computation;
 import edu.snu.spl.cruise.pregel.PregelParameters.*;
 import edu.snu.spl.cruise.services.et.configuration.ETDriverConfiguration;
@@ -151,6 +152,7 @@ public final class PregelLauncher {
       final Configuration taskConf = Configurations.merge(userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(Computation.class, pregelConf.getComputationClass())
+              .bindImplementation(MessageCombiner.class, pregelConf.getMessageCombinerClass())
               .build());
 
       // driver configuration
