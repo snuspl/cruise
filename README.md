@@ -1,7 +1,7 @@
 # Cruise
 
 Cruise is a distributed machine learning (ML) framework with automatic system configuration, built on top of [Apache REEF]('https://reef.apache.org').
-Currently, Cruise consists of a Parameter Server (`Cruise PS`) for asynchronous ML training and a BSP-style engine (`Cruise Pregel`) for  processing data represented as a [graph](https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)).
+Currently, Cruise consists of a Parameter Server (`Cruise PS`) for asynchronous ML training and a BSP-style engine (`Cruise Pregel`) for processing data that we can represent as a [graph](https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)).
 
 ## Submodules
 
