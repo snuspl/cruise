@@ -1,6 +1,6 @@
 # Cruise PS: A Parameter Server implementation in Cruise
 
-The key characteristic of Cruise PS is cost-based optimization of system configuration, which is defined as the number of servers (S), the number of workers (W), the distribution of training data (D), and the distribution of model data (M). Cruise PS collects metrics related to the performance from a running job, and the Optimizer captures the relationship between the system configuration and the performance (in terms of running time).
+Cruise PS is an implementation based on Parameter Server architecture, which updates model parameters asynchronously. The key characteristic of Cruise PS is cost-based optimization of system configuration, which is defined as the number of servers (S), the number of workers (W), the distribution of training data (D), and the distribution of model data (M). Cruise PS collects metrics related to the performance from a running job, and the Optimizer captures the relationship between the system configuration and the performance (in terms of running time).
 After the (near-)optimal configuration is computed, the configuration is changed at runtime with the support of [Elastic Tables (ET)](https://github.com/snuspl/cay/tree/master/services/et), which provides a common abstraction for data and containers - with the primitive operations that ET provides, Cruise PS is able to change the configuration without an adverse effect to running ML jobs.
 You can find a more detailed description in our paper (ICML 2016 MLSys Workshop).
 
