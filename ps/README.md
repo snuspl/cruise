@@ -15,7 +15,7 @@ On Cruise PS, we have implemented 7 applications:
 * Feature selection: Lasso
 * (for testing) Add integer and Add vector
 
-You can find shell script files to run those appliations in `bin` directory. Each script consists of example usage to inform you which parameters are configurable. For example, `run_nmf.sh` looks as follows:
+You can find shell script files to run those applications in the `bin` directory. Each script consists of example usage to inform you which parameters are configurable. For example, `run_nmf.sh` looks as follows:
 ```
 ...
 # EXAMPLE USAGE
