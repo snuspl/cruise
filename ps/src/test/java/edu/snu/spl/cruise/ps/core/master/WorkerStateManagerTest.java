@@ -243,7 +243,7 @@ public class WorkerStateManagerTest {
    * @param workerIds a set of worker ids to be synchronized
    * @return a latch that indicates whether the workers passed the global barrier.
    */
-  private CountDownLatch callGlobalBarrier(final String ... workerIds) throws InterruptedException {
+  private CountDownLatch callGlobalBarrier(final String... workerIds) throws InterruptedException {
     final CountDownLatch latch = new CountDownLatch(workerIds.length);
 
     final Runnable[] threads = new Runnable[workerIds.length];
